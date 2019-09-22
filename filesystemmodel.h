@@ -8,6 +8,8 @@
 
 class FileSystemModel : public QAbstractItemModel
 {
+    Q_OBJECT
+
 public:
     FileSystemModel(QObject *parent = nullptr);
 
@@ -19,6 +21,9 @@ public:
     bool hasChildren(const QModelIndex &parent = QModelIndex()) const override;
     bool canFetchMore(const QModelIndex &parent) const override;
     void fetchMore(const QModelIndex &parent) override;
+
+public Q_SLOTS:
+    void parentUpdated(FileSystemItem *parent);
 
 private:
     FileSystemItem *root;

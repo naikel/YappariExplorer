@@ -4,7 +4,12 @@
 
 FileSystemModel::FileSystemModel(QObject *parent) : QAbstractItemModel(parent)
 {
+    // Start the thread of the file retriever
+    fileInfoRetriever.start();
+
     this->root = fileInfoRetriever.getRoot();
+
+    connect(&fileInfoRetriever, SIGNAL(parentUpdated(FileSystemItem *)), this, SLOT(parentUpdated(FileSystemItem *)));
 }
 
 QModelIndex FileSystemModel::index(int row, int column, const QModelIndex &parent) const
@@ -97,4 +102,10 @@ void FileSystemModel::fetchMore(const QModelIndex &parent)
         if (fileSystemItem->getHasSubFolders() && !fileSystemItem->areAllChildrenFetched())
             fileInfoRetriever.getChildren(fileSystemItem);
     }
+}
+
+void FileSystemModel::parentUpdated(FileSystemItem *parent)
+{
+    qDebug() << "parentUpdated()";
+    emit layoutChanged();
 }

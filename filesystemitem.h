@@ -32,8 +32,8 @@ public:
     void setIcon(const QIcon &value);
 
 private:
-    QString path;
-    QString displayName;
+    QString path                {};
+    QString displayName         {};
     QIcon icon;
 
     bool hasSubFolders          {false};

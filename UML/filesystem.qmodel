@@ -50,7 +50,7 @@
                          <object>{daeebe02-1aba-4cea-bbc0-bbc46100aa51}</object>
                          <name>FileSystemItem</name>
                          <pos>x:340;y:120</pos>
-                         <rect>x:-135;y:-50;w:270;h:100</rect>
+                         <rect>x:-135;y:-55;w:270;h:110</rect>
                          <auto-sized>false</auto-sized>
                          <visual-role>0</visual-role>
                         </DObject>
@@ -105,7 +105,7 @@
                         <DObject>
                          <base-DElement>
                           <DElement>
-                           <uid>{3cd5fce4-2950-41fc-9c60-b6dc76ae5cea}</uid>
+                           <uid>{75b94ea4-7432-4e75-841c-fc5585537c46}</uid>
                           </DElement>
                          </base-DElement>
                          <object>{d7661a17-779d-41b1-a373-37e63179f4ed}</object>
@@ -115,34 +115,8 @@
                           </qlist>
                          </stereotypes>
                          <name>WinFileInfoRetriever</name>
-                         <pos>x:755;y:255</pos>
-                         <rect>x:-105;y:-45;w:210;h:90</rect>
-                         <auto-sized>false</auto-sized>
-                         <visual-role>0</visual-role>
-                        </DObject>
-                       </base-DObject>
-                      </DClass>
-                     </instance>
-                    </item>
-                    <item>
-                     <instance type="DClass">
-                      <DClass>
-                       <base-DObject>
-                        <DObject>
-                         <base-DElement>
-                          <DElement>
-                           <uid>{2bfdf030-14c2-420f-99ec-0cf196ddf385}</uid>
-                          </DElement>
-                         </base-DElement>
-                         <object>{bd26538c-febc-42b4-9cd0-1bf8cf3177dc}</object>
-                         <stereotypes>
-                          <qlist>
-                           <item>thread</item>
-                          </qlist>
-                         </stereotypes>
-                         <name>FileInfoRetriever</name>
-                         <pos>x:755;y:115</pos>
-                         <rect>x:-90;y:-40;w:180;h:80</rect>
+                         <pos>x:750;y:275</pos>
+                         <rect>x:-85;y:-45;w:170;h:90</rect>
                          <auto-sized>false</auto-sized>
                          <visual-role>0</visual-role>
                         </DObject>
@@ -157,11 +131,56 @@
                         <DRelation>
                          <base-DElement>
                           <DElement>
-                           <uid>{66f70bb6-b2fd-4bbd-8f8f-c3bbc7722854}</uid>
+                           <uid>{23e78e9f-c265-462b-b8c6-95e063481664}</uid>
+                          </DElement>
+                         </base-DElement>
+                         <object>{fb288343-8659-4312-bb64-7b7e734d043f}</object>
+                         <a>{75b94ea4-7432-4e75-841c-fc5585537c46}</a>
+                         <b>{950593d7-5cf0-40e4-9e10-ffd971de7464}</b>
+                        </DRelation>
+                       </base-DRelation>
+                      </DDependency>
+                     </instance>
+                    </item>
+                    <item>
+                     <instance type="DClass">
+                      <DClass>
+                       <base-DObject>
+                        <DObject>
+                         <base-DElement>
+                          <DElement>
+                           <uid>{d56d9c0f-b08e-4ab5-9cca-4a0f79f2c33f}</uid>
+                          </DElement>
+                         </base-DElement>
+                         <object>{bd26538c-febc-42b4-9cd0-1bf8cf3177dc}</object>
+                         <stereotypes>
+                          <qlist>
+                           <item>thread</item>
+                          </qlist>
+                         </stereotypes>
+                         <name>FileInfoRetriever</name>
+                         <pos>x:750;y:120</pos>
+                         <rect>x:-95;y:-50;w:190;h:100</rect>
+                         <auto-sized>false</auto-sized>
+                         <visual-role>0</visual-role>
+                        </DObject>
+                       </base-DObject>
+                       <show-all-members>true</show-all-members>
+                      </DClass>
+                     </instance>
+                    </item>
+                    <item>
+                     <instance type="DDependency">
+                      <DDependency>
+                       <base-DRelation>
+                        <DRelation>
+                         <base-DElement>
+                          <DElement>
+                           <uid>{f573287e-2b19-4681-ba11-e6405e7e99ff}</uid>
                           </DElement>
                          </base-DElement>
                          <object>{95ecee97-4d1f-49c8-a0ee-abe9f1dd48b5}</object>
-                         <a>{2bfdf030-14c2-420f-99ec-0cf196ddf385}</a>
+                         <a>{d56d9c0f-b08e-4ab5-9cca-4a0f79f2c33f}</a>
                          <b>{950593d7-5cf0-40e4-9e10-ffd971de7464}</b>
                         </DRelation>
                        </base-DRelation>
@@ -175,12 +194,12 @@
                         <DRelation>
                          <base-DElement>
                           <DElement>
-                           <uid>{c7d42cb7-9584-4208-b308-24893081d497}</uid>
+                           <uid>{8246ea33-fea3-4d8a-acce-b13346a5e926}</uid>
                           </DElement>
                          </base-DElement>
                          <object>{23099527-c235-458a-b2eb-e8eb72229021}</object>
-                         <a>{3cd5fce4-2950-41fc-9c60-b6dc76ae5cea}</a>
-                         <b>{2bfdf030-14c2-420f-99ec-0cf196ddf385}</b>
+                         <a>{75b94ea4-7432-4e75-841c-fc5585537c46}</a>
+                         <b>{d56d9c0f-b08e-4ab5-9cca-4a0f79f2c33f}</b>
                         </DRelation>
                        </base-DRelation>
                       </DInheritance>
@@ -188,7 +207,7 @@
                     </item>
                    </qlist>
                   </elements>
-                  <last-modified>1568584962156</last-modified>
+                  <last-modified>1569167473155</last-modified>
                   <toolbarid>General</toolbarid>
                  </MDiagram>
                 </base-MDiagram>
@@ -217,14 +236,28 @@
                  <qlist>
                   <item>
                    <MClassMember>
-                    <uid>{6f7757eb-b067-4901-80c8-ae51a95f79f8}</uid>
+                    <uid>{904d17f1-55e3-4b5c-aa38-5a150b2cb0c5}</uid>
+                    <type>1</type>
+                    <declaration>QString path</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{01b93a19-1d27-43d3-bcd0-4208a5df5362}</uid>
                     <type>1</type>
                     <declaration>QString displayName</declaration>
                    </MClassMember>
                   </item>
                   <item>
                    <MClassMember>
-                    <uid>{ed3e2408-a230-4921-afcd-2ddca7930605}</uid>
+                    <uid>{24119e0c-673d-4d4e-b858-9ba9884f8ad1}</uid>
+                    <type>1</type>
+                    <declaration>QIcon icon</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{573c31fe-d814-481d-8114-50dda7932694}</uid>
                     <type>1</type>
                     <declaration>QHash&lt;QString path, QFileSystemItem *&gt; children</declaration>
                    </MClassMember>
@@ -427,6 +460,17 @@
                   </relations>
                  </MObject>
                 </base-MObject>
+                <members>
+                 <qlist>
+                  <item>
+                   <MClassMember>
+                    <uid>{738c235f-7f9a-4a6a-8bba-140bcb839d30}</uid>
+                    <type>1</type>
+                    <declaration>QStack&lt;FileSystemItem *&gt; parents</declaration>
+                   </MClassMember>
+                  </item>
+                 </qlist>
+                </members>
                </MClass>
               </instance>
              </target>

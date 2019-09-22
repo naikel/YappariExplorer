@@ -11,19 +11,19 @@
 #include <knownfolders.h>
 #include <commoncontrols.h>
 
+#include "fileinforetriever.h"
 #include "filesystemitem.h"
 
-class WinFileInfoRetriever : public QObject
+class WinFileInfoRetriever : public FileInfoRetriever
 {
-    Q_OBJECT
-
 public:
     WinFileInfoRetriever(QObject *parent = nullptr);
 
-    FileSystemItem *getRoot();
-    void getChildren(FileSystemItem *fileSystemItem);
     QIcon getIconFromPath(QString path, bool isHidden);
     QIcon getIconFromPIDL(LPITEMIDLIST pidl, bool isHidden);
+
+//protected:
+    void getChildrenBackground(FileSystemItem *fileSystemItem) override;
 
 private:
     int getSystemImageListIndexFromPIDL(LPITEMIDLIST pidl);

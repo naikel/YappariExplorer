@@ -1,5 +1,6 @@
 #include "winfileinforetriever.h"
 
+#include <QThread>
 #include <QPainter>
 #include <QDebug>
 
@@ -9,29 +10,19 @@
 // This function is found in Qt5Gui.dll
 extern QPixmap qt_pixmapFromWinHICON(HICON icon);
 
-WinFileInfoRetriever::WinFileInfoRetriever(QObject *parent) : QObject(parent)
+WinFileInfoRetriever::WinFileInfoRetriever(QObject *parent) : FileInfoRetriever(parent)
 {
 }
 
-FileSystemItem *WinFileInfoRetriever::getRoot()
+void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 {
-    // This PC
-    QString path { "/" };
-    FileSystemItem *root = new FileSystemItem(path);
-
-    getChildren(root);
-    return root;
-}
-
-void WinFileInfoRetriever::getChildren(FileSystemItem *parent)
-{
-    // This PC
+    qDebug() << "getChildrenBackground()";
 
     LPITEMIDLIST pidl;
 
     HRESULT hr;
     hr = (parent->getPath() == "/")
-                ? ::SHGetKnownFolderIDList(/*FOLDERID_ComputerFolder*/ FOLDERID_Desktop, KF_FLAG_DEFAULT, nullptr, &pidl)
+                ? ::SHGetKnownFolderIDList(FOLDERID_ComputerFolder /* FOLDERID_Desktop */, KF_FLAG_DEFAULT, nullptr, &pidl)
                 : ::SHParseDisplayName(parent->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
 
 
@@ -40,6 +31,7 @@ void WinFileInfoRetriever::getChildren(FileSystemItem *parent)
 
         // If this is the root we need to retrieve the display name of it and its icon
         if (parent->getPath() == "/") {
+            qDebug() << "Getting name of root";
             PWSTR pwstrName;
             hr = ::SHGetNameFromIDList(pidl, SIGDN_NORMALDISPLAY, &pwstrName);
             QString rootName = QString::fromWCharArray(pwstrName);
@@ -59,7 +51,7 @@ void WinFileInfoRetriever::getChildren(FileSystemItem *parent)
 
             // Proof of Concept: only folders
             //SHCONTF flags = SHCONTF_FOLDERS | SHCONTF_FASTITEMS | SHCONTF_NONFOLDERS | SHCONTF_ENABLE_ASYNC;
-            SHCONTF flags = SHCONTF_FOLDERS | SHCONTF_FASTITEMS | SHCONTF_ENABLE_ASYNC | SHCONTF_INCLUDEHIDDEN | SHCONTF_INCLUDESUPERHIDDEN;
+            SHCONTF flags = SHCONTF_FOLDERS | SHCONTF_FASTITEMS | SHCONTF_INCLUDEHIDDEN | SHCONTF_INCLUDESUPERHIDDEN; // | SHCONTF_ENABLE_ASYNC;
 
             if (SUCCEEDED(psf->EnumObjects(nullptr, flags, reinterpret_cast<IEnumIDList**>(&ppenumIDList)))) {
 
@@ -67,7 +59,7 @@ void WinFileInfoRetriever::getChildren(FileSystemItem *parent)
 
                 while (ppenumIDList->Next(1, &pidlChildren, nullptr) == S_OK) {
 
-                    SFGAOF attributes {SFGAO_STREAM | SFGAO_HASSUBFOLDER | SFGAO_HIDDEN };
+                    SFGAOF attributes {SFGAO_STREAM | SFGAO_FOLDER | SFGAO_HASSUBFOLDER | SFGAO_HIDDEN };
                     psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChildren), &attributes);
 
                     // Compressed files will have SFGAO_FOLDER and SFGAO_STREAM attributes
@@ -78,19 +70,21 @@ void WinFileInfoRetriever::getChildren(FileSystemItem *parent)
 
                         // Get the absolute path and create a FileSystemItem with it
                         psf->GetDisplayNameOf(pidlChildren, SHGDN_FORPARSING, &strRet);
+                        qDebug() << "Path " << QString::fromWCharArray(strRet.pOleStr);
                         FileSystemItem *child = new FileSystemItem(QString::fromWCharArray(strRet.pOleStr));
 
                         // Get the display name
                         psf->GetDisplayNameOf(pidlChildren, SHGDN_NORMAL, &strRet);
                         child->setDisplayName(QString::fromWCharArray(strRet.pOleStr));
 
-                        // Set attributes
-                        if (attributes & SFGAO_HASSUBFOLDER)
-                            child->setHasSubFolders(true);
+                        // Set basic attributes
+                        child->setHasSubFolders(attributes & SFGAO_HASSUBFOLDER);
 
                         LPITEMIDLIST absolutePidl = ILCombine(pidl, pidlChildren);
                         child->setIcon(getIconFromPIDL(absolutePidl, (attributes & SFGAO_HIDDEN)));
                         ILFree(absolutePidl);
+
+                        qDebug() << "New child " << child->getDisplayName() << " path " << child->getPath();
 
                         parent->addChild(child);
                     }
@@ -106,6 +100,7 @@ void WinFileInfoRetriever::getChildren(FileSystemItem *parent)
         ILFree(pidl);
 
         parent->setAllChildrenFetched(true);
+        emit parentUpdated(parent);
     }
 }
 

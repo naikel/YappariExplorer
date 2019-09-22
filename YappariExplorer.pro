@@ -17,6 +17,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     customtreeview.cpp \
+    fileinforetriever.cpp \
     filesystemitem.cpp \
     filesystemmodel.cpp \
     main.cpp \
@@ -25,6 +26,7 @@ SOURCES += \
 
 HEADERS += \
     customtreeview.h \
+    fileinforetriever.h \
     filesystemitem.h \
     filesystemmodel.h \
     mainwindow.h \

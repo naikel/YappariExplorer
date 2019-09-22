@@ -17,6 +17,8 @@ void FileSystemItem::setDisplayName(const QString &value)
 
 void FileSystemItem::addChild(FileSystemItem *child)
 {
+    // TODO Insert sort?
+
     child->setParent(this);
     children.insert(child->path, child);
     indexedChildren.append(child);
