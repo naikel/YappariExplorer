@@ -17,10 +17,19 @@ void FileSystemItem::setDisplayName(const QString &value)
 
 void FileSystemItem::addChild(FileSystemItem *child)
 {
-    // TODO Insert sort?
-
     child->setParent(this);
     children.insert(child->path, child);
+
+    for (int i = 0; i < indexedChildren.size() ; i++) {
+
+        // If both children are drives or both are not drive then they can be compared
+        if ((indexedChildren.at(i)->isDrive() && !child->isDrive()) ||
+                (indexedChildren.at(i)->isDrive() && child->isDrive() && indexedChildren.at(i)->path.toLower() > child->path.toLower()) ||
+                (!indexedChildren.at(i)->isDrive() && !child->isDrive() && indexedChildren.at(i)->displayName.toLower() > child->displayName.toLower())) {
+            indexedChildren.insert(i, child);
+            return;
+        }
+    }
     indexedChildren.append(child);
 }
 
@@ -66,6 +75,11 @@ bool FileSystemItem::areAllChildrenFetched() const
 void FileSystemItem::setAllChildrenFetched(bool value)
 {
     allChildrenFetched = value;
+}
+
+bool FileSystemItem::isDrive()
+{
+    return (path.length() == 3 && path.at(0).isLetter() && path.at(1) == ':' && path.at(2) == '\\');
 }
 
 QString FileSystemItem::getPath() const

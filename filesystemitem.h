@@ -25,6 +25,8 @@ public:
     bool areAllChildrenFetched() const;
     void setAllChildrenFetched(bool value);
 
+    bool isDrive();
+
     QString getPath() const;
     void setPath(const QString &value);
 
@@ -39,7 +41,7 @@ private:
     bool hasSubFolders          {false};
     bool allChildrenFetched     {false};
 
-    FileSystemItem *parent {};
+    FileSystemItem *parent      {};
     QHash<QString, FileSystemItem *> children;
     QList<FileSystemItem *> indexedChildren;
 };

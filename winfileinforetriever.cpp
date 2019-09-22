@@ -70,12 +70,12 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
                         // Get the absolute path and create a FileSystemItem with it
                         psf->GetDisplayNameOf(pidlChildren, SHGDN_FORPARSING, &strRet);
-                        qDebug() << "Path " << QString::fromWCharArray(strRet.pOleStr);
                         FileSystemItem *child = new FileSystemItem(QString::fromWCharArray(strRet.pOleStr));
 
                         // Get the display name
                         psf->GetDisplayNameOf(pidlChildren, SHGDN_NORMAL, &strRet);
                         child->setDisplayName(QString::fromWCharArray(strRet.pOleStr));
+                        qDebug() << "Path " << child->getPath() << " isDrive " << child->isDrive();
 
                         // Set basic attributes
                         child->setHasSubFolders(attributes & SFGAO_HASSUBFOLDER);
@@ -83,8 +83,6 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                         LPITEMIDLIST absolutePidl = ILCombine(pidl, pidlChildren);
                         child->setIcon(getIconFromPIDL(absolutePidl, (attributes & SFGAO_HIDDEN)));
                         ILFree(absolutePidl);
-
-                        qDebug() << "New child " << child->getDisplayName() << " path " << child->getPath();
 
                         parent->addChild(child);
                     }
