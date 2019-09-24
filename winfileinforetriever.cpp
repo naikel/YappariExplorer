@@ -1,8 +1,10 @@
 #include "winfileinforetriever.h"
 
+#include <QApplication>
 #include <QThread>
 #include <QPainter>
 #include <QDebug>
+#include <QTimer>
 
 #include "filesystemitem.h"
 
@@ -96,7 +98,6 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
         }
 
         ILFree(pidl);
-
         parent->setAllChildrenFetched(true);
         emit parentUpdated(parent);
     }
@@ -113,7 +114,6 @@ QIcon WinFileInfoRetriever::getIconFromPIDL(LPITEMIDLIST pidl, bool isHidden)
     int index = getSystemImageListIndexFromPIDL(pidl);
     return getIconFromIndex(index, isHidden);
 }
-
 
 QIcon WinFileInfoRetriever::getIconFromIndex(int index, bool isHidden)
 {

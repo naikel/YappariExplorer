@@ -22,7 +22,7 @@ void FileSystemItem::addChild(FileSystemItem *child)
 
     for (int i = 0; i < indexedChildren.size() ; i++) {
 
-        // If both children are drives or both are not drive then they can be compared
+        // If both children are drives or both are not drives then they can be compared
         if ((indexedChildren.at(i)->isDrive() && !child->isDrive()) ||
                 (indexedChildren.at(i)->isDrive() && child->isDrive() && indexedChildren.at(i)->path.toLower() > child->path.toLower()) ||
                 (!indexedChildren.at(i)->isDrive() && !child->isDrive() && indexedChildren.at(i)->displayName.toLower() > child->displayName.toLower())) {

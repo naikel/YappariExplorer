@@ -21,20 +21,22 @@ public:
     FileSystemItem *getRoot();
     void getChildren(FileSystemItem *fileSystemItem);
 
-    virtual void getChildrenBackground(FileSystemItem *fileSystemItem);
-
 Q_SIGNALS:
     void parentUpdated(FileSystemItem *parent);
 
-//protected:
-//    virtual void getChildrenBackground(FileSystemItem *fileSystemItem);
+protected:
+    virtual void getChildrenBackground(FileSystemItem *fileSystemItem);
 
 private:
     mutable QMutex mutex;
     QWaitCondition condition;
     QStack<FileSystemItem *> parents;
-    QAtomicInt abort;
 
+    QAtomicInt abort;
+    QAtomicInt cursor;
+
+    void overrideCursor();
+    void resetCursor();
 };
 
 #endif // FILEINFORETRIEVER_H

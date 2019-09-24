@@ -22,7 +22,7 @@ public:
     QIcon getIconFromPath(QString path, bool isHidden);
     QIcon getIconFromPIDL(LPITEMIDLIST pidl, bool isHidden);
 
-//protected:
+protected:
     void getChildrenBackground(FileSystemItem *fileSystemItem) override;
 
 private:

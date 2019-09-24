@@ -1,4 +1,6 @@
+#include <QApplication>
 #include <QMutexLocker>
+#include <QTimer>
 #include <QDebug>
 
 #include "fileinforetriever.h"
@@ -33,14 +35,17 @@ void FileInfoRetriever::run()
         if (abort.load())
             return;
 
-
         FileSystemItem *parent = parents.takeFirst();
         locker.unlock();
 
         qDebug() << "New task " << parent->getDisplayName();
 
-        if (!parent->areAllChildrenFetched())
+        if (!parent->areAllChildrenFetched()) {
+
+            overrideCursor();
             getChildrenBackground(parent);
+            resetCursor();
+        }
     }
 }
 
@@ -54,7 +59,8 @@ FileSystemItem *FileInfoRetriever::getRoot()
     return root;
 }
 
-void FileInfoRetriever::getChildren(FileSystemItem *parent) {
+void FileInfoRetriever::getChildren(FileSystemItem *parent)
+{
 
     QMutexLocker locker(&mutex);
 
@@ -64,6 +70,29 @@ void FileInfoRetriever::getChildren(FileSystemItem *parent) {
     condition.wakeAll();
 }
 
-void FileInfoRetriever::getChildrenBackground(FileSystemItem *parent) {
+void FileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
+{
     emit parentUpdated(parent);
+}
+
+void FileInfoRetriever::overrideCursor()
+{
+    if (!cursor.load()) {
+        cursor.store(true);
+
+        // Qt bug: restoreOverrideCursor() does nothing in Windows.  Cursor seems to only change when using setOverrideCursor()
+        QApplication::restoreOverrideCursor();
+        QApplication::setOverrideCursor(Qt::BusyCursor);
+    }
+}
+
+void FileInfoRetriever::resetCursor()
+{
+    if (cursor.load()) {
+
+        // Qt bug: restoreOverrideCursor() does nothing in Windows.  Cursor seems to only change when using setOverrideCursor()
+        QApplication::restoreOverrideCursor();
+        QApplication::setOverrideCursor(Qt::ArrowCursor);
+        cursor.store(false);
+    }
 }
