@@ -99,13 +99,17 @@ void FileSystemModel::fetchMore(const QModelIndex &parent)
     if (parent.isValid() && parent.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(parent.internalPointer());
 
-        if (fileSystemItem->getHasSubFolders() && !fileSystemItem->areAllChildrenFetched())
+        if (fileSystemItem->getHasSubFolders() && !fileSystemItem->areAllChildrenFetched()) {
+
+            // It seems this works when you don't know beforehand how many rows you're going to insert
+            beginInsertRows(parent, 0, 0);
             fileInfoRetriever.getChildren(fileSystemItem);
+        }
     }
 }
 
 void FileSystemModel::parentUpdated(FileSystemItem *parent)
 {
     qDebug() << "parentUpdated()";
-    emit layoutChanged();
+    endInsertRows();
 }

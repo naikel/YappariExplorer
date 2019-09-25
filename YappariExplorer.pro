@@ -22,7 +22,6 @@ SOURCES += \
     filesystemmodel.cpp \
     main.cpp \
     mainwindow.cpp \
-    unixfileinforetriever.cpp \
 
 HEADERS += \
     customtreeview.h \
@@ -30,10 +29,17 @@ HEADERS += \
     filesystemitem.h \
     filesystemmodel.h \
     mainwindow.h \
-    unixfileinforetriever.h \
 
 FORMS += \
     mainwindow.ui
+
+unix {
+    CONFIG(debug, debug|release) {
+        SOURCES += unixfileinforetriever.cpp
+        HEADERS += unixfileinforetriever.h
+        LIBS += "-lstdc++fs"
+    }
+}
 
 win32 {
     CONFIG(debug, debug|release) {
@@ -42,9 +48,6 @@ win32 {
         LIBS += "-lole32"
     }
 }
-
-# This should only be used for Unix environments
-LIBS += "-lstdc++fs"
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
