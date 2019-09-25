@@ -1,11 +1,10 @@
-#include "winfileinforetriever.h"
-
 #include <QApplication>
 #include <QThread>
 #include <QPainter>
 #include <QDebug>
 #include <QTimer>
 
+#include "winfileinforetriever.h"
 #include "filesystemitem.h"
 
 // Qt exports a non-documented function to convert a native Windows HICON to a QPixmap

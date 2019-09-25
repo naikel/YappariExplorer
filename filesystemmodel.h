@@ -4,6 +4,7 @@
 #include <QAbstractItemModel>
 
 #include "filesystemitem.h"
+#include "unixfileinforetriever.h"
 #include "winfileinforetriever.h"
 
 class FileSystemModel : public QAbstractItemModel
@@ -27,7 +28,12 @@ public Q_SLOTS:
 
 private:
     FileSystemItem *root;
+
+#ifdef Q_OS_WIN
     WinFileInfoRetriever fileInfoRetriever;
+#else
+    UnixFileInfoRetriever fileInfoRetriever;
+#endif
 };
 
 #endif // FILESYSTEMMODEL_H

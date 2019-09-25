@@ -22,6 +22,7 @@ SOURCES += \
     filesystemmodel.cpp \
     main.cpp \
     mainwindow.cpp \
+    unixfileinforetriever.cpp \
     winfileinforetriever.cpp
 
 HEADERS += \
@@ -30,6 +31,7 @@ HEADERS += \
     filesystemitem.h \
     filesystemmodel.h \
     mainwindow.h \
+    unixfileinforetriever.h \
     winfileinforetriever.h
 
 FORMS += \
@@ -37,11 +39,12 @@ FORMS += \
 
 win32 {
     CONFIG(debug, debug|release) {
-        LIBS += "C:/Windows/System32/Shell32.dll"
-        LIBS += "C:/Windows/System32/ole32.dll"
-        LIBS += "C:/Windows/System32/gdi32.dll"
+        LIBS += "-lole32"
     }
 }
+
+# This should only be used for Unix environments
+LIBS += "-lstdc++fs"
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

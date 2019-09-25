@@ -23,7 +23,7 @@ public:
     QIcon getIconFromPIDL(LPITEMIDLIST pidl, bool isHidden);
 
 protected:
-    void getChildrenBackground(FileSystemItem *fileSystemItem) override;
+    void getChildrenBackground(FileSystemItem *parent) override;
 
 private:
     int getSystemImageListIndexFromPIDL(LPITEMIDLIST pidl);

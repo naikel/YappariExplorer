@@ -25,7 +25,7 @@ Q_SIGNALS:
     void parentUpdated(FileSystemItem *parent);
 
 protected:
-    virtual void getChildrenBackground(FileSystemItem *fileSystemItem);
+    virtual void getChildrenBackground(FileSystemItem *parent);
 
 private:
     mutable QMutex mutex;
