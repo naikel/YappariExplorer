@@ -7,7 +7,9 @@
 
 UnixFileInfoRetriever::UnixFileInfoRetriever(QObject *parent) : FileInfoRetriever(parent)
 {
-
+    qDebug() << QIcon::themeSearchPaths();
+    //QIcon::setThemeName("HighContrast");
+    QIcon::setThemeName("Adwaita");
 }
 
 void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)

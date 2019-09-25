@@ -23,7 +23,6 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     unixfileinforetriever.cpp \
-    winfileinforetriever.cpp
 
 HEADERS += \
     customtreeview.h \
@@ -32,13 +31,14 @@ HEADERS += \
     filesystemmodel.h \
     mainwindow.h \
     unixfileinforetriever.h \
-    winfileinforetriever.h
 
 FORMS += \
     mainwindow.ui
 
 win32 {
     CONFIG(debug, debug|release) {
+        SOURCES += winfileinforetriever.cpp
+        HEADERS += winfileinforetriever.h
         LIBS += "-lole32"
     }
 }

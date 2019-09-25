@@ -4,8 +4,12 @@
 #include <QAbstractItemModel>
 
 #include "filesystemitem.h"
-#include "unixfileinforetriever.h"
+
+#ifdef Q_OS_WIN
 #include "winfileinforetriever.h"
+#else
+#include "unixfileinforetriever.h"
+#endif
 
 class FileSystemModel : public QAbstractItemModel
 {
