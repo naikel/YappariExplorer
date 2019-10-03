@@ -9,6 +9,7 @@ class FileSystemItem
 {
 public:
     FileSystemItem(QString path);
+    ~FileSystemItem();
 
     QString getDisplayName() const;
     void setDisplayName(const QString &value);

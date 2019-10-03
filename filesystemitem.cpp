@@ -5,6 +5,11 @@ FileSystemItem::FileSystemItem(QString path)
     this->path = path;
 }
 
+FileSystemItem::~FileSystemItem()
+{
+    qDeleteAll(children);
+}
+
 QString FileSystemItem::getDisplayName() const
 {
     return displayName;

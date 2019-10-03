@@ -7,9 +7,14 @@ FileSystemModel::FileSystemModel(QObject *parent) : QAbstractItemModel(parent)
     // Start the thread of the file retriever
     fileInfoRetriever.start();
 
-    this->root = fileInfoRetriever.getRoot();
+    root = fileInfoRetriever.getRoot();
 
     connect(&fileInfoRetriever, SIGNAL(parentUpdated(FileSystemItem *)), this, SLOT(parentUpdated(FileSystemItem *)));
+}
+
+FileSystemModel::~FileSystemModel()
+{
+    delete root;
 }
 
 QModelIndex FileSystemModel::index(int row, int column, const QModelIndex &parent) const
@@ -102,6 +107,7 @@ void FileSystemModel::fetchMore(const QModelIndex &parent)
         if (fileSystemItem->getHasSubFolders() && !fileSystemItem->areAllChildrenFetched()) {
 
             // It seems this works when you don't know beforehand how many rows you're going to insert
+            emit fetchStarted();
             beginInsertRows(parent, 0, 0);
             fileInfoRetriever.getChildren(fileSystemItem);
         }
@@ -112,4 +118,5 @@ void FileSystemModel::parentUpdated(FileSystemItem *parent)
 {
     qDebug() << "parentUpdated()";
     endInsertRows();
+    emit fetchFinished();
 }

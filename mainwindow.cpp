@@ -1,6 +1,11 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include <QApplication>
+#include <QTabWidget>
+#include <QTabBar>
+#include <QDebug>
+
 #include "filesystemmodel.h"
 
 MainWindow::MainWindow(QWidget *parent)

@@ -16,6 +16,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    customtabwidget.cpp \
     customtreeview.cpp \
     fileinforetriever.cpp \
     filesystemitem.cpp \
@@ -24,6 +25,7 @@ SOURCES += \
     mainwindow.cpp \
 
 HEADERS += \
+    customtabwidget.h \
     customtreeview.h \
     fileinforetriever.h \
     filesystemitem.h \
@@ -37,7 +39,7 @@ unix {
     CONFIG(debug, debug|release) {
         SOURCES += unixfileinforetriever.cpp
         HEADERS += unixfileinforetriever.h
-        LIBS += "-lstdc++fs"
+        LIBS += -lstdc++fs
     }
 }
 
@@ -45,7 +47,7 @@ win32 {
     CONFIG(debug, debug|release) {
         SOURCES += winfileinforetriever.cpp
         HEADERS += winfileinforetriever.h
-        LIBS += "-lole32"
+        LIBS += -lole32 -lgdi32
     }
 }
 

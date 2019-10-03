@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>1311</width>
+    <height>1003</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,7 +16,30 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="CustomTreeView" name="treeView"/>
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <property name="handleWidth">
+       <number>5</number>
+      </property>
+      <widget class="CustomTreeView" name="treeView"/>
+      <widget class="CustomTabWidget" name="tabWidget">
+       <property name="currentIndex">
+        <number>0</number>
+       </property>
+       <widget class="QWidget" name="tab">
+        <attribute name="title">
+         <string>Tab 1</string>
+        </attribute>
+       </widget>
+       <widget class="QWidget" name="tab_2">
+        <attribute name="title">
+         <string>Tab 2</string>
+        </attribute>
+       </widget>
+      </widget>
+     </widget>
     </item>
    </layout>
   </widget>
@@ -25,7 +48,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>1311</width>
      <height>20</height>
     </rect>
    </property>
@@ -37,6 +60,12 @@
    <class>CustomTreeView</class>
    <extends>QTreeView</extends>
    <header>customtreeview.h</header>
+  </customwidget>
+  <customwidget>
+   <class>CustomTabWidget</class>
+   <extends>QTabWidget</extends>
+   <header>customtabwidget.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>

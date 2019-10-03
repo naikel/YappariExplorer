@@ -40,12 +40,8 @@ void FileInfoRetriever::run()
 
         qDebug() << "New task " << parent->getDisplayName();
 
-        if (!parent->areAllChildrenFetched()) {
-
-            overrideCursor();
+        if (!parent->areAllChildrenFetched())
             getChildrenBackground(parent);
-            resetCursor();
-        }
     }
 }
 
@@ -75,24 +71,3 @@ void FileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
     emit parentUpdated(parent);
 }
 
-void FileInfoRetriever::overrideCursor()
-{
-    if (!cursor.load()) {
-        cursor.store(true);
-
-        // Qt bug: restoreOverrideCursor() does nothing in Windows.  Cursor seems to only change when using setOverrideCursor()
-        QApplication::restoreOverrideCursor();
-        QApplication::setOverrideCursor(Qt::BusyCursor);
-    }
-}
-
-void FileInfoRetriever::resetCursor()
-{
-    if (cursor.load()) {
-
-        // Qt bug: restoreOverrideCursor() does nothing in Windows.  Cursor seems to only change when using setOverrideCursor()
-        QApplication::restoreOverrideCursor();
-        QApplication::setOverrideCursor(Qt::ArrowCursor);
-        cursor.store(false);
-    }
-}

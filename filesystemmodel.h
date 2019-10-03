@@ -17,6 +17,7 @@ class FileSystemModel : public QAbstractItemModel
 
 public:
     FileSystemModel(QObject *parent = nullptr);
+    ~FileSystemModel();
 
     QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override;
     QModelIndex parent(const QModelIndex &index) const override;
@@ -29,6 +30,10 @@ public:
 
 public Q_SLOTS:
     void parentUpdated(FileSystemItem *parent);
+
+signals:
+    void fetchStarted();
+    void fetchFinished();
 
 private:
     FileSystemItem *root;

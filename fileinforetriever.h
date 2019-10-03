@@ -33,10 +33,6 @@ private:
     QStack<FileSystemItem *> parents;
 
     QAtomicInt abort;
-    QAtomicInt cursor;
-
-    void overrideCursor();
-    void resetCursor();
 };
 
 #endif // FILEINFORETRIEVER_H
