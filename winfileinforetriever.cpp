@@ -15,32 +15,48 @@ WinFileInfoRetriever::WinFileInfoRetriever(QObject *parent) : FileInfoRetriever(
 {
 }
 
-void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
+void WinFileInfoRetriever::getParentInfo(FileSystemItem *parent)
 {
-    qDebug() << "getChildrenBackground()";
+    qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope();
 
     LPITEMIDLIST pidl;
 
     HRESULT hr;
+    qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " Parent path " << parent->getPath();
     hr = (parent->getPath() == "/")
                 ? ::SHGetKnownFolderIDList(FOLDERID_ComputerFolder /* FOLDERID_Desktop */, KF_FLAG_DEFAULT, nullptr, &pidl)
                 : ::SHParseDisplayName(parent->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
 
-
     // Get the PIDL for the parent
     if (SUCCEEDED(hr)) {
 
-        // If this is the root we need to retrieve the display name of it and its icon
-        if (parent->getPath() == "/") {
-            qDebug() << "Getting name of root";
-            PWSTR pwstrName;
-            hr = ::SHGetNameFromIDList(pidl, SIGDN_NORMALDISPLAY, &pwstrName);
-            QString rootName = QString::fromWCharArray(pwstrName);
-            parent->setDisplayName(rootName);
-            parent->setHasSubFolders(true);
-            parent->setIcon(getIconFromPIDL(pidl, false));
-            ::CoTaskMemFree(pwstrName);
-        }
+        qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " Getting name of root in getParentInfo()";
+        PWSTR pwstrName;
+        hr = ::SHGetNameFromIDList(pidl, SIGDN_NORMALDISPLAY, &pwstrName);
+        QString rootName = QString::fromWCharArray(pwstrName);
+        qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " Root name is " << rootName;
+        parent->setDisplayName(rootName);
+        parent->setIcon(getIconFromPIDL(pidl, false));
+        ::CoTaskMemFree(pwstrName);
+    }
+}
+
+void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
+{
+    qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope();
+
+    ::CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
+    LPITEMIDLIST pidl;
+
+    HRESULT hr;
+    qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "Parent path " << parent->getPath();
+    hr = (parent->getPath() == "/")
+                ? ::SHGetKnownFolderIDList(FOLDERID_ComputerFolder /* FOLDERID_Desktop */, KF_FLAG_DEFAULT, nullptr, &pidl)
+                : ::SHParseDisplayName(parent->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
+
+    // Get the PIDL for the parent
+    if (SUCCEEDED(hr)) {
 
         IShellFolder *psf {};
 
@@ -54,18 +70,21 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             //SHCONTF flags = SHCONTF_FOLDERS | SHCONTF_FASTITEMS | SHCONTF_NONFOLDERS | SHCONTF_ENABLE_ASYNC;
             SHCONTF flags = SHCONTF_FOLDERS | SHCONTF_FASTITEMS | SHCONTF_INCLUDEHIDDEN | SHCONTF_INCLUDESUPERHIDDEN; // | SHCONTF_ENABLE_ASYNC;
 
+            if (getScope() == FileInfoRetriever::List)
+                flags |= SHCONTF_NONFOLDERS;
+
             if (SUCCEEDED(psf->EnumObjects(nullptr, flags, reinterpret_cast<IEnumIDList**>(&ppenumIDList)))) {
 
                 LPITEMIDLIST pidlChildren;
 
-                while (ppenumIDList->Next(1, &pidlChildren, nullptr) == S_OK) {
+                while (running.load() && ppenumIDList->Next(1, &pidlChildren, nullptr) == S_OK) {
 
-                    SFGAOF attributes {SFGAO_STREAM | SFGAO_FOLDER | SFGAO_HASSUBFOLDER | SFGAO_HIDDEN };
+                    SFGAOF attributes { SFGAO_STREAM | SFGAO_FOLDER | SFGAO_HASSUBFOLDER | SFGAO_HIDDEN };
                     psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChildren), &attributes);
 
                     // Compressed files will have SFGAO_FOLDER and SFGAO_STREAM attributes
                     // We want to skip those
-                    if (!(attributes & SFGAO_STREAM)) {
+                    if (getScope() == FileInfoRetriever::List || !(attributes & SFGAO_STREAM)) {
 
                         STRRET strRet;
 
@@ -76,13 +95,17 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                         // Get the display name
                         psf->GetDisplayNameOf(pidlChildren, SHGDN_NORMAL, &strRet);
                         child->setDisplayName(QString::fromWCharArray(strRet.pOleStr));
-                        qDebug() << "Path " << child->getPath() << " isDrive " << child->isDrive();
+                        qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "Path " << child->getPath() << " isDrive " << child->isDrive();
 
                         // Set basic attributes
-                        child->setHasSubFolders(attributes & SFGAO_HASSUBFOLDER);
+                        child->setFolder((attributes & SFGAO_FOLDER) && !(attributes & SFGAO_STREAM) && !child->isDrive());
+                        child->setHasSubFolders((getScope() == FileInfoRetriever::Tree) ? (attributes & SFGAO_HASSUBFOLDER) : false);
 
                         LPITEMIDLIST absolutePidl = ILCombine(pidl, pidlChildren);
                         child->setIcon(getIconFromPIDL(absolutePidl, (attributes & SFGAO_HIDDEN)));
+
+
+
                         ILFree(absolutePidl);
 
                         parent->addChild(child);
@@ -97,33 +120,28 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
         }
 
         ILFree(pidl);
+
+        if (!running.load()) {
+            qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "Parent path " << parent->getPath() << " aborted!";
+            return;
+        }
+
+        parent->sortChildren(Qt::AscendingOrder);
+        parent->setHasSubFolders(true);
         parent->setAllChildrenFetched(true);
         emit parentUpdated(parent);
     }
 }
 
-QIcon WinFileInfoRetriever::getIconFromPath(QString path, bool isHidden)
-{
-    int index = getSystemImageListIndexFromPath(path);
-    return getIconFromIndex(index, isHidden);
-}
-
 QIcon WinFileInfoRetriever::getIconFromPIDL(LPITEMIDLIST pidl, bool isHidden)
 {
-    int index = getSystemImageListIndexFromPIDL(pidl);
-    return getIconFromIndex(index, isHidden);
-}
+    SHFILEINFOW sfi;
+    if (SUCCEEDED(::SHGetFileInfoW(reinterpret_cast<LPCWSTR>(pidl), FILE_ATTRIBUTE_NORMAL, &sfi, sizeof(sfi),
+                                   SHGFI_PIDL | SHGFI_SYSICONINDEX | SHGFI_SMALLICON | SHGFI_ICON | SHGFI_OVERLAYINDEX))) {
 
-QIcon WinFileInfoRetriever::getIconFromIndex(int index, bool isHidden)
-{
-    IImageList *spiml {};
-
-    if (SUCCEEDED(::SHGetImageList(SHIL_SMALL, IID_IImageList2, reinterpret_cast<void**>(&spiml)))) {
-
-        HICON hIcon {};
-        spiml->GetIcon(index, ILD_TRANSPARENT | ILD_IMAGE, &hIcon);
-
-        QPixmap pixmap = qt_pixmapFromWinHICON(hIcon);
+        QPixmap pixmap = getPixmapFromIndex(sfi.iIcon);
+        if (pixmap.isNull())
+            pixmap = qt_pixmapFromWinHICON(sfi.hIcon);
 
         if (isHidden) {
 
@@ -137,33 +155,25 @@ QIcon WinFileInfoRetriever::getIconFromIndex(int index, bool isHidden)
             paint.setOpacity(0.5);
             paint.drawImage(0, 0, image);
         }
-
-        DestroyIcon(hIcon);
+        DestroyIcon(sfi.hIcon);
         return QIcon(pixmap);
-
     }
-
     return QIcon();
 }
 
-int WinFileInfoRetriever::getSystemImageListIndexFromPIDL(LPITEMIDLIST pidl)
+QPixmap WinFileInfoRetriever::getPixmapFromIndex(int index)
 {
-    SHFILEINFOW sfi;
-    if (SUCCEEDED(::SHGetFileInfoW(reinterpret_cast<LPCWSTR>(pidl), FILE_ATTRIBUTE_NORMAL, &sfi, sizeof(sfi), SHGFI_PIDL | SHGFI_SYSICONINDEX | SHGFI_SMALLICON | SHGFI_OPENICON))) {
-        DestroyIcon(sfi.hIcon);
-        return sfi.iIcon;
+    IImageList *spiml {};
+
+    if (SUCCEEDED(::SHGetImageList(SHIL_SMALL, IID_IImageList2, reinterpret_cast<void**>(&spiml)))) {
+
+        HICON hIcon {};
+
+        if (SUCCEEDED(spiml->GetIcon(index, ILD_TRANSPARENT | ILD_IMAGE, &hIcon))) {
+            QPixmap pixmap = qt_pixmapFromWinHICON(hIcon);
+            DestroyIcon(hIcon);
+            return pixmap;
+        }
     }
-    return -1;
+    return QPixmap();
 }
-
-int WinFileInfoRetriever::getSystemImageListIndexFromPath(QString path)
-{
-    SHFILEINFOW sfi;
-    if (SUCCEEDED(::SHGetFileInfoW(path.toStdWString().c_str(), FILE_ATTRIBUTE_NORMAL, &sfi, sizeof(sfi), SHGFI_SYSICONINDEX | SHGFI_SMALLICON | SHGFI_OPENICON))) {
-        DestroyIcon(sfi.hIcon);
-        return sfi.iIcon;
-    }
-    return -1;
-}
-
-

@@ -24,17 +24,6 @@ void FileSystemItem::addChild(FileSystemItem *child)
 {
     child->setParent(this);
     children.insert(child->path, child);
-
-    for (int i = 0; i < indexedChildren.size() ; i++) {
-
-        // If both children are drives or both are not drives then they can be compared
-        if ((indexedChildren.at(i)->isDrive() && !child->isDrive()) ||
-                (indexedChildren.at(i)->isDrive() && child->isDrive() && indexedChildren.at(i)->path.toLower() > child->path.toLower()) ||
-                (!indexedChildren.at(i)->isDrive() && !child->isDrive() && indexedChildren.at(i)->displayName.toLower() > child->displayName.toLower())) {
-            indexedChildren.insert(i, child);
-            return;
-        }
-    }
     indexedChildren.append(child);
 }
 
@@ -53,6 +42,11 @@ FileSystemItem *FileSystemItem::getChildAt(int n)
     return indexedChildren.at(n);
 }
 
+FileSystemItem *FileSystemItem::getChild(QString path)
+{
+    return children.value(path);
+}
+
 int FileSystemItem::childrenCount()
 {
     return children.size();
@@ -60,6 +54,37 @@ int FileSystemItem::childrenCount()
 
 int FileSystemItem::childRow(FileSystemItem *child) {
     return indexedChildren.indexOf(child);
+}
+
+bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j)
+{
+    Qt::SortOrder order = i->getParent()->getCurrentOrder();
+
+    // Folders are first
+    if (i->isFolder() && !j->isFolder())
+        return true;
+
+    // Files are second
+    if (!i->isFolder() && !i->isDrive() && j->isDrive())
+        return true;
+
+    // Drives are third
+    if (i->isDrive() && j->isDrive())
+        return (order == Qt::AscendingOrder && i->getPath().toLower() < j->getPath().toLower()) ||
+                (order == Qt::DescendingOrder && i->getPath().toLower() > j->getPath().toLower());
+
+    // If both items are files or both are folders then direct comparison is allowed
+    if ((i->isFolder() && j->isFolder()) || (!i->isFolder() && !j->isFolder()))
+        return (order == Qt::AscendingOrder && i->getDisplayName().toLower() < j->getDisplayName().toLower()) ||
+                (order == Qt::DescendingOrder && i->getDisplayName().toLower() > j->getDisplayName().toLower());
+
+    return false;
+}
+
+void FileSystemItem::sortChildren(Qt::SortOrder order)
+{
+    setCurrentOrder(order);
+    std::sort(indexedChildren.begin(), indexedChildren.end(), fileSystemItemCompare);
 }
 
 bool FileSystemItem::getHasSubFolders() const
@@ -105,4 +130,24 @@ QIcon FileSystemItem::getIcon() const
 void FileSystemItem::setIcon(const QIcon &value)
 {
     icon = value;
+}
+
+bool FileSystemItem::isFolder() const
+{
+    return folder;
+}
+
+void FileSystemItem::setFolder(bool value)
+{
+    folder = value;
+}
+
+Qt::SortOrder FileSystemItem::getCurrentOrder() const
+{
+    return currentOrder;
+}
+
+void FileSystemItem::setCurrentOrder(const Qt::SortOrder &value)
+{
+    currentOrder = value;
 }

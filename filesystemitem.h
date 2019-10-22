@@ -17,8 +17,11 @@ public:
     FileSystemItem *getParent() const;
     void setParent(FileSystemItem *value);
     FileSystemItem *getChildAt(int n);
+    FileSystemItem *getChild(QString path);
     int childrenCount();
     int childRow(FileSystemItem *child);
+
+    void sortChildren(Qt::SortOrder order);
 
     bool getHasSubFolders() const;
     void setHasSubFolders(bool value);
@@ -34,17 +37,26 @@ public:
     QIcon getIcon() const;
     void setIcon(const QIcon &value);
 
+    bool isFolder() const;
+    void setFolder(bool value);
+
+    Qt::SortOrder getCurrentOrder() const;
+    void setCurrentOrder(const Qt::SortOrder &value);
+
 private:
     QString path                {};
     QString displayName         {};
-    QIcon icon;
+    QIcon icon                  {};
+    Qt::SortOrder currentOrder  {Qt::AscendingOrder};
 
+    bool folder                 {false};
     bool hasSubFolders          {false};
     bool allChildrenFetched     {false};
 
     FileSystemItem *parent      {};
     QHash<QString, FileSystemItem *> children;
     QList<FileSystemItem *> indexedChildren;
+
 };
 
 #endif // FILESYSTEMITEM_H

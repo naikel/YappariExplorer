@@ -14,23 +14,36 @@ class FileInfoRetriever : public QThread
     Q_OBJECT
 
 public:
+
+    enum Scope {
+        Tree,
+        List
+    };
+
     FileInfoRetriever(QObject *parent = nullptr);
     ~FileInfoRetriever() override;
 
     void run() override;
-    FileSystemItem *getRoot();
+    FileSystemItem *getRoot(QString path);
     void getChildren(FileSystemItem *fileSystemItem);
 
-Q_SIGNALS:
+    Scope getScope() const;
+    void setScope(const Scope &value);
+
+signals:
     void parentUpdated(FileSystemItem *parent);
 
 protected:
+    QAtomicInt running;
+
     virtual void getChildrenBackground(FileSystemItem *parent);
+    virtual void getParentInfo(FileSystemItem *parent);
 
 private:
     mutable QMutex mutex;
     QWaitCondition condition;
     QStack<FileSystemItem *> parents;
+    Scope scope;
 
     QAtomicInt abort;
 };

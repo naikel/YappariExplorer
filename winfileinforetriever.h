@@ -19,16 +19,14 @@ class WinFileInfoRetriever : public FileInfoRetriever
 public:
     WinFileInfoRetriever(QObject *parent = nullptr);
 
-    QIcon getIconFromPath(QString path, bool isHidden);
     QIcon getIconFromPIDL(LPITEMIDLIST pidl, bool isHidden);
 
 protected:
     void getChildrenBackground(FileSystemItem *parent) override;
+    void getParentInfo(FileSystemItem *parent) override;
 
 private:
-    int getSystemImageListIndexFromPIDL(LPITEMIDLIST pidl);
-    int getSystemImageListIndexFromPath(QString path);
-    QIcon getIconFromIndex(int index, bool isHidden);
+    QPixmap getPixmapFromIndex(int index);
 };
 
 #endif // WINFILEINFORETRIEVER_H
