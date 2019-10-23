@@ -82,9 +82,14 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
         switch (role) {
             case Qt::DisplayRole:
                 return QVariant(fileSystemItem->getDisplayName());
-
             case Qt::DecorationRole:
-                return QVariant(fileSystemItem->getIcon());
+                QIcon icon = fileSystemItem->getIcon();
+                if (icon.isNull()) {
+                    // icon hasn't been retrieved yet
+                    icon = fileInfoRetriever.getIcon(fileSystemItem);
+                    fileSystemItem->setIcon(icon);
+                }
+                return icon;
         }
     }
     return QVariant();

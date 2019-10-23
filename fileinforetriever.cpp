@@ -97,3 +97,9 @@ void FileInfoRetriever::setScope(const Scope &value)
     scope = value;
 }
 
+QIcon FileInfoRetriever::getIcon(FileSystemItem *item) const
+{
+    Q_UNUSED(item)
+    return QIcon();
+}
+

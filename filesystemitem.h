@@ -43,6 +43,9 @@ public:
     Qt::SortOrder getCurrentOrder() const;
     void setCurrentOrder(const Qt::SortOrder &value);
 
+    bool isHidden() const;
+    void setHidden(bool value);
+
 private:
     QString path                {};
     QString displayName         {};
@@ -50,6 +53,7 @@ private:
     Qt::SortOrder currentOrder  {Qt::AscendingOrder};
 
     bool folder                 {false};
+    bool hidden                 {false};
     bool hasSubFolders          {false};
     bool allChildrenFetched     {false};
 

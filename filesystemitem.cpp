@@ -70,13 +70,13 @@ bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j)
 
     // Drives are third
     if (i->isDrive() && j->isDrive())
-        return (order == Qt::AscendingOrder && i->getPath().toLower() < j->getPath().toLower()) ||
-                (order == Qt::DescendingOrder && i->getPath().toLower() > j->getPath().toLower());
+        return (order == Qt::AscendingOrder  && i->getPath().toLower() < j->getPath().toLower()) ||
+               (order == Qt::DescendingOrder && i->getPath().toLower() > j->getPath().toLower());
 
     // If both items are files or both are folders then direct comparison is allowed
     if ((i->isFolder() && j->isFolder()) || (!i->isFolder() && !j->isFolder()))
-        return (order == Qt::AscendingOrder && i->getDisplayName().toLower() < j->getDisplayName().toLower()) ||
-                (order == Qt::DescendingOrder && i->getDisplayName().toLower() > j->getDisplayName().toLower());
+        return (order == Qt::AscendingOrder  && i->getDisplayName().toLower() < j->getDisplayName().toLower()) ||
+               (order == Qt::DescendingOrder && i->getDisplayName().toLower() > j->getDisplayName().toLower());
 
     return false;
 }
@@ -150,4 +150,14 @@ Qt::SortOrder FileSystemItem::getCurrentOrder() const
 void FileSystemItem::setCurrentOrder(const Qt::SortOrder &value)
 {
     currentOrder = value;
+}
+
+bool FileSystemItem::isHidden() const
+{
+    return hidden;
+}
+
+void FileSystemItem::setHidden(bool value)
+{
+    hidden = value;
 }

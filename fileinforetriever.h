@@ -30,6 +30,8 @@ public:
     Scope getScope() const;
     void setScope(const Scope &value);
 
+    virtual QIcon getIcon(FileSystemItem *fileSystemItem) const;
+
 signals:
     void parentUpdated(FileSystemItem *parent);
 

@@ -39,8 +39,8 @@ CustomTabWidget::CustomTabWidget(QWidget *parent) : QTabWidget(parent)
     FileSystemModel *fileSystemModel = new FileSystemModel(FileInfoRetriever::List, detailedView);
     fileSystemModel->setRoot("/");
     detailedView->setModel(fileSystemModel);
-    connect(detailedView, SIGNAL(doubleClicked(const QModelIndex &)), this, SLOT(doubleClicked(const QModelIndex &)));
-    connect(fileSystemModel, SIGNAL(fetchFinished()), this, SLOT(updateTab()));
+    connect(detailedView, &DetailedView::doubleClicked, this, &CustomTabWidget::doubleClicked);
+    connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &CustomTabWidget::updateTab);
 
     addTab(detailedView, fileSystemModel->getRoot()->getDisplayName());
     setTabIcon(0, fileSystemModel->getRoot()->getIcon());

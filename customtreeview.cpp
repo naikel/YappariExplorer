@@ -48,7 +48,6 @@ void CustomTreeView::initialize()
     qDebug() << "CustomTreeView::initialize";
 
     FileSystemModel *fileSystemModel = reinterpret_cast<FileSystemModel *>(model());
-    disconnect(fileSystemModel, SIGNAL(fetchFinished()), this, SLOT(initialize()));
 
     QModelIndex root = fileSystemModel->index(0, 0, QModelIndex());
 
