@@ -1,15 +1,12 @@
 #ifndef FILEINFORETRIEVER_H
 #define FILEINFORETRIEVER_H
 
-#include <QWaitCondition>
+#include <QThreadPool>
 #include <QAtomicInt>
-#include <QThread>
-#include <QStack>
-#include <QMutex>
 
 #include "filesystemitem.h"
 
-class FileInfoRetriever : public QThread
+class FileInfoRetriever : public QObject
 {
     Q_OBJECT
 
@@ -23,13 +20,12 @@ public:
     FileInfoRetriever(QObject *parent = nullptr);
     ~FileInfoRetriever() override;
 
-    void run() override;
     FileSystemItem *getRoot(QString path);
-    void getChildren(FileSystemItem *fileSystemItem);
 
     Scope getScope() const;
     void setScope(const Scope &value);
 
+    void getChildren(FileSystemItem *parent);
     virtual QIcon getIcon(FileSystemItem *fileSystemItem) const;
 
 signals:
@@ -42,12 +38,8 @@ protected:
     virtual void getParentInfo(FileSystemItem *parent);
 
 private:
-    mutable QMutex mutex;
-    QWaitCondition condition;
-    QStack<FileSystemItem *> parents;
+    QThreadPool pool;
     Scope scope;
-
-    QAtomicInt abort;
 };
 
 #endif // FILEINFORETRIEVER_H

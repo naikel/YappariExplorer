@@ -13,7 +13,9 @@
 
 FileSystemModel::FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent) : QAbstractItemModel(parent)
 {
-    // This is mandatory if you want the dataChanged signal to work
+    // This is mandatory if you want the dataChanged signal to work when emitting it in a different thread
+    // It's because of the roles argument of the signal. The fingerprint of the method is as follows:
+    // dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
     qRegisterMetaType<QVector<int> >("QVector<int>");
 
 #ifdef Q_OS_WIN
@@ -24,21 +26,22 @@ FileSystemModel::FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent
 
     // Get the default icons
     QFileIconProvider iconProvider;
-
     driveIcon = iconProvider.icon(QFileIconProvider::Drive);
     folderIcon = iconProvider.icon(QFileIconProvider::Folder);
     fileIcon = iconProvider.icon(QFileIconProvider::File);
 
     // Start the thread of the file retriever
     fileInfoRetriever->setScope(scope);
-    fileInfoRetriever->start();
 
     connect(fileInfoRetriever, &FileInfoRetriever::parentUpdated, this, &FileSystemModel::parentUpdated);
-
 }
 
 FileSystemModel::~FileSystemModel()
 {
+    // Abort all the pending threads
+    pool.clear();
+    pool.waitForDone();
+
     if (root != nullptr)
         delete root;
 
@@ -111,7 +114,6 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
             case Qt::DisplayRole:
                 return QVariant(fileSystemItem->getDisplayName());
             case Qt::DecorationRole:
-                qDebug() << "I want to draw the icon for " << fileSystemItem->getPath();
                 QIcon icon = fileSystemItem->getIcon();
                 if (icon.isNull()) {
                     // icon hasn't been retrieved yet
@@ -127,7 +129,6 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
                     fileSystemItem->setIcon(icon);
 
                     QFuture<void> future = QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileSystemModel *>(this), &FileSystemModel::getIcon, index);
-                    // icon = fileInfoRetriever->getIcon(fileSystemItem);
                 }
                 return icon;
         }

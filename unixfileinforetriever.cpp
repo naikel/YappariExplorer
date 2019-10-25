@@ -52,6 +52,9 @@ void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
     for(auto& path: fs::directory_iterator(root.toStdWString(), fs::directory_options::skip_permission_denied)) {
 
+        if (running.load())
+            break;
+
         if (getScope() == FileInfoRetriever::List || fs::is_directory(path)) {
 
             QString strPath = QString::fromStdWString(path.path().wstring());
@@ -80,6 +83,8 @@ void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
     parent->sortChildren(Qt::AscendingOrder);
     parent->setAllChildrenFetched(true);
     emit parentUpdated(parent);
+
+    running.store(false);
 }
 
 bool UnixFileInfoRetriever::hasSubFolders(fs::path path)
