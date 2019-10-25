@@ -40,6 +40,7 @@ CustomTabWidget::CustomTabWidget(QWidget *parent) : QTabWidget(parent)
     fileSystemModel->setRoot("/");
     detailedView->setModel(fileSystemModel);
     connect(detailedView, &DetailedView::doubleClicked, this, &CustomTabWidget::doubleClicked);
+    connect(detailedView, &DetailedView::activated, this, &CustomTabWidget::doubleClicked);
     connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &CustomTabWidget::updateTab);
 
     addTab(detailedView, fileSystemModel->getRoot()->getDisplayName());

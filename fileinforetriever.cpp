@@ -58,13 +58,14 @@ void FileInfoRetriever::getChildren(FileSystemItem *parent)
     // Let's double check the children hasn't been fetched
     if (!parent->areAllChildrenFetched()) {
         running.store(true);
-        QFuture<void> future = QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileInfoRetriever *>(this), &FileInfoRetriever::getChildrenBackground, parent);
+        QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileInfoRetriever *>(this), &FileInfoRetriever::getChildrenBackground, parent);
     }
 }
 
 void FileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 {
     emit parentUpdated(parent);
+    running.store(false);
 }
 
 FileInfoRetriever::Scope FileInfoRetriever::getScope() const

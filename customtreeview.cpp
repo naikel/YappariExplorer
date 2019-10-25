@@ -24,6 +24,7 @@ void CustomTreeView::setModel(QAbstractItemModel *model)
 
     connect(fileSystemModel, &FileSystemModel::fetchStarted, this, &CustomTreeView::setBusyCursor);
     connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &CustomTreeView::setNormalCursor);
+    connect(this, &CustomTreeView::activated, this, &CustomTreeView::expandOrCollapse);
 
     QTreeView::setModel(model);
 }
@@ -64,4 +65,21 @@ void CustomTreeView::setNormalCursor()
 void CustomTreeView::setBusyCursor()
 {
     setCursor(Qt::BusyCursor);
+}
+
+void CustomTreeView::expandOrCollapse(const QModelIndex &index)
+{
+    if (model()->hasChildren(index)) {
+        if (!isExpanded(index))
+            expand(index);
+        else
+            collapse(index);
+    }
+}
+
+QModelIndex CustomTreeView::moveCursor(QAbstractItemView::CursorAction cursorAction, Qt::KeyboardModifiers modifiers)
+{
+    QModelIndex newIndex = QTreeView::moveCursor(cursorAction, modifiers);
+    emit clicked(newIndex);
+    return newIndex;
 }

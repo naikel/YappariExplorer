@@ -128,7 +128,7 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
 
                     fileSystemItem->setIcon(icon);
 
-                    QFuture<void> future = QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileSystemModel *>(this), &FileSystemModel::getIcon, index);
+                    QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileSystemModel *>(this), &FileSystemModel::getIcon, index);
                 }
                 return icon;
         }
@@ -255,6 +255,9 @@ void FileSystemModel::getIcon(const QModelIndex &index)
     if (index.isValid()  && index.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
         fileSystemItem->setIcon(fileInfoRetriever->getIcon(fileSystemItem));
-        emit dataChanged(index, index);
+
+        QVector<int> roles;
+        roles.append(Qt::DecorationRole);
+        emit dataChanged(index, index, roles);
     }
 }

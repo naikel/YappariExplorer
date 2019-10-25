@@ -66,80 +66,18 @@
                         <DObject>
                          <base-DElement>
                           <DElement>
-                           <uid>{2dc81c83-0f92-456f-a9ca-28f9245dcea8}</uid>
-                          </DElement>
-                         </base-DElement>
-                         <object>{792ec479-552d-4aa7-80ea-2637b13e78e9}</object>
-                         <name>WinFileSystemItem</name>
-                         <pos>x:200;y:255</pos>
-                         <rect>x:-55;y:-35;w:110;h:70</rect>
-                         <visual-role>0</visual-role>
-                        </DObject>
-                       </base-DObject>
-                       <show-all-members>true</show-all-members>
-                      </DClass>
-                     </instance>
-                    </item>
-                    <item>
-                     <instance type="DInheritance">
-                      <DInheritance>
-                       <base-DRelation>
-                        <DRelation>
-                         <base-DElement>
-                          <DElement>
-                           <uid>{83071807-0551-4867-8abd-c1ada9442f96}</uid>
-                          </DElement>
-                         </base-DElement>
-                         <object>{6ae088da-60f8-48dd-b5d8-aa3d44c924f5}</object>
-                         <a>{2dc81c83-0f92-456f-a9ca-28f9245dcea8}</a>
-                         <b>{950593d7-5cf0-40e4-9e10-ffd971de7464}</b>
-                        </DRelation>
-                       </base-DRelation>
-                      </DInheritance>
-                     </instance>
-                    </item>
-                    <item>
-                     <instance type="DClass">
-                      <DClass>
-                       <base-DObject>
-                        <DObject>
-                         <base-DElement>
-                          <DElement>
                            <uid>{75b94ea4-7432-4e75-841c-fc5585537c46}</uid>
                           </DElement>
                          </base-DElement>
                          <object>{d7661a17-779d-41b1-a373-37e63179f4ed}</object>
-                         <stereotypes>
-                          <qlist>
-                           <item>thread</item>
-                          </qlist>
-                         </stereotypes>
                          <name>WinFileInfoRetriever</name>
-                         <pos>x:750;y:275</pos>
+                         <pos>x:640;y:280</pos>
                          <rect>x:-85;y:-45;w:170;h:90</rect>
                          <auto-sized>false</auto-sized>
                          <visual-role>0</visual-role>
                         </DObject>
                        </base-DObject>
                       </DClass>
-                     </instance>
-                    </item>
-                    <item>
-                     <instance type="DDependency">
-                      <DDependency>
-                       <base-DRelation>
-                        <DRelation>
-                         <base-DElement>
-                          <DElement>
-                           <uid>{23e78e9f-c265-462b-b8c6-95e063481664}</uid>
-                          </DElement>
-                         </base-DElement>
-                         <object>{fb288343-8659-4312-bb64-7b7e734d043f}</object>
-                         <a>{75b94ea4-7432-4e75-841c-fc5585537c46}</a>
-                         <b>{950593d7-5cf0-40e4-9e10-ffd971de7464}</b>
-                        </DRelation>
-                       </base-DRelation>
-                      </DDependency>
                      </instance>
                     </item>
                     <item>
@@ -153,11 +91,6 @@
                           </DElement>
                          </base-DElement>
                          <object>{bd26538c-febc-42b4-9cd0-1bf8cf3177dc}</object>
-                         <stereotypes>
-                          <qlist>
-                           <item>thread</item>
-                          </qlist>
-                         </stereotypes>
                          <name>FileInfoRetriever</name>
                          <pos>x:750;y:120</pos>
                          <rect>x:-95;y:-50;w:190;h:100</rect>
@@ -205,9 +138,48 @@
                       </DInheritance>
                      </instance>
                     </item>
+                    <item>
+                     <instance type="DClass">
+                      <DClass>
+                       <base-DObject>
+                        <DObject>
+                         <base-DElement>
+                          <DElement>
+                           <uid>{02f834f8-97b5-456e-9883-d51f19b422d7}</uid>
+                          </DElement>
+                         </base-DElement>
+                         <object>{1aabb6b3-e5d5-42c3-bff3-5a9a8b1123b8}</object>
+                         <name>UnixFileInfoRetriever</name>
+                         <pos>x:860;y:280</pos>
+                         <rect>x:-75;y:-45;w:150;h:90</rect>
+                         <auto-sized>false</auto-sized>
+                         <visual-role>0</visual-role>
+                        </DObject>
+                       </base-DObject>
+                      </DClass>
+                     </instance>
+                    </item>
+                    <item>
+                     <instance type="DInheritance">
+                      <DInheritance>
+                       <base-DRelation>
+                        <DRelation>
+                         <base-DElement>
+                          <DElement>
+                           <uid>{313382c9-ef07-4377-90ff-7285abd4020d}</uid>
+                          </DElement>
+                         </base-DElement>
+                         <object>{84ebedbd-c1f6-4b56-a011-019f25123987}</object>
+                         <a>{02f834f8-97b5-456e-9883-d51f19b422d7}</a>
+                         <b>{d56d9c0f-b08e-4ab5-9cca-4a0f79f2c33f}</b>
+                        </DRelation>
+                       </base-DRelation>
+                      </DInheritance>
+                     </instance>
+                    </item>
                    </qlist>
                   </elements>
-                  <last-modified>1569167473155</last-modified>
+                  <last-modified>1572036092623</last-modified>
                   <toolbarid>General</toolbarid>
                  </MDiagram>
                 </base-MDiagram>
@@ -319,7 +291,7 @@
                  <qlist>
                   <item>
                    <MClassMember>
-                    <uid>{5f41089c-c830-4fe1-abfb-7a980913a1fb}</uid>
+                    <uid>{66c6bd27-0ee4-4c45-aa2e-a1680fa5c40f}</uid>
                     <type>1</type>
                     <declaration>PIDL pidl</declaration>
                    </MClassMember>
@@ -342,11 +314,6 @@
                   <base-MElement>
                    <MElement>
                     <uid>{d7661a17-779d-41b1-a373-37e63179f4ed}</uid>
-                    <stereotypes>
-                     <qlist>
-                      <item>thread</item>
-                     </qlist>
-                    </stereotypes>
                    </MElement>
                   </base-MElement>
                   <name>WinFileInfoRetriever</name>
@@ -420,11 +387,6 @@
                   <base-MElement>
                    <MElement>
                     <uid>{bd26538c-febc-42b4-9cd0-1bf8cf3177dc}</uid>
-                    <stereotypes>
-                     <qlist>
-                      <item>thread</item>
-                     </qlist>
-                    </stereotypes>
                    </MElement>
                   </base-MElement>
                   <name>FileInfoRetriever</name>
@@ -464,13 +426,182 @@
                  <qlist>
                   <item>
                    <MClassMember>
-                    <uid>{738c235f-7f9a-4a6a-8bba-140bcb839d30}</uid>
+                    <uid>{45c64702-8902-458d-a31a-98a40aeec41d}</uid>
                     <type>1</type>
                     <declaration>QStack&lt;FileSystemItem *&gt; parents</declaration>
                    </MClassMember>
                   </item>
                  </qlist>
                 </members>
+               </MClass>
+              </instance>
+             </target>
+            </handle>
+           </item>
+           <item>
+            <handle>
+             <uid>{93dadba4-f411-4619-8e65-fb71df22ff2c}</uid>
+             <target>
+              <instance type="MPackage">
+               <MPackage>
+                <base-MObject>
+                 <MObject>
+                  <base-MElement>
+                   <MElement>
+                    <uid>{93dadba4-f411-4619-8e65-fb71df22ff2c}</uid>
+                    <flags>1</flags>
+                   </MElement>
+                  </base-MElement>
+                  <name>YappariExplorer</name>
+                  <children>
+                   <handles>
+                    <handles>
+                     <qlist>
+                      <item>
+                       <handle>
+                        <uid>{2d21c76c-f14d-4822-9635-873c92021987}</uid>
+                        <target>
+                         <instance type="MClass">
+                          <MClass>
+                           <base-MObject>
+                            <MObject>
+                             <base-MElement>
+                              <MElement>
+                               <uid>{2d21c76c-f14d-4822-9635-873c92021987}</uid>
+                               <flags>1</flags>
+                              </MElement>
+                             </base-MElement>
+                             <name>UnixFileInfoRetriever</name>
+                            </MObject>
+                           </base-MObject>
+                          </MClass>
+                         </instance>
+                        </target>
+                       </handle>
+                      </item>
+                      <item>
+                       <handle>
+                        <uid>{2d14eee0-e4ca-4372-a4c5-9e3c99cd38b2}</uid>
+                        <target>
+                         <instance type="MComponent">
+                          <MComponent>
+                           <base-MObject>
+                            <MObject>
+                             <base-MElement>
+                              <MElement>
+                               <uid>{2d14eee0-e4ca-4372-a4c5-9e3c99cd38b2}</uid>
+                               <flags>1</flags>
+                              </MElement>
+                             </base-MElement>
+                             <name>Filesystemitem</name>
+                            </MObject>
+                           </base-MObject>
+                          </MComponent>
+                         </instance>
+                        </target>
+                       </handle>
+                      </item>
+                      <item>
+                       <handle>
+                        <uid>{08a7e9fb-7251-4551-804c-9caaef980c43}</uid>
+                        <target>
+                         <instance type="MClass">
+                          <MClass>
+                           <base-MObject>
+                            <MObject>
+                             <base-MElement>
+                              <MElement>
+                               <uid>{08a7e9fb-7251-4551-804c-9caaef980c43}</uid>
+                               <flags>1</flags>
+                              </MElement>
+                             </base-MElement>
+                             <name>FileSystemItem</name>
+                            </MObject>
+                           </base-MObject>
+                          </MClass>
+                         </instance>
+                        </target>
+                       </handle>
+                      </item>
+                     </qlist>
+                    </handles>
+                   </handles>
+                  </children>
+                 </MObject>
+                </base-MObject>
+               </MPackage>
+              </instance>
+             </target>
+            </handle>
+           </item>
+           <item>
+            <handle>
+             <uid>{1aabb6b3-e5d5-42c3-bff3-5a9a8b1123b8}</uid>
+             <target>
+              <instance type="MClass">
+               <MClass>
+                <base-MObject>
+                 <MObject>
+                  <base-MElement>
+                   <MElement>
+                    <uid>{1aabb6b3-e5d5-42c3-bff3-5a9a8b1123b8}</uid>
+                   </MElement>
+                  </base-MElement>
+                  <name>UnixFileInfoRetriever</name>
+                  <relations>
+                   <handles>
+                    <handles>
+                     <qlist>
+                      <item>
+                       <handle>
+                        <uid>{84ebedbd-c1f6-4b56-a011-019f25123987}</uid>
+                        <target>
+                         <instance type="MInheritance">
+                          <MInheritance>
+                           <base-MRelation>
+                            <MRelation>
+                             <base-MElement>
+                              <MElement>
+                               <uid>{84ebedbd-c1f6-4b56-a011-019f25123987}</uid>
+                              </MElement>
+                             </base-MElement>
+                             <a>{1aabb6b3-e5d5-42c3-bff3-5a9a8b1123b8}</a>
+                             <b>{bd26538c-febc-42b4-9cd0-1bf8cf3177dc}</b>
+                            </MRelation>
+                           </base-MRelation>
+                          </MInheritance>
+                         </instance>
+                        </target>
+                       </handle>
+                      </item>
+                      <item>
+                       <handle>
+                        <uid>{ca4fb5f5-c99b-4b75-9c53-d837a962bdf4}</uid>
+                        <target>
+                         <instance type="MDependency">
+                          <MDependency>
+                           <base-MRelation>
+                            <MRelation>
+                             <base-MElement>
+                              <MElement>
+                               <uid>{ca4fb5f5-c99b-4b75-9c53-d837a962bdf4}</uid>
+                              </MElement>
+                             </base-MElement>
+                             <a>{1aabb6b3-e5d5-42c3-bff3-5a9a8b1123b8}</a>
+                             <b>{daeebe02-1aba-4cea-bbc0-bbc46100aa51}</b>
+                            </MRelation>
+                           </base-MRelation>
+                          </MDependency>
+                         </instance>
+                        </target>
+                       </handle>
+                      </item>
+                     </qlist>
+                    </handles>
+                   </handles>
+                  </relations>
+                 </MObject>
+                </base-MObject>
                </MClass>
               </instance>
              </target>

@@ -9,6 +9,13 @@ class DetailedView : public QTreeView
 
 public:
     DetailedView(QWidget *parent = nullptr);
+
+    void setModel(QAbstractItemModel *model) override;
+
+public slots:
+
+    void setNormalCursor();
+    void setBusyCursor();
 };
 
 #endif // DETAILEDVIEW_H
