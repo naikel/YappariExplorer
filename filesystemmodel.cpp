@@ -1,15 +1,39 @@
+#include <QFileIconProvider>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QDebug>
 #include <QDir>
 
 #include "filesystemmodel.h"
 
+#ifdef Q_OS_WIN
+#include "winfileinforetriever.h"
+#else
+#include "unixfileinforetriever.h"
+#endif
+
 FileSystemModel::FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent) : QAbstractItemModel(parent)
 {
-    // Start the thread of the file retriever
-    fileInfoRetriever.setScope(scope);
-    fileInfoRetriever.start();
+    // This is mandatory if you want the dataChanged signal to work
+    qRegisterMetaType<QVector<int> >("QVector<int>");
 
-    connect(&fileInfoRetriever, SIGNAL(parentUpdated(FileSystemItem *)), this, SLOT(parentUpdated(FileSystemItem *)));
+#ifdef Q_OS_WIN
+    fileInfoRetriever = new WinFileInfoRetriever();
+#else
+    fileInfoRetriever = new UnixFileInfoRetriever();
+#endif
+
+    // Get the default icons
+    QFileIconProvider iconProvider;
+
+    driveIcon = iconProvider.icon(QFileIconProvider::Drive);
+    folderIcon = iconProvider.icon(QFileIconProvider::Folder);
+    fileIcon = iconProvider.icon(QFileIconProvider::File);
+
+    // Start the thread of the file retriever
+    fileInfoRetriever->setScope(scope);
+    fileInfoRetriever->start();
+
+    connect(fileInfoRetriever, &FileInfoRetriever::parentUpdated, this, &FileSystemModel::parentUpdated);
 
 }
 
@@ -17,6 +41,9 @@ FileSystemModel::~FileSystemModel()
 {
     if (root != nullptr)
         delete root;
+
+    if (fileInfoRetriever != nullptr)
+        delete fileInfoRetriever;
 }
 
 QModelIndex FileSystemModel::index(int row, int column, const QModelIndex &parent) const
@@ -28,7 +55,7 @@ QModelIndex FileSystemModel::index(int row, int column, const QModelIndex &paren
     // If parent is not valid it means TreeView is asking for the root
     // or it is a ListView
     if (!parent.isValid() && !root->getDisplayName().isEmpty())
-        return createIndex(row, column, (fileInfoRetriever.getScope() == FileInfoRetriever::List) ? root->getChildAt(row) : this->root);
+        return createIndex(row, column, (fileInfoRetriever->getScope() == FileInfoRetriever::List) ? root->getChildAt(row) : this->root);
 
     if (parent.isValid() && parent.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(parent.internalPointer());
@@ -42,7 +69,7 @@ QModelIndex FileSystemModel::index(int row, int column, const QModelIndex &paren
 QModelIndex FileSystemModel::parent(const QModelIndex &index) const
 {
     // ListView: The parent of a top level index should be invalid
-    if (fileInfoRetriever.getScope() == FileInfoRetriever::List)
+    if (fileInfoRetriever->getScope() == FileInfoRetriever::List)
         return QModelIndex();
 
     if (index.isValid() && index.internalPointer() != nullptr) {
@@ -59,7 +86,7 @@ int FileSystemModel::rowCount(const QModelIndex &parent) const
     if (parent.column() > 0)
         return 0;
 
-    if (fileInfoRetriever.getScope() == FileInfoRetriever::List)
+    if (fileInfoRetriever->getScope() == FileInfoRetriever::List)
         return root->childrenCount();
 
     if (parent.isValid() && parent.internalPointer() != nullptr) {
@@ -72,6 +99,7 @@ int FileSystemModel::rowCount(const QModelIndex &parent) const
 
 int FileSystemModel::columnCount(const QModelIndex &parent) const
 {
+    Q_UNUSED(parent)
     return 1;
 }
 
@@ -83,11 +111,23 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
             case Qt::DisplayRole:
                 return QVariant(fileSystemItem->getDisplayName());
             case Qt::DecorationRole:
+                qDebug() << "I want to draw the icon for " << fileSystemItem->getPath();
                 QIcon icon = fileSystemItem->getIcon();
                 if (icon.isNull()) {
                     // icon hasn't been retrieved yet
-                    icon = fileInfoRetriever.getIcon(fileSystemItem);
+
+                    // Get default icon first
+                    if (fileSystemItem->isDrive())
+                        icon = driveIcon;
+                    else if (fileSystemItem->isFolder())
+                        icon = folderIcon;
+                    else
+                        icon = fileIcon;
+
                     fileSystemItem->setIcon(icon);
+
+                    QFuture<void> future = QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileSystemModel *>(this), &FileSystemModel::getIcon, index);
+                    // icon = fileInfoRetriever->getIcon(fileSystemItem);
                 }
                 return icon;
         }
@@ -97,6 +137,8 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
 
 QVariant FileSystemModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
+    Q_UNUSED(orientation)
+
     if (role == Qt::DisplayRole) {
         switch (section) {
             case 0:
@@ -134,17 +176,20 @@ void FileSystemModel::fetchMore(const QModelIndex &parent)
 
         if (fileSystemItem->getHasSubFolders() && !fileSystemItem->areAllChildrenFetched()) {
 
-            // It seems this works when you don't know beforehand how many rows you're going to insert
             fetchingMore.store(true);
             emit fetchStarted();
+
+            // It seems this works when you don't know beforehand how many rows you're going to insert
             beginInsertRows(parent, 0, 0);
-            fileInfoRetriever.getChildren(fileSystemItem);
+
+            fileInfoRetriever->getChildren(fileSystemItem);
         }
     }
 }
 
 void FileSystemModel::sort(int column, Qt::SortOrder order)
 {
+    Q_UNUSED(column)
     qDebug() << "FileSystemModel::Model sort requested";
     emit layoutAboutToBeChanged();
     root->sortChildren(order);
@@ -169,8 +214,12 @@ void FileSystemModel::setRoot(const QString path)
     settingRoot.store(true);
     beginResetModel();
 
+    // Abort all the pending threads
+    pool.clear();
+    pool.waitForDone();
+
     FileSystemItem *deleteLater = root;
-    root = fileInfoRetriever.getRoot(path);
+    root = fileInfoRetriever->getRoot(path);
 
     if (deleteLater != nullptr)
         delete deleteLater;
@@ -198,4 +247,13 @@ void FileSystemModel::parentUpdated(FileSystemItem *parent)
     }
 
     emit fetchFinished();
+}
+
+void FileSystemModel::getIcon(const QModelIndex &index)
+{
+    if (index.isValid()  && index.internalPointer() != nullptr) {
+        FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
+        fileSystemItem->setIcon(fileInfoRetriever->getIcon(fileSystemItem));
+        emit dataChanged(index, index);
+    }
 }

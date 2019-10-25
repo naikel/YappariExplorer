@@ -82,10 +82,10 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
                 while (running.load() && ppenumIDList->Next(1, &pidlChildren, nullptr) == S_OK) {
 
-                    qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << QTime::currentTime() << "Before getting attributes";
+                    // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << QTime::currentTime() << "Before getting attributes";
                     SFGAOF attributes { SFGAO_STREAM | SFGAO_FOLDER | SFGAO_HASSUBFOLDER | SFGAO_HIDDEN };
                     psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChildren), &attributes);
-                    qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << QTime::currentTime() << "Got attributes";
+                    // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << QTime::currentTime() << "Got attributes";
 
                     // Compressed files will have SFGAO_FOLDER and SFGAO_STREAM attributes
                     // We want to skip those

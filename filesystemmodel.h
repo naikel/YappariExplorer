@@ -1,15 +1,11 @@
 #ifndef FILESYSTEMMODEL_H
 #define FILESYSTEMMODEL_H
 
+#include <QThreadPool>
 #include <QAbstractItemModel>
 
 #include "filesystemitem.h"
-
-#ifdef Q_OS_WIN
-#include "winfileinforetriever.h"
-#else
-#include "unixfileinforetriever.h"
-#endif
+#include "fileinforetriever.h"
 
 class FileSystemModel : public QAbstractItemModel
 {
@@ -48,11 +44,15 @@ private:
     QAtomicInt fetchingMore;
     QAtomicInt settingRoot;
 
-#ifdef Q_OS_WIN
-    WinFileInfoRetriever fileInfoRetriever;
-#else
-    UnixFileInfoRetriever fileInfoRetriever;
-#endif
+    FileInfoRetriever *fileInfoRetriever {nullptr};
+
+    // Default icons
+    QIcon driveIcon, fileIcon, folderIcon;
+
+    QThreadPool pool;
+
+    void getIcon(const QModelIndex &index);
+
 };
 
 #endif // FILESYSTEMMODEL_H
