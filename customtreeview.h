@@ -19,11 +19,12 @@ public slots:
     void initialize();
     void setNormalCursor();
     void setBusyCursor();
-    void expandOrCollapse(const QModelIndex &index);
 
 protected:
 
     QModelIndex moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers modifiers) override;
+    void keyPressEvent(QKeyEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
 
 private:
     bool initialized {false};

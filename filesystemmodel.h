@@ -1,7 +1,6 @@
 #ifndef FILESYSTEMMODEL_H
 #define FILESYSTEMMODEL_H
 
-#include <QThreadPool>
 #include <QAbstractItemModel>
 
 #include "filesystemitem.h"
@@ -52,7 +51,6 @@ private:
     QThreadPool pool;
 
     void getIcon(const QModelIndex &index);
-
 };
 
 #endif // FILESYSTEMMODEL_H

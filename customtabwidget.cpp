@@ -40,7 +40,6 @@ CustomTabWidget::CustomTabWidget(QWidget *parent) : QTabWidget(parent)
     fileSystemModel->setRoot("/");
     detailedView->setModel(fileSystemModel);
     connect(detailedView, &DetailedView::doubleClicked, this, &CustomTabWidget::doubleClicked);
-    connect(detailedView, &DetailedView::activated, this, &CustomTabWidget::doubleClicked);
     connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &CustomTabWidget::updateTab);
 
     addTab(detailedView, fileSystemModel->getRoot()->getDisplayName());
@@ -70,11 +69,12 @@ void CustomTabWidget::changeRootPath(const QString path)
 
 void CustomTabWidget::doubleClicked(const QModelIndex &index)
 {
+    qDebug() << "CustomTabWidget::doubleClicked";
     if (index.isValid() && index.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
         if (fileSystemItem->isDrive() || fileSystemItem->isFolder()) {
-            emit rootChanged(fileSystemItem->getPath());
             changeRootIndex(index);
+            emit rootChanged(fileSystemItem->getPath());
         }
     }
 }

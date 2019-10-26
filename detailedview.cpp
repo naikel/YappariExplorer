@@ -1,4 +1,5 @@
 #include <QHeaderView>
+#include <QDebug>
 
 #include "detailedview.h"
 #include "filesystemmodel.h"

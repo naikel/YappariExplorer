@@ -14,7 +14,7 @@
 FileSystemModel::FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent) : QAbstractItemModel(parent)
 {
     // This is mandatory if you want the dataChanged signal to work when emitting it in a different thread
-    // It's because of the roles argument of the signal. The fingerprint of the method is as follows:
+    // It's because of the "roles" argument of the signal. The fingerprint of the method is as follows:
     // dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
     qRegisterMetaType<QVector<int> >("QVector<int>");
 
@@ -128,6 +128,7 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
 
                     fileSystemItem->setIcon(icon);
 
+                    // Get real icon in the background
                     QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileSystemModel *>(this), &FileSystemModel::getIcon, index);
                 }
                 return icon;
@@ -199,6 +200,7 @@ void FileSystemModel::sort(int column, Qt::SortOrder order)
 
 QModelIndex FileSystemModel::relativeIndex(QString path, QModelIndex parent)
 {
+    qDebug() << "FileSystemModel::relativeIndex " << path;
     if (parent.isValid() && parent.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(parent.internalPointer());
         FileSystemItem *child = fileSystemItem->getChild(path);
@@ -213,6 +215,7 @@ void FileSystemModel::setRoot(const QString path)
 {
     qDebug() << "FileSystemModel::setRoot " << path;
     settingRoot.store(true);
+    emit fetchStarted();
     beginResetModel();
 
     // Abort all the pending threads
@@ -261,3 +264,4 @@ void FileSystemModel::getIcon(const QModelIndex &index)
         emit dataChanged(index, index, roles);
     }
 }
+
