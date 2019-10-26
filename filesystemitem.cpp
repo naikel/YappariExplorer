@@ -161,3 +161,13 @@ void FileSystemItem::setHidden(bool value)
 {
     hidden = value;
 }
+
+bool FileSystemItem::getFakeIcon() const
+{
+    return fakeIcon;
+}
+
+void FileSystemItem::setFakeIcon(bool value)
+{
+    fakeIcon = value;
+}

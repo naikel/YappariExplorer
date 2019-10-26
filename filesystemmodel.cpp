@@ -114,11 +114,17 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
             case Qt::DisplayRole:
                 return QVariant(fileSystemItem->getDisplayName());
             case Qt::DecorationRole:
+
+                // Fetch the real icon the second time it is requested
+                if (fileSystemItem->getFakeIcon()) {
+                    QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileSystemModel *>(this), &FileSystemModel::getIcon, index);
+                    fileSystemItem->setFakeIcon(false);
+                }
+
                 QIcon icon = fileSystemItem->getIcon();
                 if (icon.isNull()) {
-                    // icon hasn't been retrieved yet
-
-                    // Get default icon first
+                    // This is the first time the view requests the icon
+                    // Set a fake icon (a default one)
                     if (fileSystemItem->isDrive())
                         icon = driveIcon;
                     else if (fileSystemItem->isFolder())
@@ -128,8 +134,8 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
 
                     fileSystemItem->setIcon(icon);
 
-                    // Get real icon in the background
-                    QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileSystemModel *>(this), &FileSystemModel::getIcon, index);
+                    // This icon is fake and needs a real one the next time
+                    fileSystemItem->setFakeIcon(true);
                 }
                 return icon;
         }

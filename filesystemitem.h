@@ -46,6 +46,9 @@ public:
     bool isHidden() const;
     void setHidden(bool value);
 
+    bool getFakeIcon() const;
+    void setFakeIcon(bool value);
+
 private:
     QString path                {};
     QString displayName         {};
@@ -56,6 +59,7 @@ private:
     bool hidden                 {false};
     bool hasSubFolders          {false};
     bool allChildrenFetched     {false};
+    bool fakeIcon              {false};
 
     FileSystemItem *parent      {};
     QHash<QString, FileSystemItem *> children;
