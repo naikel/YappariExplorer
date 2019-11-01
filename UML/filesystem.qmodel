@@ -49,8 +49,8 @@
                          </base-DElement>
                          <object>{daeebe02-1aba-4cea-bbc0-bbc46100aa51}</object>
                          <name>FileSystemItem</name>
-                         <pos>x:340;y:120</pos>
-                         <rect>x:-135;y:-55;w:270;h:110</rect>
+                         <pos>x:165;y:350</pos>
+                         <rect>x:-135;y:-320;w:270;h:640</rect>
                          <auto-sized>false</auto-sized>
                          <visual-role>0</visual-role>
                         </DObject>
@@ -71,12 +71,13 @@
                          </base-DElement>
                          <object>{d7661a17-779d-41b1-a373-37e63179f4ed}</object>
                          <name>WinFileInfoRetriever</name>
-                         <pos>x:640;y:280</pos>
-                         <rect>x:-85;y:-45;w:170;h:90</rect>
+                         <pos>x:545;y:630</pos>
+                         <rect>x:-200;y:-100;w:400;h:200</rect>
                          <auto-sized>false</auto-sized>
                          <visual-role>0</visual-role>
                         </DObject>
                        </base-DObject>
+                       <show-all-members>true</show-all-members>
                       </DClass>
                      </instance>
                     </item>
@@ -92,10 +93,11 @@
                          </base-DElement>
                          <object>{bd26538c-febc-42b4-9cd0-1bf8cf3177dc}</object>
                          <name>FileInfoRetriever</name>
-                         <pos>x:750;y:120</pos>
-                         <rect>x:-95;y:-50;w:190;h:100</rect>
+                         <pos>x:760;y:345</pos>
+                         <rect>x:-165;y:-130;w:330;h:260</rect>
                          <auto-sized>false</auto-sized>
                          <visual-role>0</visual-role>
+                         <visual-role2>2</visual-role2>
                         </DObject>
                        </base-DObject>
                        <show-all-members>true</show-all-members>
@@ -113,6 +115,11 @@
                           </DElement>
                          </base-DElement>
                          <object>{95ecee97-4d1f-49c8-a0ee-abe9f1dd48b5}</object>
+                         <stereotypes>
+                          <qlist>
+                           <item>creates</item>
+                          </qlist>
+                         </stereotypes>
                          <a>{d56d9c0f-b08e-4ab5-9cca-4a0f79f2c33f}</a>
                          <b>{950593d7-5cf0-40e4-9e10-ffd971de7464}</b>
                         </DRelation>
@@ -150,12 +157,13 @@
                          </base-DElement>
                          <object>{1aabb6b3-e5d5-42c3-bff3-5a9a8b1123b8}</object>
                          <name>UnixFileInfoRetriever</name>
-                         <pos>x:860;y:280</pos>
-                         <rect>x:-75;y:-45;w:150;h:90</rect>
+                         <pos>x:945;y:630</pos>
+                         <rect>x:-165;y:-100;w:330;h:200</rect>
                          <auto-sized>false</auto-sized>
                          <visual-role>0</visual-role>
                         </DObject>
                        </base-DObject>
+                       <show-all-members>true</show-all-members>
                       </DClass>
                      </instance>
                     </item>
@@ -179,8 +187,8 @@
                     </item>
                    </qlist>
                   </elements>
-                  <last-modified>1572036092623</last-modified>
-                  <toolbarid>General</toolbarid>
+                  <last-modified>1572128971180</last-modified>
+                  <toolbarid>Classes</toolbarid>
                  </MDiagram>
                 </base-MDiagram>
                </MCanvasDiagram>
@@ -208,92 +216,340 @@
                  <qlist>
                   <item>
                    <MClassMember>
-                    <uid>{904d17f1-55e3-4b5c-aa38-5a150b2cb0c5}</uid>
-                    <type>1</type>
-                    <declaration>QString path</declaration>
+                    <uid>{a724d788-f2a6-47c2-8080-07c3582fe23c}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>FileSystemItem(QString path)</declaration>
                    </MClassMember>
                   </item>
                   <item>
                    <MClassMember>
-                    <uid>{01b93a19-1d27-43d3-bcd0-4208a5df5362}</uid>
-                    <type>1</type>
-                    <declaration>QString displayName</declaration>
+                    <uid>{37ec1f36-4c94-4637-88ba-3d5b49114ec9}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>~FileSystemItem()</declaration>
                    </MClassMember>
                   </item>
                   <item>
                    <MClassMember>
-                    <uid>{24119e0c-673d-4d4e-b858-9ba9884f8ad1}</uid>
-                    <type>1</type>
-                    <declaration>QIcon icon</declaration>
+                    <uid>{7976483a-8ea6-4af3-8358-4190ae1cc538}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>QString getDisplayName()</declaration>
                    </MClassMember>
                   </item>
                   <item>
                    <MClassMember>
-                    <uid>{573c31fe-d814-481d-8114-50dda7932694}</uid>
-                    <type>1</type>
-                    <declaration>QHash&lt;QString path, QFileSystemItem *&gt; children</declaration>
+                    <uid>{32e3eb01-98a4-486e-9fe8-13b10d21fdb5}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>void setDisplayName(const QString &amp;value)</declaration>
                    </MClassMember>
                   </item>
-                 </qlist>
-                </members>
-               </MClass>
-              </instance>
-             </target>
-            </handle>
-           </item>
-           <item>
-            <handle>
-             <uid>{792ec479-552d-4aa7-80ea-2637b13e78e9}</uid>
-             <target>
-              <instance type="MClass">
-               <MClass>
-                <base-MObject>
-                 <MObject>
-                  <base-MElement>
-                   <MElement>
-                    <uid>{792ec479-552d-4aa7-80ea-2637b13e78e9}</uid>
-                   </MElement>
-                  </base-MElement>
-                  <name>WinFileSystemItem</name>
-                  <relations>
-                   <handles>
-                    <handles>
-                     <qlist>
-                      <item>
-                       <handle>
-                        <uid>{6ae088da-60f8-48dd-b5d8-aa3d44c924f5}</uid>
-                        <target>
-                         <instance type="MInheritance">
-                          <MInheritance>
-                           <base-MRelation>
-                            <MRelation>
-                             <base-MElement>
-                              <MElement>
-                               <uid>{6ae088da-60f8-48dd-b5d8-aa3d44c924f5}</uid>
-                              </MElement>
-                             </base-MElement>
-                             <a>{792ec479-552d-4aa7-80ea-2637b13e78e9}</a>
-                             <b>{daeebe02-1aba-4cea-bbc0-bbc46100aa51}</b>
-                            </MRelation>
-                           </base-MRelation>
-                          </MInheritance>
-                         </instance>
-                        </target>
-                       </handle>
-                      </item>
-                     </qlist>
-                    </handles>
-                   </handles>
-                  </relations>
-                 </MObject>
-                </base-MObject>
-                <members>
-                 <qlist>
                   <item>
                    <MClassMember>
-                    <uid>{66c6bd27-0ee4-4c45-aa2e-a1680fa5c40f}</uid>
+                    <uid>{4ace14a5-7f23-4014-b75d-d71d28d615e7}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>void addChild(FileSystemItem *child)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{9b3b1e23-130e-4d71-8a9f-81cebdd77371}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>FileSystemItem *getParent()</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{825d190e-63bf-4c68-9bfc-ce59f8ea73ae}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>void setParent(FileSystemItem *value)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{174214d7-471d-4a7c-92d2-3879b17ae6ca}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>FileSystemItem *getChildAt(int n)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{5c5e5ae3-bfe4-4678-9110-07bfa3cc3a5e}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>FileSystemItem *getChild(QString path)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{b622a68b-3b60-4361-907a-1b7100197247}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>int childrenCount()</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{f68b05b8-a306-41bf-a3ba-9f9d2a057070}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>int childRow(FileSystemItem *child)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{7d5de11f-0cd5-4d1d-bc8a-724bb9e61779}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>void sortChildren(Qt::SortOrder order)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{c9480bee-bce6-4ff8-a1e2-ae391db3fe3c}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>bool getHasSubFolders()</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{b0c4e7be-e7f6-44b1-a436-642f9fa53ee8}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>void setHasSubFolders(bool value)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{36b14d62-a389-4ead-964a-1e39210f5f32}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>bool areAllChildrenFetched()</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{bb2f06a1-1228-4e2e-ba8e-55fa7f72a36a}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>void setAllChildrenFetched(bool value)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{b5cae32f-526a-448a-93b9-971b55674bf1}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>bool isDrive()</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{23322c40-38fc-4dc2-a6fe-0abbafff0ee7}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>QString getPath()</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{42917711-16c1-4116-8a76-491f144ca5d6}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>void setPath(const QString &amp;value)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{0795dadd-faa5-445c-92fb-d973cfd3637e}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>QIcon getIcon()</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{8ae8ff7a-bb01-4011-af94-001c4fb9dd6b}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>void setIcon(const QIcon &amp;value)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{170536d2-03f1-48a7-bc25-56f56967b36f}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>bool isFolder()</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{acec3b13-2fb6-4bde-a812-b7ef9186952b}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>void setFolder(bool value)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{116a6b60-6729-487d-bb66-534550b90c7e}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>Qt::SortOrder getCurrentOrder()</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{325d6cbf-727a-42d3-8962-096ed920203b}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>void setCurrentOrder(const Qt::SortOrder &amp;value)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{e48a5aa9-21ed-4973-b4ec-6e416329bce3}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>bool isHidden()</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{805d372c-82f8-44c4-bd18-5c77de95c243}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>void setHidden(bool value)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{f38a01e5-ef72-45ce-aafd-81b12925fdcd}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>bool hasFakeIcon()</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{8a2cd2c2-af35-420d-b5aa-a85ece59a7ce}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>void setFakeIcon(bool value)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{8c748798-d79c-4ac9-9adb-ff575f0a07b2}</uid>
+                    <visibility>3</visibility>
                     <type>1</type>
-                    <declaration>PIDL pidl</declaration>
+                    <declaration>QString path                {}</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{1be927f6-b3fa-4ee6-88c5-0bf2604e9b7c}</uid>
+                    <visibility>3</visibility>
+                    <type>1</type>
+                    <declaration>QString displayName         {}</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{bae8c9be-2a67-4901-ad54-93451a76e05d}</uid>
+                    <visibility>3</visibility>
+                    <type>1</type>
+                    <declaration>QIcon icon                  {}</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{d9824e7c-324a-4161-bac8-fdf14e2f2947}</uid>
+                    <visibility>3</visibility>
+                    <type>1</type>
+                    <declaration>Qt::SortOrder currentOrder  {Qt::AscendingOrder}</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{c5e1dd3f-a9d7-463a-917a-3f7ff4371ddc}</uid>
+                    <visibility>3</visibility>
+                    <type>1</type>
+                    <declaration>bool folder                 {false}</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{74ce139f-1a05-473f-af02-c9d03520f5c2}</uid>
+                    <visibility>3</visibility>
+                    <type>1</type>
+                    <declaration>bool hidden                 {false}</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{fc8c57c0-f590-48ad-84c4-2772552bce39}</uid>
+                    <visibility>3</visibility>
+                    <type>1</type>
+                    <declaration>bool hasSubFolders          {false}</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{849c7fd9-470b-407b-8821-eba7a2ffbcc8}</uid>
+                    <visibility>3</visibility>
+                    <type>1</type>
+                    <declaration>bool allChildrenFetched     {false}</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{15989d4c-fb3d-402f-900a-e144ef6c58bd}</uid>
+                    <visibility>3</visibility>
+                    <type>1</type>
+                    <declaration>bool fakeIcon               {false}</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{3c723c9d-d43e-4a7b-8378-42b7b9ea1430}</uid>
+                    <visibility>3</visibility>
+                    <type>1</type>
+                    <declaration>FileSystemItem *parent      {}</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{c866c57b-0bba-4770-ac22-4eabbfc1283b}</uid>
+                    <visibility>3</visibility>
+                    <type>1</type>
+                    <declaration>QHash&lt;QString, FileSystemItem *&gt; children</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{03586ea9-7bc1-406a-9f83-5b52dec469e6}</uid>
+                    <visibility>3</visibility>
+                    <type>1</type>
+                    <declaration>QList&lt;FileSystemItem *&gt; indexedChildren</declaration>
                    </MClassMember>
                   </item>
                  </qlist>
@@ -371,6 +627,99 @@
                   </relations>
                  </MObject>
                 </base-MObject>
+                <members>
+                 <qlist>
+                  <item>
+                   <MClassMember>
+                    <uid>{e6cce1c7-fbf3-4162-af9c-eed1e2cc605c}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>WinFileInfoRetriever(QObject *parent = nullptr)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{9ee0006b-eb73-4c71-824b-d107eafb0d79}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <properties>12</properties>
+                    <declaration>QIcon getIcon(FileSystemItem *item)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{38e1d796-a860-4f28-bafe-dff383c7c0a8}</uid>
+                    <visibility>2</visibility>
+                    <type>2</type>
+                    <properties>8</properties>
+                    <declaration>void getChildrenBackground(FileSystemItem *parent)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{bcbc4524-666d-4b19-b730-b4527e25cdba}</uid>
+                    <visibility>2</visibility>
+                    <type>2</type>
+                    <properties>8</properties>
+                    <declaration>void getParentInfo(FileSystemItem *parent)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{9ab82f20-a968-4cc8-874a-dafb1b4a4cbf}</uid>
+                    <visibility>3</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>QIcon getIconFromFileInfo(SHFILEINFOW sfi, bool isHidden)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{2c4f7d17-cb38-470d-a9ae-811e2b1e0c8d}</uid>
+                    <visibility>3</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>QIcon getIconFromPath(QString path, bool isHidden)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{e1950d37-545e-417f-bb50-8ed7f9c5d3ab}</uid>
+                    <visibility>3</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>QIcon getIconFromPIDL(LPITEMIDLIST pidl, bool isHidden)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{15f0d3a1-1acb-4b8b-8a94-1f1029f78389}</uid>
+                    <visibility>3</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>QPixmap getPixmapFromIndex(int index)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{7c626005-02d8-47e7-bc16-10ff8707a171}</uid>
+                    <visibility>3</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>SHFILEINFOW getSystemImageListIndexFromPIDL(LPITEMIDLIST pidl)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{07fcc9f5-191a-47d6-95c6-9a762145b562}</uid>
+                    <visibility>3</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>SHFILEINFOW getSystemImageListIndexFromPath(QString path)</declaration>
+                   </MClassMember>
+                  </item>
+                 </qlist>
+                </members>
                </MClass>
               </instance>
              </target>
@@ -405,6 +754,11 @@
                              <base-MElement>
                               <MElement>
                                <uid>{95ecee97-4d1f-49c8-a0ee-abe9f1dd48b5}</uid>
+                               <stereotypes>
+                                <qlist>
+                                 <item>creates</item>
+                                </qlist>
+                               </stereotypes>
                               </MElement>
                              </base-MElement>
                              <a>{bd26538c-febc-42b4-9cd0-1bf8cf3177dc}</a>
@@ -426,110 +780,107 @@
                  <qlist>
                   <item>
                    <MClassMember>
-                    <uid>{45c64702-8902-458d-a31a-98a40aeec41d}</uid>
+                    <uid>{6aff278a-e9d4-40eb-938b-3eae31ff897e}</uid>
+                    <visibility>1</visibility>
                     <type>1</type>
-                    <declaration>QStack&lt;FileSystemItem *&gt; parents</declaration>
+                    <declaration>enum Scope {         Tree,         List     }</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{3b4070e4-0c5b-4d56-83fb-0ac5a84e6cc1}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>FileSystemItem *getRoot(QString path)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{73bff18f-b99f-4f5d-bebd-88fc325f1ca4}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <properties>4</properties>
+                    <declaration>Scope getScope()</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{b8564cc3-46f2-4c20-a6e1-472afdbd4091}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>void setScope(const Scope &amp;value)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{dce86d95-4819-4f52-b2c1-02d88d65ac0d}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>void getChildren(FileSystemItem *parent)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{4a5c1d3d-ba60-42b5-9d75-7ccd949a3e14}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <properties>5</properties>
+                    <declaration>QIcon getIcon(FileSystemItem *fileSystemItem)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{f8a0da1c-ac4e-4008-94d7-febf04434f5d}</uid>
+                    <visibility>4</visibility>
+                    <type>2</type>
+                    <declaration>void parentUpdated(FileSystemItem *parent)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{dfff0ca0-9f1d-47f7-80e2-aab0d25216f6}</uid>
+                    <visibility>2</visibility>
+                    <type>1</type>
+                    <declaration>QAtomicInt running</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{223814d0-4ee4-425d-a57a-48a5191cc550}</uid>
+                    <visibility>2</visibility>
+                    <type>2</type>
+                    <properties>1</properties>
+                    <declaration>void getChildrenBackground(FileSystemItem *parent)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{41790e42-e2c2-4f41-b2ff-3a904f92e17b}</uid>
+                    <visibility>2</visibility>
+                    <type>2</type>
+                    <properties>1</properties>
+                    <declaration>void getParentInfo(FileSystemItem *parent)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{6d1aa4f4-0a04-4b70-b3ac-4cc1ec0e10d9}</uid>
+                    <visibility>3</visibility>
+                    <type>1</type>
+                    <declaration>QThreadPool pool</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{b82cac40-3b4b-42c8-a64a-56a75e1a2410}</uid>
+                    <visibility>3</visibility>
+                    <type>1</type>
+                    <declaration>Scope scope</declaration>
                    </MClassMember>
                   </item>
                  </qlist>
                 </members>
                </MClass>
-              </instance>
-             </target>
-            </handle>
-           </item>
-           <item>
-            <handle>
-             <uid>{93dadba4-f411-4619-8e65-fb71df22ff2c}</uid>
-             <target>
-              <instance type="MPackage">
-               <MPackage>
-                <base-MObject>
-                 <MObject>
-                  <base-MElement>
-                   <MElement>
-                    <uid>{93dadba4-f411-4619-8e65-fb71df22ff2c}</uid>
-                    <flags>1</flags>
-                   </MElement>
-                  </base-MElement>
-                  <name>YappariExplorer</name>
-                  <children>
-                   <handles>
-                    <handles>
-                     <qlist>
-                      <item>
-                       <handle>
-                        <uid>{2d21c76c-f14d-4822-9635-873c92021987}</uid>
-                        <target>
-                         <instance type="MClass">
-                          <MClass>
-                           <base-MObject>
-                            <MObject>
-                             <base-MElement>
-                              <MElement>
-                               <uid>{2d21c76c-f14d-4822-9635-873c92021987}</uid>
-                               <flags>1</flags>
-                              </MElement>
-                             </base-MElement>
-                             <name>UnixFileInfoRetriever</name>
-                            </MObject>
-                           </base-MObject>
-                          </MClass>
-                         </instance>
-                        </target>
-                       </handle>
-                      </item>
-                      <item>
-                       <handle>
-                        <uid>{2d14eee0-e4ca-4372-a4c5-9e3c99cd38b2}</uid>
-                        <target>
-                         <instance type="MComponent">
-                          <MComponent>
-                           <base-MObject>
-                            <MObject>
-                             <base-MElement>
-                              <MElement>
-                               <uid>{2d14eee0-e4ca-4372-a4c5-9e3c99cd38b2}</uid>
-                               <flags>1</flags>
-                              </MElement>
-                             </base-MElement>
-                             <name>Filesystemitem</name>
-                            </MObject>
-                           </base-MObject>
-                          </MComponent>
-                         </instance>
-                        </target>
-                       </handle>
-                      </item>
-                      <item>
-                       <handle>
-                        <uid>{08a7e9fb-7251-4551-804c-9caaef980c43}</uid>
-                        <target>
-                         <instance type="MClass">
-                          <MClass>
-                           <base-MObject>
-                            <MObject>
-                             <base-MElement>
-                              <MElement>
-                               <uid>{08a7e9fb-7251-4551-804c-9caaef980c43}</uid>
-                               <flags>1</flags>
-                              </MElement>
-                             </base-MElement>
-                             <name>FileSystemItem</name>
-                            </MObject>
-                           </base-MObject>
-                          </MClass>
-                         </instance>
-                        </target>
-                       </handle>
-                      </item>
-                     </qlist>
-                    </handles>
-                   </handles>
-                  </children>
-                 </MObject>
-                </base-MObject>
-               </MPackage>
               </instance>
              </target>
             </handle>
@@ -602,7 +953,106 @@
                   </relations>
                  </MObject>
                 </base-MObject>
+                <members>
+                 <qlist>
+                  <item>
+                   <MClassMember>
+                    <uid>{095800d1-614f-4947-b4bc-c6888a9099c0}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <declaration>UnixFileInfoRetriever(QObject *parent = nullptr)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{0a394319-7f4b-4173-b034-7235a5b55392}</uid>
+                    <visibility>1</visibility>
+                    <type>2</type>
+                    <properties>12</properties>
+                    <declaration>QIcon getIcon(FileSystemItem *item)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{41472f70-6f77-4755-a6f3-53b6ceb53162}</uid>
+                    <visibility>2</visibility>
+                    <type>2</type>
+                    <properties>8</properties>
+                    <declaration>void getChildrenBackground(FileSystemItem *parent)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{225db184-bc74-4905-af34-3913a83fcdc4}</uid>
+                    <visibility>2</visibility>
+                    <type>2</type>
+                    <properties>8</properties>
+                    <declaration>void getParentInfo(FileSystemItem *parent)</declaration>
+                   </MClassMember>
+                  </item>
+                  <item>
+                   <MClassMember>
+                    <uid>{4668d41e-d35c-4f6d-a5d7-5539216dab02}</uid>
+                    <visibility>3</visibility>
+                    <type>2</type>
+                    <declaration>bool hasSubFolders(fs::path path)</declaration>
+                   </MClassMember>
+                  </item>
+                 </qlist>
+                </members>
                </MClass>
+              </instance>
+             </target>
+            </handle>
+           </item>
+           <item>
+            <handle>
+             <uid>{e057b42e-1897-4aa0-bc3c-9d0a00540b17}</uid>
+             <target>
+              <instance type="MPackage">
+               <MPackage>
+                <base-MObject>
+                 <MObject>
+                  <base-MElement>
+                   <MElement>
+                    <uid>{e057b42e-1897-4aa0-bc3c-9d0a00540b17}</uid>
+                    <flags>1</flags>
+                   </MElement>
+                  </base-MElement>
+                  <name>YappariExplorer</name>
+                  <children>
+                   <handles>
+                    <handles>
+                     <qlist>
+                      <item>
+                       <handle>
+                        <uid>{3fede9f5-d07a-43d3-8f6a-c7e798315efc}</uid>
+                        <target>
+                         <instance type="MClass">
+                          <MClass>
+                           <base-MObject>
+                            <MObject>
+                             <base-MElement>
+                              <MElement>
+                               <uid>{3fede9f5-d07a-43d3-8f6a-c7e798315efc}</uid>
+                               <flags>1</flags>
+                              </MElement>
+                             </base-MElement>
+                             <name>UnixFileInfoRetriever</name>
+                            </MObject>
+                           </base-MObject>
+                          </MClass>
+                         </instance>
+                        </target>
+                       </handle>
+                      </item>
+                     </qlist>
+                    </handles>
+                   </handles>
+                  </children>
+                 </MObject>
+                </base-MObject>
+               </MPackage>
               </instance>
              </target>
             </handle>

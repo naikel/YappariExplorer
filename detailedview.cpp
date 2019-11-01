@@ -10,6 +10,7 @@ DetailedView::DetailedView(QWidget *parent) : QTreeView(parent)
     setFrameShape(QFrame::NoFrame);
     setSortingEnabled(true);
     this->header()->setSortIndicator(0, Qt::AscendingOrder);
+
 }
 
 void DetailedView::setModel(QAbstractItemModel *model)
@@ -20,6 +21,11 @@ void DetailedView::setModel(QAbstractItemModel *model)
     connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &DetailedView::setNormalCursor);
 
     QTreeView::setModel(model);
+
+    // Test default settings
+    this->header()->resizeSection(FileSystemModel::Columns::Name,600);
+    this->header()->resizeSection(FileSystemModel::Columns::Extension,30);
+    this->header()->setSortIndicator(FileSystemModel::Columns::Extension, Qt::SortOrder::AscendingOrder);
 }
 
 void DetailedView::setNormalCursor()

@@ -80,7 +80,6 @@ void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
         }
     }
 
-    parent->sortChildren(Qt::AscendingOrder);
     parent->setAllChildrenFetched(true);
     emit parentUpdated(parent);
 

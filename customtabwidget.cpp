@@ -1,5 +1,6 @@
 #include "customtabwidget.h"
 
+#include <QHeaderView>
 #include <QDebug>
 
 #ifdef Q_OS_WIN
@@ -44,7 +45,6 @@ CustomTabWidget::CustomTabWidget(QWidget *parent) : QTabWidget(parent)
 
     addTab(detailedView, fileSystemModel->getRoot()->getDisplayName());
     setTabIcon(0, fileSystemModel->getRoot()->getIcon());
-
 }
 
 void CustomTabWidget::changeRootIndex(const QModelIndex &index)

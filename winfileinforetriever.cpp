@@ -6,6 +6,8 @@
 #include "winfileinforetriever.h"
 #include "filesystemitem.h"
 
+#define CONTROL_PANEL_GUID "::{26EE0668-A00A-44D7-9371-BEB064C98683}"
+
 // Qt exports a non-documented function to convert a native Windows HICON to a QPixmap
 // This function is found in Qt5Gui.dll
 extern QPixmap qt_pixmapFromWinHICON(HICON icon);
@@ -93,7 +95,12 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
                         // Get the absolute path and create a FileSystemItem with it
                         psf->GetDisplayNameOf(pidlChildren, SHGDN_FORPARSING, &strRet);
-                        FileSystemItem *child = new FileSystemItem(QString::fromWCharArray(strRet.pOleStr));
+                        QString displayName = QString::fromWCharArray(strRet.pOleStr);
+
+                        if (displayName == CONTROL_PANEL_GUID)
+                            continue;
+
+                        FileSystemItem *child = new FileSystemItem(displayName);
 
                         // Get the display name
                         psf->GetDisplayNameOf(pidlChildren, SHGDN_NORMAL, &strRet);
@@ -105,11 +112,31 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                         child->setHasSubFolders((getScope() == FileInfoRetriever::Tree) ? (attributes & SFGAO_HASSUBFOLDER) : false);
                         child->setHidden(attributes & SFGAO_HIDDEN);
 
-                        /*
-                        LPITEMIDLIST absolutePidl = ILCombine(pidl, pidlChildren);
-                        child->setIcon(getIconFromPIDL(absolutePidl, (attributes & SFGAO_HIDDEN)));
-                        ILFree(absolutePidl);
-                        */
+                         // Set extended attributes if the scope is a detailed list
+                        if (getScope() == FileInfoRetriever::List) {
+                            QString strType;
+                            if (child->isFolder()) {
+                                strType = QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer");
+                            } else {
+
+                                if (!child->isDrive()) {
+                                    // File Size
+                                    WIN32_FILE_ATTRIBUTE_DATA fileAttributeData;
+                                    if (GetFileAttributesExW(child->getPath().toStdWString().c_str(), GetFileExInfoStandard, &fileAttributeData)) {
+                                        quint64 size = fileAttributeData.nFileSizeHigh;
+                                        size = (size << 32) + fileAttributeData.nFileSizeLow;
+                                        child->setSize(size);
+                                    }
+                                }
+
+                                // File Type
+                                UINT flags = SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME;
+                                SHFILEINFO info;
+                                ::SHGetFileInfo(child->getPath().toStdWString().c_str(), attributes, &info, sizeof(SHFILEINFO), flags);
+                                strType = QString::fromStdWString(info.szTypeName);
+                            }
+                            child->setType(strType);
+                        }
 
                         parent->addChild(child);
                     }
@@ -129,7 +156,6 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             return;
         }
 
-        parent->sortChildren(Qt::AscendingOrder);
         parent->setHasSubFolders(true);
         parent->setAllChildrenFetched(true);
         emit parentUpdated(parent);
@@ -141,7 +167,13 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 QIcon WinFileInfoRetriever::getIcon(FileSystemItem *item) const
 {
     qDebug() << "WinFileInfoRetriever::getIcon " << getScope() << item->getPath();
-    return getIconFromPath(item->getPath(), item->isHidden());
+    LPITEMIDLIST pidl;
+    if (SUCCEEDED(::SHParseDisplayName(item->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr))) {
+        QIcon icon = getIconFromPIDL(pidl, item->isHidden());
+        ILFree(pidl);
+        return icon;
+    }
+    return QIcon();
 }
 
 QIcon WinFileInfoRetriever::getIconFromPath(QString path, bool isHidden) const
@@ -155,7 +187,6 @@ QIcon WinFileInfoRetriever::getIconFromPIDL(LPITEMIDLIST pidl, bool isHidden) co
     SHFILEINFOW sfi = getSystemImageListIndexFromPIDL(pidl);
     return getIconFromFileInfo(sfi, isHidden);
 }
-
 
 QIcon WinFileInfoRetriever::getIconFromFileInfo(SHFILEINFOW sfi, bool isHidden) const
 {

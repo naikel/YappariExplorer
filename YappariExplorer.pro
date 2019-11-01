@@ -23,7 +23,7 @@ SOURCES += \
     filesystemitem.cpp \
     filesystemmodel.cpp \
     main.cpp \
-    mainwindow.cpp \
+    mainwindow.cpp
 
 HEADERS += \
     customtabwidget.h \

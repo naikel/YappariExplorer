@@ -56,9 +56,9 @@ int FileSystemItem::childRow(FileSystemItem *child) {
     return indexedChildren.indexOf(child);
 }
 
-bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j)
+bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j, int column, Qt::SortOrder order)
 {
-    Qt::SortOrder order = i->getParent()->getCurrentOrder();
+    Q_UNUSED(column)
 
     // Folders are first
     if (i->isFolder() && !j->isFolder())
@@ -73,18 +73,36 @@ bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j)
         return (order == Qt::AscendingOrder  && i->getPath().toLower() < j->getPath().toLower()) ||
                (order == Qt::DescendingOrder && i->getPath().toLower() > j->getPath().toLower());
 
+    QVariant left  = i->getData(column);
+    QVariant right = j->getData(column);
+
+    if (static_cast<QMetaType::Type>(left.type()) == QMetaType::QString)
+        left = QVariant(left.toString().toLower());
+
+    if (static_cast<QMetaType::Type>(right.type()) == QMetaType::QString)
+        right = QVariant(right.toString().toLower());
+
     // If both items are files or both are folders then direct comparison is allowed
-    if ((i->isFolder() && j->isFolder()) || (!i->isFolder() && !j->isFolder()))
+    if (i->isFolder() && j->isFolder())
         return (order == Qt::AscendingOrder  && i->getDisplayName().toLower() < j->getDisplayName().toLower()) ||
                (order == Qt::DescendingOrder && i->getDisplayName().toLower() > j->getDisplayName().toLower());
+
+    if (!i->isFolder() && !j->isFolder()) {
+        if (left == right) {
+            return (order == Qt::AscendingOrder  && i->getDisplayName().toLower() < j->getDisplayName().toLower()) ||
+                   (order == Qt::DescendingOrder && i->getDisplayName().toLower() > j->getDisplayName().toLower());
+        } else {
+            return (order == Qt::AscendingOrder  && left < right) ||
+                   (order == Qt::DescendingOrder && left > right);
+        }
+    }
 
     return false;
 }
 
-void FileSystemItem::sortChildren(Qt::SortOrder order)
+void FileSystemItem::sortChildren(int column, Qt::SortOrder order)
 {
-    setCurrentOrder(order);
-    std::sort(indexedChildren.begin(), indexedChildren.end(), fileSystemItemCompare);
+    std::sort(indexedChildren.begin(), indexedChildren.end(), [column, order](FileSystemItem *i, FileSystemItem *j) { return fileSystemItemCompare(i, j, column, order); } );
 }
 
 bool FileSystemItem::getHasSubFolders() const
@@ -142,16 +160,6 @@ void FileSystemItem::setFolder(bool value)
     folder = value;
 }
 
-Qt::SortOrder FileSystemItem::getCurrentOrder() const
-{
-    return currentOrder;
-}
-
-void FileSystemItem::setCurrentOrder(const Qt::SortOrder &value)
-{
-    currentOrder = value;
-}
-
 bool FileSystemItem::isHidden() const
 {
     return hidden;
@@ -162,7 +170,7 @@ void FileSystemItem::setHidden(bool value)
     hidden = value;
 }
 
-bool FileSystemItem::getFakeIcon() const
+bool FileSystemItem::hasFakeIcon() const
 {
     return fakeIcon;
 }
@@ -170,4 +178,52 @@ bool FileSystemItem::getFakeIcon() const
 void FileSystemItem::setFakeIcon(bool value)
 {
     fakeIcon = value;
+}
+
+QString FileSystemItem::getType() const
+{
+    return type;
+}
+
+void FileSystemItem::setType(const QString &value)
+{
+    type = value;
+}
+
+quint64 FileSystemItem::getSize() const
+{
+    return size;
+}
+
+void FileSystemItem::setSize(const quint64 &value)
+{
+    size = value;
+}
+
+QString FileSystemItem::getExtension() const
+{
+#ifdef Q_OS_WIN
+#define MIN_INDEX 0
+#else
+#define MIN_INDEX -1
+#endif
+
+    int index = getDisplayName().lastIndexOf('.');
+    return (index > MIN_INDEX) ? getDisplayName().mid(++index) : QString();
+}
+
+QVariant FileSystemItem::getData(int column)
+{
+    DataInfo dataInfo = static_cast<DataInfo>(column);
+
+    switch (dataInfo) {
+        case DataInfo::Name:
+            return QVariant(getDisplayName());
+        case DataInfo::Size:
+            return QVariant(getSize());
+        case DataInfo::Extension:
+            return QVariant(getExtension());
+        default:
+            return QVariant();
+    }
 }

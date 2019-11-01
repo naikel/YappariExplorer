@@ -11,6 +11,15 @@ class FileSystemModel : public QAbstractItemModel
     Q_OBJECT
 
 public:
+
+    enum Columns {
+        Name,
+        Extension,
+        Size,
+        Type,
+        MaxColumns
+    };
+
     FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent = nullptr);
     ~FileSystemModel() override;
 
@@ -38,12 +47,14 @@ signals:
     void fetchFinished();
 
 private:
-    FileSystemItem *root {nullptr};
-
     QAtomicInt fetchingMore;
     QAtomicInt settingRoot;
 
-    FileInfoRetriever *fileInfoRetriever {nullptr};
+    FileSystemItem *root                    {nullptr};
+    int currentSortColumn                   {0};
+    Qt::SortOrder currentSortOrder          {Qt::AscendingOrder};
+    FileInfoRetriever *fileInfoRetriever    {nullptr};
+    QList<QString> sizeUnits                {"byte", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
 
     // Default icons
     QIcon driveIcon, fileIcon, folderIcon;
@@ -51,6 +62,8 @@ private:
     QThreadPool pool;
 
     void getIcon(const QModelIndex &index);
+
+    QString humanReadableSize(quint64 size) const;
 };
 
 #endif // FILESYSTEMMODEL_H

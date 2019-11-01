@@ -1,7 +1,9 @@
 #include <QFileIconProvider>
 #include <QtConcurrent/QtConcurrentRun>
+#include <QBrush>
 #include <QDebug>
 #include <QDir>
+#include <cmath>
 
 #include "filesystemmodel.h"
 
@@ -103,6 +105,9 @@ int FileSystemModel::rowCount(const QModelIndex &parent) const
 int FileSystemModel::columnCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent)
+    if (fileInfoRetriever->getScope() == FileInfoRetriever::List)
+        return Columns::MaxColumns;
+
     return 1;
 }
 
@@ -112,32 +117,57 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
         switch (role) {
             case Qt::DisplayRole:
-                return QVariant(fileSystemItem->getDisplayName());
+                switch (index.column()) {
+                    case Columns::Name:
+                        return QVariant(fileSystemItem->getDisplayName());
+                    case Columns::Extension:
+                        if (fileSystemItem->isDrive() || fileSystemItem->isFolder())
+                            return QVariant();
+                        return fileSystemItem->getExtension();
+                    case Columns::Size:
+                        if (fileSystemItem->isDrive() || fileSystemItem->isFolder())
+                            return QVariant();
+                        return QVariant(humanReadableSize(fileSystemItem->getSize()));
+                    case Columns::Type:
+                        return QVariant(fileSystemItem->getType());
+                    default:
+                        return QVariant();
+                }
             case Qt::DecorationRole:
+                if (index.column() == Columns::Name) {
+                    // Fetch the real icon the second time it is requested
+                    if (fileSystemItem->hasFakeIcon()) {
+                        QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileSystemModel *>(this), &FileSystemModel::getIcon, index);
+                        fileSystemItem->setFakeIcon(false);
+                    }
 
-                // Fetch the real icon the second time it is requested
-                if (fileSystemItem->getFakeIcon()) {
-                    QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileSystemModel *>(this), &FileSystemModel::getIcon, index);
-                    fileSystemItem->setFakeIcon(false);
+                    QIcon icon = fileSystemItem->getIcon();
+                    if (icon.isNull()) {
+                        // This is the first time the view requests the icon
+                        // Set a fake icon (a default one)
+                        if (fileSystemItem->isDrive())
+                            icon = driveIcon;
+                        else if (fileSystemItem->isFolder())
+                            icon = folderIcon;
+                        else
+                            icon = fileIcon;
+
+                        fileSystemItem->setIcon(icon);
+
+                        // This icon is fake and needs a real one the next time
+                        fileSystemItem->setFakeIcon(true);
+                    }
+                    return icon;
                 }
-
-                QIcon icon = fileSystemItem->getIcon();
-                if (icon.isNull()) {
-                    // This is the first time the view requests the icon
-                    // Set a fake icon (a default one)
-                    if (fileSystemItem->isDrive())
-                        icon = driveIcon;
-                    else if (fileSystemItem->isFolder())
-                        icon = folderIcon;
-                    else
-                        icon = fileIcon;
-
-                    fileSystemItem->setIcon(icon);
-
-                    // This icon is fake and needs a real one the next time
-                    fileSystemItem->setFakeIcon(true);
+                break;
+            case Qt::TextAlignmentRole:
+                if (index.column() == Columns::Size)
+                    return QVariant(Qt::AlignRight);
+                break;
+            case Qt::ForegroundRole:
+                if (fileSystemItem->isFolder()) {
+                    return QVariant(QBrush(Qt::darkBlue));
                 }
-                return icon;
         }
     }
     return QVariant();
@@ -149,8 +179,14 @@ QVariant FileSystemModel::headerData(int section, Qt::Orientation orientation, i
 
     if (role == Qt::DisplayRole) {
         switch (section) {
-            case 0:
+            case Columns::Name:
                 return QVariant(tr("Name"));
+            case Columns::Extension:
+                return QVariant(tr("Ext"));
+            case Columns::Size:
+                return QVariant(tr("Size"));
+            case Columns::Type:
+                return QVariant(tr("Type"));
         }
     }
     return QVariant();
@@ -197,10 +233,11 @@ void FileSystemModel::fetchMore(const QModelIndex &parent)
 
 void FileSystemModel::sort(int column, Qt::SortOrder order)
 {
-    Q_UNUSED(column)
     qDebug() << "FileSystemModel::Model sort requested";
+    currentSortOrder = order;
+    currentSortColumn = column;
     emit layoutAboutToBeChanged();
-    root->sortChildren(order);
+    root->sortChildren(column, order);
     emit layoutChanged();
 }
 
@@ -244,6 +281,8 @@ void FileSystemModel::parentUpdated(FileSystemItem *parent)
 {
     qDebug() << "FileSystemModel::parentUpdated: " << parent->childrenCount() << " children";
 
+    parent->sortChildren(currentSortColumn, currentSortOrder);
+
     if (fetchingMore.load()) {
         qDebug() << "FileSystemModel::parentUpdated: endInsertRows";
         endInsertRows();
@@ -263,11 +302,30 @@ void FileSystemModel::getIcon(const QModelIndex &index)
 {
     if (index.isValid()  && index.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
-        fileSystemItem->setIcon(fileInfoRetriever->getIcon(fileSystemItem));
-
-        QVector<int> roles;
-        roles.append(Qt::DecorationRole);
-        emit dataChanged(index, index, roles);
+        QIcon icon = fileInfoRetriever->getIcon(fileSystemItem);
+        if (!icon.isNull()) {
+            fileSystemItem->setIcon(icon);
+            QVector<int> roles;
+            roles.append(Qt::DecorationRole);
+            emit dataChanged(index, index, roles);
+        }
     }
+}
+
+QString FileSystemModel::humanReadableSize(quint64 size) const
+{
+    int i;
+    double sizeDouble = size;
+    for (i = 0; sizeDouble >= 1024.0 ; i++)
+        sizeDouble /= 1024.0;
+
+    // Remove decimals for exact values (like 24.00) and for sizeDouble >= 100
+    QString strSize;
+    if ((sizeDouble > 100) || ((sizeDouble - trunc(sizeDouble)) < 0.001))
+        strSize = QString::number(trunc(sizeDouble));
+    else
+        strSize = QString::number(sizeDouble, 'f', 2);
+
+    return QString("%1 %2%3 ").arg(strSize).arg(sizeUnits.at(i)).arg((i == 0 && size != 1) ? "s" : QString());
 }
 
