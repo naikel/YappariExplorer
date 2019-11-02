@@ -41,6 +41,8 @@ public:
 
 public slots:
     void parentUpdated(FileSystemItem *parent);
+    void itemUpdated(FileSystemItem *item);
+    void extendedInfoUpdated(FileSystemItem *parent);
 
 signals:
     void fetchStarted();
@@ -63,7 +65,7 @@ private:
 
     void getIcon(const QModelIndex &index);
 
-    QString humanReadableSize(quint64 size) const;
+    QString humanReadableSize(qint64 size) const;
 };
 
 #endif // FILESYSTEMMODEL_H

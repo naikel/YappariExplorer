@@ -30,12 +30,15 @@ public:
 
 signals:
     void parentUpdated(FileSystemItem *parent);
+    void itemUpdated(FileSystemItem *item);
+    void extendedInfoUpdated(FileSystemItem *parent);
 
 protected:
     QAtomicInt running;
 
     virtual void getChildrenBackground(FileSystemItem *parent);
     virtual void getParentInfo(FileSystemItem *parent);
+    virtual void getExtendedInfo(FileSystemItem *parent);
 
 private:
     QThreadPool pool;

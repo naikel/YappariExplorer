@@ -27,6 +27,7 @@ public:
     void addChild(FileSystemItem *child);
     FileSystemItem *getChildAt(int n);
     FileSystemItem *getChild(QString path);
+    QList<FileSystemItem *> getChildren();
 
     int childrenCount();
     int childRow(FileSystemItem *child);
@@ -64,16 +65,17 @@ public:
     QString getType() const;
     void setType(const QString &value);
 
-    quint64 getSize() const;
-    void setSize(const quint64 &value);
+    qint64 getSize() const;
+    void setSize(const qint64 &value);
 
     QString getExtension() const;
 
 private:
     QString path                {};
     QString displayName         {};
+    QString extension           {};
     QIcon icon                  {};
-    quint64 size                {};
+    qint64 size                 { -1 };
     QString type                {};
 
     bool folder                 {false};

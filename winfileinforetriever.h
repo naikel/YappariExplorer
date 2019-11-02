@@ -23,6 +23,7 @@ public:
 protected:
     void getChildrenBackground(FileSystemItem *parent) override;
     void getParentInfo(FileSystemItem *parent) override;
+    void getExtendedInfo(FileSystemItem *parent) override;
 
 private:
     QIcon getIconFromFileInfo(SHFILEINFOW sfi, bool isHidden) const;

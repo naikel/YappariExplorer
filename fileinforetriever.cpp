@@ -30,9 +30,12 @@ FileSystemItem *FileInfoRetriever::getRoot(QString path)
     // If this thread is still doing a previous task we have to abort it and wait until it finishes
     if (running.load()) {
         // Abort all the pending threads
+        qDebug() << "FileInfoRetriever::getRoot: " << getScope() << "Stopping all threads";
         running.store(false);
         pool.clear();
+        qDebug() << "FileInfoRetriever::getRoot: " << getScope() << "Waiting for all threads to finish";
         pool.waitForDone();
+        qDebug() << "FileInfoRetriever::getRoot: " << getScope() << "All threads finished";
     }
 
     FileSystemItem *root = new FileSystemItem(path);
@@ -43,6 +46,11 @@ FileSystemItem *FileInfoRetriever::getRoot(QString path)
 }
 
 void FileInfoRetriever::getParentInfo(FileSystemItem *parent)
+{
+    Q_UNUSED(parent)
+}
+
+void FileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
 {
     Q_UNUSED(parent)
 }

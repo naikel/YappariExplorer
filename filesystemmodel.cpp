@@ -1,3 +1,4 @@
+#include <QApplication>
 #include <QFileIconProvider>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QBrush>
@@ -36,13 +37,18 @@ FileSystemModel::FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent
     fileInfoRetriever->setScope(scope);
 
     connect(fileInfoRetriever, &FileInfoRetriever::parentUpdated, this, &FileSystemModel::parentUpdated);
+    connect(fileInfoRetriever, &FileInfoRetriever::itemUpdated, this, &FileSystemModel::itemUpdated);
+    connect(fileInfoRetriever, &FileInfoRetriever::extendedInfoUpdated, this, &FileSystemModel::extendedInfoUpdated);
+
 }
 
 FileSystemModel::~FileSystemModel()
 {
     // Abort all the pending threads
     pool.clear();
+    qDebug() << "FileSystemModel::~FileSystemModel: Waiting for all threads to finish";
     pool.waitForDone();
+    qDebug() << "FileSystemModel::~FileSystemModel: All threads finished";
 
     if (root != nullptr)
         delete root;
@@ -165,7 +171,7 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
                     return QVariant(Qt::AlignRight);
                 break;
             case Qt::ForegroundRole:
-                if (fileSystemItem->isFolder()) {
+                if (fileInfoRetriever->getScope() == FileInfoRetriever::List && fileSystemItem->isFolder()) {
                     return QVariant(QBrush(Qt::darkBlue));
                 }
         }
@@ -243,7 +249,7 @@ void FileSystemModel::sort(int column, Qt::SortOrder order)
 
 QModelIndex FileSystemModel::relativeIndex(QString path, QModelIndex parent)
 {
-    qDebug() << "FileSystemModel::relativeIndex " << path;
+    qDebug() << "FileSystemModel::relativeIndex" << path;
     if (parent.isValid() && parent.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(parent.internalPointer());
         FileSystemItem *child = fileSystemItem->getChild(path);
@@ -256,18 +262,24 @@ QModelIndex FileSystemModel::relativeIndex(QString path, QModelIndex parent)
 
 void FileSystemModel::setRoot(const QString path)
 {
-    qDebug() << "FileSystemModel::setRoot " << path;
+    qDebug() << "FileSystemModel::setRoot" << path;
     settingRoot.store(true);
     emit fetchStarted();
     beginResetModel();
 
     // Abort all the pending threads
     pool.clear();
+    qDebug() << "FileSystemModel::setRoot: Waiting for all threads to finish";
     pool.waitForDone();
+    qDebug() << "FileSystemModel::setRoot: All threads finished";
 
     FileSystemItem *deleteLater = root;
     root = fileInfoRetriever->getRoot(path);
 
+    // Process all dataChanged events that could still modify the old root structure
+    QApplication::processEvents();
+
+    // Now we can delete the old root structure safely
     if (deleteLater != nullptr)
         delete deleteLater;
 }
@@ -279,23 +291,54 @@ FileSystemItem *FileSystemModel::getRoot()
 
 void FileSystemModel::parentUpdated(FileSystemItem *parent)
 {
-    qDebug() << "FileSystemModel::parentUpdated: " << parent->childrenCount() << " children";
+    qDebug() << "FileSystemModel::parentUpdated" << parent->childrenCount() << " children";
 
     parent->sortChildren(currentSortColumn, currentSortOrder);
 
     if (fetchingMore.load()) {
-        qDebug() << "FileSystemModel::parentUpdated: endInsertRows";
+        qDebug() << "FileSystemModel::parentUpdated endInsertRows";
         endInsertRows();
         fetchingMore.store(false);
     }
 
     if (settingRoot.load()) {
-        qDebug() << "FileSystemModel::parentUpdated: endResetModel";
+        qDebug() << "FileSystemModel::parentUpdated endResetModel";
         endResetModel();
         settingRoot.store(false);
     }
 
     emit fetchFinished();
+}
+
+void FileSystemModel::itemUpdated(FileSystemItem *item)
+{
+    // Send the dataChanged signal only if this item has been already updated by the icon
+    // Otherwise it's not necessary since the getIcon will send a dataChanged signal for it
+
+    if (item != nullptr && !item->getIcon().isNull() && !item->hasFakeIcon()) {
+
+        FileSystemItem *parent = item->getParent();
+
+        // This could be an old signal
+        if (item->getParent()->getPath() == root->getPath()) {
+            int row = parent->childRow(item);
+            qDebug() << "FileSystemModel::itemUpdated" << item->getPath() << "row" << row;
+            QModelIndex fromIndex = createIndex(row, Columns::Size, item);
+            QModelIndex lastIndex = createIndex(row, Columns::MaxColumns, item);
+            QVector<int> roles;
+            roles.append(Qt::DisplayRole);
+            emit dataChanged(fromIndex, lastIndex, roles);
+        }
+    }
+}
+
+void FileSystemModel::extendedInfoUpdated(FileSystemItem *parent)
+{
+    Q_UNUSED(parent)
+
+    // If the model is currently sorted by one of the extended info columns, it obviously need resorting
+    if (currentSortColumn >= Columns::Size)
+        sort(currentSortColumn, currentSortOrder);
 }
 
 void FileSystemModel::getIcon(const QModelIndex &index)
@@ -305,15 +348,16 @@ void FileSystemModel::getIcon(const QModelIndex &index)
         QIcon icon = fileInfoRetriever->getIcon(fileSystemItem);
         if (!icon.isNull()) {
             fileSystemItem->setIcon(icon);
-            QVector<int> roles;
-            roles.append(Qt::DecorationRole);
-            emit dataChanged(index, index, roles);
+            emit dataChanged(index, index);
         }
     }
 }
 
-QString FileSystemModel::humanReadableSize(quint64 size) const
+QString FileSystemModel::humanReadableSize(qint64 size) const
 {
+    if (size < 0)
+        return QString();
+
     int i;
     double sizeDouble = size;
     for (i = 0; sizeDouble >= 1024.0 ; i++)

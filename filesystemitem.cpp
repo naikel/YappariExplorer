@@ -1,3 +1,6 @@
+#include <QMimeDatabase>
+#include <QDebug>
+
 #include "filesystemitem.h"
 
 FileSystemItem::FileSystemItem(QString path)
@@ -17,7 +20,21 @@ QString FileSystemItem::getDisplayName() const
 
 void FileSystemItem::setDisplayName(const QString &value)
 {
+#ifdef Q_OS_WIN
+#define MIN_INDEX -1
+#else
+#define MIN_INDEX 0
+#endif
+
     displayName = value;
+
+    QMimeDatabase mimeDatabase;
+    QString suffix = mimeDatabase.suffixForFileName(getDisplayName());
+    if (suffix.isEmpty()) {
+        int index = getDisplayName().lastIndexOf('.');
+        suffix = (index > MIN_INDEX) ? getDisplayName().mid(++index) : QString();
+    }
+    extension = suffix;
 }
 
 void FileSystemItem::addChild(FileSystemItem *child)
@@ -47,6 +64,11 @@ FileSystemItem *FileSystemItem::getChild(QString path)
     return children.value(path);
 }
 
+QList<FileSystemItem *> FileSystemItem::getChildren()
+{
+    return children.values();
+}
+
 int FileSystemItem::childrenCount()
 {
     return children.size();
@@ -58,8 +80,6 @@ int FileSystemItem::childRow(FileSystemItem *child) {
 
 bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j, int column, Qt::SortOrder order)
 {
-    Q_UNUSED(column)
-
     // Folders are first
     if (i->isFolder() && !j->isFolder())
         return true;
@@ -190,26 +210,19 @@ void FileSystemItem::setType(const QString &value)
     type = value;
 }
 
-quint64 FileSystemItem::getSize() const
+qint64 FileSystemItem::getSize() const
 {
     return size;
 }
 
-void FileSystemItem::setSize(const quint64 &value)
+void FileSystemItem::setSize(const qint64 &value)
 {
     size = value;
 }
 
 QString FileSystemItem::getExtension() const
 {
-#ifdef Q_OS_WIN
-#define MIN_INDEX 0
-#else
-#define MIN_INDEX -1
-#endif
-
-    int index = getDisplayName().lastIndexOf('.');
-    return (index > MIN_INDEX) ? getDisplayName().mid(++index) : QString();
+    return extension;
 }
 
 QVariant FileSystemItem::getData(int column)
@@ -223,6 +236,8 @@ QVariant FileSystemItem::getData(int column)
             return QVariant(getSize());
         case DataInfo::Extension:
             return QVariant(getExtension());
+        case DataInfo::Type:
+            return QVariant(getType());
         default:
             return QVariant();
     }

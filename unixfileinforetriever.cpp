@@ -1,6 +1,8 @@
 #include <QFileIconProvider>
+#include <QMimeDatabase>
 #include <QDebug>
 #include <QString>
+#include <QTime>
 
 #include "unixfileinforetriever.h"
 #include "filesystemitem.h"
@@ -47,12 +49,12 @@ void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 #ifdef Q_OS_WIN
     // This is for debugging the Unix implementation from Windows
     if (root == "/")
-        root = "G:\\";
+        root = "C:\\";
 #endif
 
     for(auto& path: fs::directory_iterator(root.toStdWString(), fs::directory_options::skip_permission_denied)) {
 
-        if (running.load())
+        if (!running.load())
             break;
 
         if (getScope() == FileInfoRetriever::List || fs::is_directory(path)) {
@@ -69,7 +71,7 @@ void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
             // Get the display name
             child->setDisplayName(QString::fromStdWString(path.path().filename().wstring()));
-            qDebug() << "Path " << child->getPath() << " isDrive " << child->isDrive();
+            qDebug() << "UnixFileInfoRetriever::getChildrenBackground " << getScope() << child->getPath();
 
             // Set basic attributes
             child->setFolder(fs::is_directory(path));
@@ -83,11 +85,76 @@ void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
     parent->setAllChildrenFetched(true);
     emit parentUpdated(parent);
 
+    if (getScope() == FileInfoRetriever::List)
+         getExtendedInfo(parent);
+
     running.store(false);
+}
+
+QString toTitleCase(QString str)
+{
+    QString result;
+    QStringList strList = str.split(' ');
+    for (auto word : strList) {
+        if (!result.isEmpty())
+            result += ' ';
+        result += word.replace(0, 1, word.at(0).toUpper());
+    }
+    return result;
+}
+
+void UnixFileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
+{
+    qDebug() << "UnixFileInfoRetriever::getExtendedInfo " << getScope() << " Parent path " << parent->getPath();
+
+    QTime start;
+    start.start();
+
+    QMimeDatabase mimeDatabase;
+
+    if (parent != nullptr && parent->areAllChildrenFetched()) {
+
+        for (auto item : parent->getChildren()) {
+
+            if (!running.load())
+                break;
+
+            if (!item->isFolder()) {
+
+                fs::path path = fs::path(item->getPath().toStdWString().c_str());
+                item->setSize(static_cast<qint64>(fs::file_size(path)));
+                QList<QMimeType> mimeList = mimeDatabase.mimeTypesForFileName(item->getDisplayName());
+                if (mimeList.size() > 0)
+                    item->setType(toTitleCase(mimeList.at(0).comment()));
+                else {
+                    QString strType;
+                    if (!item->getExtension().isEmpty())
+                        strType = item->getExtension().toUpper() + ' ';
+
+                    item->setType(strType + tr("File"));
+                }
+            }
+
+            emit itemUpdated(item);
+        }
+
+        if (!running.load()) {
+            qDebug() << "UnixFileInfoRetriever::getExtendedInfo " << getScope() << "Parent path " << parent->getPath() << " aborted!";
+            return;
+        }
+
+        // We need to signal the model that all the children need to be re-sorted
+        emit (extendedInfoUpdated(parent));
+    }
+
+    qDebug() << "UnixFileInfoRetriever::getExtendedInfo Finished in" << start.elapsed() << "milliseconds";
 }
 
 bool UnixFileInfoRetriever::hasSubFolders(fs::path path)
 {
+    if (!fs::is_directory(path))
+        return false;
+
     try {
         for(auto& child: fs::directory_iterator(path)) {
             if (fs::is_directory(child))

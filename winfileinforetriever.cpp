@@ -18,10 +18,7 @@ WinFileInfoRetriever::WinFileInfoRetriever(QObject *parent) : FileInfoRetriever(
 
 void WinFileInfoRetriever::getParentInfo(FileSystemItem *parent)
 {
-    qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope();
-
     LPITEMIDLIST pidl;
-
     HRESULT hr;
     qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " Parent path " << parent->getPath();
     hr = (parent->getPath() == "/")
@@ -44,12 +41,9 @@ void WinFileInfoRetriever::getParentInfo(FileSystemItem *parent)
 
 void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 {
-    qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope();
-
     ::CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
     LPITEMIDLIST pidl;
-
     HRESULT hr;
     qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "Parent path " << parent->getPath();
     hr = (parent->getPath() == "/")
@@ -111,33 +105,37 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                         child->setFolder((attributes & SFGAO_FOLDER) && !(attributes & SFGAO_STREAM) && !child->isDrive());
                         child->setHasSubFolders((getScope() == FileInfoRetriever::Tree) ? (attributes & SFGAO_HASSUBFOLDER) : false);
                         child->setHidden(attributes & SFGAO_HIDDEN);
+                        if (child->isFolder())
+                            child->setType(QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer"));
 
-                         // Set extended attributes if the scope is a detailed list
+                        // Set extended attributes if the scope is a detailed list
+                        /*
                         if (getScope() == FileInfoRetriever::List) {
                             QString strType;
                             if (child->isFolder()) {
                                 strType = QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer");
                             } else {
-
                                 if (!child->isDrive()) {
                                     // File Size
-                                    WIN32_FILE_ATTRIBUTE_DATA fileAttributeData;
-                                    if (GetFileAttributesExW(child->getPath().toStdWString().c_str(), GetFileExInfoStandard, &fileAttributeData)) {
-                                        quint64 size = fileAttributeData.nFileSizeHigh;
+                                    // Method 2 - VERY FAST
+                                    WIN32_FIND_DATAW fileAttributeData;
+                                    HANDLE h = FindFirstFileW(child->getPath().toStdWString().c_str(), &fileAttributeData);
+                                    if (h != INVALID_HANDLE_VALUE) {
+                                        FindClose(h);
+                                        qint64 size = fileAttributeData.nFileSizeHigh;
                                         size = (size << 32) + fileAttributeData.nFileSizeLow;
                                         child->setSize(size);
                                     }
                                 }
 
                                 // File Type
-                                UINT flags = SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME;
                                 SHFILEINFO info;
                                 ::SHGetFileInfo(child->getPath().toStdWString().c_str(), attributes, &info, sizeof(SHFILEINFO), flags);
                                 strType = QString::fromStdWString(info.szTypeName);
                             }
                             child->setType(strType);
                         }
-
+                        */
                         parent->addChild(child);
                     }
 
@@ -160,8 +158,76 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
         parent->setAllChildrenFetched(true);
         emit parentUpdated(parent);
 
+        if (getScope() == FileInfoRetriever::List)
+             getExtendedInfo(parent);
+
         running.store(false);
     }
+}
+
+void WinFileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
+{
+    qDebug() << "WinFileInfoRetriever::getExtendedInfo " << getScope() << " Parent path " << parent->getPath();
+
+    QTime start;
+    start.start();
+
+    if (parent != nullptr && parent->areAllChildrenFetched()) {
+
+        SFGAOF attributes {};
+        UINT flags = SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME;
+
+        for (auto item : parent->getChildren()) {
+
+            if (!running.load())
+                break;
+
+            QString strType;
+            if (item->isFolder()) {
+                strType = QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer");
+            } else {
+
+                if (!item->isDrive()) {
+                    // File Size
+                    /*
+                    // Method 1 - VERY SLOW
+                    WIN32_FILE_ATTRIBUTE_DATA fileAttributeData;
+                    if (GetFileAttributesExW(item->getPath().toStdWString().c_str(), GetFileExInfoStandard, &fileAttributeData)) {
+                        qint64 size = fileAttributeData.nFileSizeHigh;
+                        size = (size << 32) + fileAttributeData.nFileSizeLow;
+                        item->setSize(size);
+                    }
+                    */
+                    // Method 2 - VERY FAST
+                    WIN32_FIND_DATAW fileAttributeData;
+                    HANDLE h = FindFirstFileW(item->getPath().toStdWString().c_str(), &fileAttributeData);
+                    if (h != INVALID_HANDLE_VALUE) {
+                        FindClose(h);
+                        qint64 size = fileAttributeData.nFileSizeHigh;
+                        size = (size << 32) + fileAttributeData.nFileSizeLow;
+                        item->setSize(size);
+                    }
+                }
+
+                // File Type
+                SHFILEINFO info;
+                ::SHGetFileInfo(item->getPath().toStdWString().c_str(), attributes, &info, sizeof(SHFILEINFO), flags);
+                strType = QString::fromStdWString(info.szTypeName);
+            }
+            item->setType(strType);
+            emit itemUpdated(item);
+        }
+
+        if (!running.load()) {
+            qDebug() << "WinFileInfoRetriever::getExtendedInfo " << getScope() << "Parent path " << parent->getPath() << " aborted!";
+            return;
+        }
+
+        // We need to signal the model that all the children need to be re-sorted
+        emit (extendedInfoUpdated(parent));
+    }
+
+    qDebug() << "WinFileInfoRetriever::getExtendedInfo Finished in" << start.elapsed() << "milliseconds";
 }
 
 QIcon WinFileInfoRetriever::getIcon(FileSystemItem *item) const
