@@ -29,7 +29,7 @@ void FileSystemItem::setDisplayName(const QString &value)
     displayName = value;
 
     QMimeDatabase mimeDatabase;
-    QString suffix = mimeDatabase.suffixForFileName(getDisplayName());
+    QString suffix = mimeDatabase.suffixForFileName(value);
     if (suffix.isEmpty()) {
         int index = getDisplayName().lastIndexOf('.');
         suffix = (index > MIN_INDEX) ? getDisplayName().mid(++index) : QString();
@@ -103,11 +103,7 @@ bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j, int column, Qt:
         right = QVariant(right.toString().toLower());
 
     // If both items are files or both are folders then direct comparison is allowed
-    if (i->isFolder() && j->isFolder())
-        return (order == Qt::AscendingOrder  && i->getDisplayName().toLower() < j->getDisplayName().toLower()) ||
-               (order == Qt::DescendingOrder && i->getDisplayName().toLower() > j->getDisplayName().toLower());
-
-    if (!i->isFolder() && !j->isFolder()) {
+    if ((!i->isFolder() && !j->isFolder()) || (i->isFolder() && j->isFolder())) {
         if (left == right) {
             return (order == Qt::AscendingOrder  && i->getDisplayName().toLower() < j->getDisplayName().toLower()) ||
                    (order == Qt::DescendingOrder && i->getDisplayName().toLower() > j->getDisplayName().toLower());
@@ -210,12 +206,12 @@ void FileSystemItem::setType(const QString &value)
     type = value;
 }
 
-qint64 FileSystemItem::getSize() const
+quint64 FileSystemItem::getSize() const
 {
     return size;
 }
 
-void FileSystemItem::setSize(const qint64 &value)
+void FileSystemItem::setSize(const quint64 &value)
 {
     size = value;
 }
@@ -225,19 +221,51 @@ QString FileSystemItem::getExtension() const
     return extension;
 }
 
+QDateTime FileSystemItem::getCreationTime() const
+{
+    return creationTime;
+}
+
+void FileSystemItem::setCreationTime(const QDateTime &value)
+{
+    creationTime = value;
+}
+
+QDateTime FileSystemItem::getLastAccessTime() const
+{
+    return lastAccessTime;
+}
+
+void FileSystemItem::setLastAccessTime(const QDateTime &value)
+{
+    lastAccessTime = value;
+}
+
+QDateTime FileSystemItem::getLastChangeTime() const
+{
+    return lastChangeTime;
+}
+
+void FileSystemItem::setLastChangeTime(const QDateTime &value)
+{
+    lastChangeTime = value;
+}
+
 QVariant FileSystemItem::getData(int column)
 {
     DataInfo dataInfo = static_cast<DataInfo>(column);
 
     switch (dataInfo) {
-        case DataInfo::Name:
-            return QVariant(getDisplayName());
+    case DataInfo::Name:
+        return QVariant(getDisplayName());
         case DataInfo::Size:
             return QVariant(getSize());
         case DataInfo::Extension:
             return QVariant(getExtension());
         case DataInfo::Type:
             return QVariant(getType());
+        case DataInfo::LastChangeTime:
+            return QVariant(getLastChangeTime());
         default:
             return QVariant();
     }

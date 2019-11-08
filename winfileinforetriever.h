@@ -32,6 +32,7 @@ private:
     QPixmap getPixmapFromIndex(int index) const;
     SHFILEINFOW getSystemImageListIndexFromPIDL(LPITEMIDLIST pidl) const;
     SHFILEINFOW getSystemImageListIndexFromPath(QString path) const;
+    QDateTime fileTimeToQDateTime(LPFILETIME fileTime);
 };
 
 #endif // WINFILEINFORETRIEVER_H

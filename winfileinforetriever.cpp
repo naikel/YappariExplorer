@@ -108,34 +108,18 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                         if (child->isFolder())
                             child->setType(QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer"));
 
-                        // Set extended attributes if the scope is a detailed list
-                        /*
-                        if (getScope() == FileInfoRetriever::List) {
-                            QString strType;
-                            if (child->isFolder()) {
-                                strType = QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer");
-                            } else {
-                                if (!child->isDrive()) {
-                                    // File Size
-                                    // Method 2 - VERY FAST
-                                    WIN32_FIND_DATAW fileAttributeData;
-                                    HANDLE h = FindFirstFileW(child->getPath().toStdWString().c_str(), &fileAttributeData);
-                                    if (h != INVALID_HANDLE_VALUE) {
-                                        FindClose(h);
-                                        qint64 size = fileAttributeData.nFileSizeHigh;
-                                        size = (size << 32) + fileAttributeData.nFileSizeLow;
-                                        child->setSize(size);
-                                    }
-                                }
+                        // File Size - Method 3 - FASTEST
+                        WIN32_FIND_DATAW fileAttributeData;
+                        if (SUCCEEDED(::SHGetDataFromIDListW(psf, pidlChildren, SHGDFIL_FINDDATA, &fileAttributeData, sizeof(fileAttributeData)))) {
+                            quint64 size = fileAttributeData.nFileSizeHigh;
+                            size = (size << 32) + fileAttributeData.nFileSizeLow;
+                            child->setSize(size);
 
-                                // File Type
-                                SHFILEINFO info;
-                                ::SHGetFileInfo(child->getPath().toStdWString().c_str(), attributes, &info, sizeof(SHFILEINFO), flags);
-                                strType = QString::fromStdWString(info.szTypeName);
-                            }
-                            child->setType(strType);
+                            child->setCreationTime(fileTimeToQDateTime(&(fileAttributeData.ftCreationTime)));
+                            child->setLastChangeTime(fileTimeToQDateTime(&(fileAttributeData.ftLastWriteTime)));
+                            child->setLastAccessTime(fileTimeToQDateTime(&(fileAttributeData.ftLastAccessTime)));
                         }
-                        */
+
                         parent->addChild(child);
                     }
 
@@ -187,27 +171,28 @@ void WinFileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
                 strType = QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer");
             } else {
 
+                /*
                 if (!item->isDrive()) {
-                    // File Size
-                    /*
-                    // Method 1 - VERY SLOW
+                    // File Size - Method 1 - VERY SLOW
                     WIN32_FILE_ATTRIBUTE_DATA fileAttributeData;
                     if (GetFileAttributesExW(item->getPath().toStdWString().c_str(), GetFileExInfoStandard, &fileAttributeData)) {
-                        qint64 size = fileAttributeData.nFileSizeHigh;
+                        quint64 size = fileAttributeData.nFileSizeHigh;
                         size = (size << 32) + fileAttributeData.nFileSizeLow;
                         item->setSize(size);
                     }
-                    */
-                    // Method 2 - VERY FAST
+
+                    // File Size - Method 2 - FASTER
                     WIN32_FIND_DATAW fileAttributeData;
                     HANDLE h = FindFirstFileW(item->getPath().toStdWString().c_str(), &fileAttributeData);
                     if (h != INVALID_HANDLE_VALUE) {
                         FindClose(h);
-                        qint64 size = fileAttributeData.nFileSizeHigh;
+                        quint64 size = fileAttributeData.nFileSizeHigh;
                         size = (size << 32) + fileAttributeData.nFileSizeLow;
                         item->setSize(size);
                     }
+
                 }
+                */
 
                 // File Type
                 SHFILEINFO info;
@@ -314,5 +299,14 @@ SHFILEINFOW WinFileInfoRetriever::getSystemImageListIndexFromPath(QString path) 
     }
     sfi.iIcon = -1;
     return sfi;
+}
+
+QDateTime WinFileInfoRetriever::fileTimeToQDateTime(LPFILETIME fileTime)
+{
+    SYSTEMTIME systemTime;
+    FileTimeToSystemTime(fileTime, &systemTime);
+    QDate date = QDate(systemTime.wYear, systemTime.wMonth, systemTime.wDay);
+    QTime time = QTime(systemTime.wHour, systemTime.wMinute, systemTime.wSecond, systemTime.wMilliseconds);
+    return(QDateTime(date, time, Qt::UTC));
 }
 

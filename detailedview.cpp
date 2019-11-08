@@ -3,14 +3,16 @@
 
 #include "detailedview.h"
 #include "filesystemmodel.h"
+#include "dateitemdelegate.h"
 
 DetailedView::DetailedView(QWidget *parent) : QTreeView(parent)
 {
     setRootIsDecorated(false);
     setFrameShape(QFrame::NoFrame);
     setSortingEnabled(true);
-    this->header()->setSortIndicator(0, Qt::AscendingOrder);
 
+    DateItemDelegate *dateDelegate = new DateItemDelegate(this);
+    setItemDelegateForColumn(FileSystemModel::Columns::LastChangeTime, dateDelegate);
 }
 
 void DetailedView::setModel(QAbstractItemModel *model)

@@ -17,6 +17,7 @@ public:
         Extension,
         Size,
         Type,
+        LastChangeTime,
         MaxColumns
     };
 
@@ -65,7 +66,7 @@ private:
 
     void getIcon(const QModelIndex &index);
 
-    QString humanReadableSize(qint64 size) const;
+    QString humanReadableSize(quint64 size) const;
 };
 
 #endif // FILESYSTEMMODEL_H

@@ -4,6 +4,8 @@
 #include <QBrush>
 #include <QDebug>
 #include <QDir>
+
+#include <limits>
 #include <cmath>
 
 #include "filesystemmodel.h"
@@ -136,6 +138,8 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
                         return QVariant(humanReadableSize(fileSystemItem->getSize()));
                     case Columns::Type:
                         return QVariant(fileSystemItem->getType());
+                    case Columns::LastChangeTime:
+                        return QVariant(fileSystemItem->getLastChangeTime().toMSecsSinceEpoch());
                     default:
                         return QVariant();
                 }
@@ -193,6 +197,8 @@ QVariant FileSystemModel::headerData(int section, Qt::Orientation orientation, i
                 return QVariant(tr("Size"));
             case Columns::Type:
                 return QVariant(tr("Type"));
+            case Columns::LastChangeTime:
+                return QVariant(tr("Date Modified"));
         }
     }
     return QVariant();
@@ -353,9 +359,9 @@ void FileSystemModel::getIcon(const QModelIndex &index)
     }
 }
 
-QString FileSystemModel::humanReadableSize(qint64 size) const
+QString FileSystemModel::humanReadableSize(quint64 size) const
 {
-    if (size < 0)
+    if (size == std::numeric_limits<quint64>::max())
         return QString();
 
     int i;
@@ -365,8 +371,8 @@ QString FileSystemModel::humanReadableSize(qint64 size) const
 
     // Remove decimals for exact values (like 24.00) and for sizeDouble >= 100
     QString strSize;
-    if ((sizeDouble > 100) || ((sizeDouble - trunc(sizeDouble)) < 0.001))
-        strSize = QString::number(trunc(sizeDouble));
+    if ((sizeDouble >= 100.0) || ((sizeDouble - trunc(sizeDouble)) < 0.001))
+        strSize = QString::number(qRound(sizeDouble));
     else
         strSize = QString::number(sizeDouble, 'f', 2);
 

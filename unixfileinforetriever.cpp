@@ -122,7 +122,7 @@ void UnixFileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
             if (!item->isFolder()) {
 
                 fs::path path = fs::path(item->getPath().toStdWString().c_str());
-                item->setSize(static_cast<qint64>(fs::file_size(path)));
+                item->setSize(fs::file_size(path));
                 QList<QMimeType> mimeList = mimeDatabase.mimeTypesForFileName(item->getDisplayName());
                 if (mimeList.size() > 0)
                     item->setType(toTitleCase(mimeList.at(0).comment()));

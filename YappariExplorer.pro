@@ -18,6 +18,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
     customtabwidget.cpp \
     customtreeview.cpp \
+    dateitemdelegate.cpp \
     detailedview.cpp \
     fileinforetriever.cpp \
     filesystemitem.cpp \
@@ -28,6 +29,7 @@ SOURCES += \
 HEADERS += \
     customtabwidget.h \
     customtreeview.h \
+    dateitemdelegate.h \
     detailedview.h \
     fileinforetriever.h \
     filesystemitem.h \

@@ -5,6 +5,9 @@
 #include <QIcon>
 #include <QString>
 #include <QVariant>
+#include <QDateTime>
+
+#include <limits>
 
 class FileSystemItem
 {
@@ -15,6 +18,7 @@ public:
         Extension,
         Size,
         Type,
+        LastChangeTime,
         MaxColumns
     };
 
@@ -65,18 +69,30 @@ public:
     QString getType() const;
     void setType(const QString &value);
 
-    qint64 getSize() const;
-    void setSize(const qint64 &value);
+    quint64 getSize() const;
+    void setSize(const quint64 &value);
 
     QString getExtension() const;
 
+    QDateTime getCreationTime() const;
+    void setCreationTime(const QDateTime &value);
+
+    QDateTime getLastAccessTime() const;
+    void setLastAccessTime(const QDateTime &value);
+
+    QDateTime getLastChangeTime() const;
+    void setLastChangeTime(const QDateTime &value);
+
 private:
-    QString path                {};
-    QString displayName         {};
-    QString extension           {};
-    QIcon icon                  {};
-    qint64 size                 { -1 };
-    QString type                {};
+    QString     path                {};
+    QString     displayName         {};
+    QString     extension           {};
+    QIcon       icon                {};
+    quint64     size                { std::numeric_limits<quint64>::max() };
+    QString     type                {};
+    QDateTime   creationTime        {};
+    QDateTime   lastAccessTime      {};
+    QDateTime   lastChangeTime      {};
 
     bool folder                 {false};
     bool hidden                 {false};
