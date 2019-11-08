@@ -1,8 +1,13 @@
 #include <QFileIconProvider>
 #include <QMimeDatabase>
+#include <QDateTime>
 #include <QDebug>
 #include <QString>
 #include <QTime>
+
+#include <chrono>
+
+#include <sys/stat.h>
 
 #include "unixfileinforetriever.h"
 #include "filesystemitem.h"
@@ -78,7 +83,14 @@ void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             child->setHasSubFolders(hasSubFolders(path));
             child->setHidden(child->getPath().at(0) == '.');
 
+            struct stat buffer;
+            stat(strPath.toStdString().c_str(), &buffer);
+            child->setSize(static_cast<quint64>(buffer.st_size));
+            child->setLastChangeTime(QDateTime::fromTime_t(static_cast<uint>(buffer.st_mtime)));
+            child->setLastAccessTime(QDateTime::fromTime_t(static_cast<uint>(buffer.st_atime)));
+
             parent->addChild(child);
+
         }
     }
 
@@ -121,8 +133,6 @@ void UnixFileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
 
             if (!item->isFolder()) {
 
-                fs::path path = fs::path(item->getPath().toStdWString().c_str());
-                item->setSize(fs::file_size(path));
                 QList<QMimeType> mimeList = mimeDatabase.mimeTypesForFileName(item->getDisplayName());
                 if (mimeList.size() > 0)
                     item->setType(toTitleCase(mimeList.at(0).comment()));

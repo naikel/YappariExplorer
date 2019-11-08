@@ -25,9 +25,13 @@ void DetailedView::setModel(QAbstractItemModel *model)
     QTreeView::setModel(model);
 
     // Test default settings
-    this->header()->resizeSection(FileSystemModel::Columns::Name,600);
-    this->header()->resizeSection(FileSystemModel::Columns::Extension,30);
+    this->header()->setMinimumSectionSize(100);
+    this->header()->resizeSection(FileSystemModel::Columns::Name, 600);
+    this->header()->resizeSection(FileSystemModel::Columns::Extension, 100);
+    this->header()->resizeSection(FileSystemModel::Columns::LastChangeTime, 230);
+    this->header()->setStretchLastSection(false);
     this->header()->setSortIndicator(FileSystemModel::Columns::Extension, Qt::SortOrder::AscendingOrder);
+
 }
 
 void DetailedView::setNormalCursor()

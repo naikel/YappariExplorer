@@ -171,8 +171,11 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
                 }
                 break;
             case Qt::TextAlignmentRole:
-                if (index.column() == Columns::Size)
-                    return QVariant(Qt::AlignRight);
+                switch (index.column()) {
+                    case Columns::Size:
+                    case Columns::LastChangeTime:
+                        return QVariant(Qt::AlignRight);
+                }
                 break;
             case Qt::ForegroundRole:
                 if (fileInfoRetriever->getScope() == FileInfoRetriever::List && fileSystemItem->isFolder()) {
@@ -187,19 +190,28 @@ QVariant FileSystemModel::headerData(int section, Qt::Orientation orientation, i
 {
     Q_UNUSED(orientation)
 
-    if (role == Qt::DisplayRole) {
-        switch (section) {
-            case Columns::Name:
-                return QVariant(tr("Name"));
-            case Columns::Extension:
-                return QVariant(tr("Ext"));
-            case Columns::Size:
-                return QVariant(tr("Size"));
-            case Columns::Type:
-                return QVariant(tr("Type"));
-            case Columns::LastChangeTime:
-                return QVariant(tr("Date Modified"));
-        }
+    switch (role) {
+        case Qt::DisplayRole:
+            switch (section) {
+                case Columns::Name:
+                    return QVariant(tr("Name"));
+                case Columns::Extension:
+                    return QVariant(tr("Ext"));
+                case Columns::Size:
+                    return QVariant(tr("Size"));
+                case Columns::Type:
+                    return QVariant(tr("Type"));
+                case Columns::LastChangeTime:
+                    return QVariant(tr("Date Modified"));
+            }
+            break;
+        case Qt::TextAlignmentRole:
+            switch (section) {
+                case Columns::Size:
+                case Columns::LastChangeTime:
+                    return QVariant(Qt::AlignRight);
+            }
+            break;
     }
     return QVariant();
 }

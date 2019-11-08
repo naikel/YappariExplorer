@@ -141,7 +141,7 @@ void FileSystemItem::setAllChildrenFetched(bool value)
     allChildrenFetched = value;
 }
 
-bool FileSystemItem::isDrive()
+bool FileSystemItem::isDrive() const
 {
     return (path.length() == 3 && path.at(0).isLetter() && path.at(1) == ':' && path.at(2) == '\\');
 }
@@ -174,6 +174,7 @@ bool FileSystemItem::isFolder() const
 void FileSystemItem::setFolder(bool value)
 {
     folder = value;
+    extension = QString();
 }
 
 bool FileSystemItem::isHidden() const

@@ -32,19 +32,18 @@ void DateItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
     QFontMetrics fm = QFontMetrics(opt.font);
     QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(opt.text.toLongLong()).toLocalTime();
 
-    // Get time size
+    // Get maximum time and date sizes
     QString sampleTimeStr = QTime(10, 00).toString(Qt::SystemLocaleShortDate);
     QString sampleDateStr = QDate(2000, 10, 30).toString(Qt::SystemLocaleShortDate);
     int timeSize = fm.size(0, "  " + sampleTimeStr).width();
     int dateSize = fm.size(0, "  " + sampleDateStr).width();
 
+    QRect originalRect = opt.rect;
     opt.displayAlignment = Qt::AlignRight;
 
-    QRect originalRect = opt.rect;
-    int dateX = std::max(opt.rect.x() - timeSize - dateSize, opt.rect.x());
-    opt.rect.setX(dateX);
-
+    // Find out the maximum width of the date portion of the control
     int dateWidth = std::max(opt.rect.width() - timeSize, dateSize);
+    dateWidth = std::min(opt.rect.width(), dateWidth);
     opt.rect.setWidth(dateWidth);
 
     opt.text = dateTime.date().toString(Qt::SystemLocaleShortDate);
@@ -52,6 +51,7 @@ void DateItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
 
     opt.rect = originalRect;
 
+    // Only try to draw the time if there's enough space for it
     int timeWidth = std::min(timeSize, opt.rect.width() - dateSize);
     if (timeWidth > 0) {
         opt.rect.setX(opt.rect.x() + opt.rect.width() - timeWidth);
@@ -59,7 +59,6 @@ void DateItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
         opt.text = dateTime.time().toString(Qt::SystemLocaleShortDate);
         style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, widget);
     }
-
 }
 
 void DateItemDelegate::initStyleOption(QStyleOptionViewItem *option, const QModelIndex &index) const
