@@ -15,6 +15,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    setWindowIcon(QIcon(":/icons/app2.png"));
     setWindowTitle("Yappari Explorer");
 
     FileSystemModel *fileSystemModel = new FileSystemModel(FileInfoRetriever::Tree, this);
@@ -22,6 +23,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->treeView->setModel(fileSystemModel);
 
+    connect(ui->treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &MainWindow::changeTitle);
     connect(ui->treeView, &CustomTreeView::clicked, ui->tabWidget, &CustomTabWidget::changeRootIndex);
     connect(ui->tabWidget, &CustomTabWidget::rootChanged, this, &MainWindow::expandAndSelect);
     connect(ui->treeView, &CustomTreeView::collapsed, this, &MainWindow::collapseAndSelect);
@@ -82,6 +84,20 @@ void MainWindow::collapseAndSelect(QModelIndex index)
             }
         }
     }
+}
+
+void MainWindow::changeTitle(const QItemSelection &selected, const QItemSelection &deselected)
+{
+    Q_UNUSED(selected)
+    Q_UNUSED(deselected)
+
+    QString title = "Yappari Explorer";
+    QModelIndex index = ui->treeView->selectedItem();
+    if (index.isValid()) {
+        FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
+        title = fileSystemItem->getDisplayName() + " - " + title;
+    }
+    setWindowTitle(title);
 }
 
 

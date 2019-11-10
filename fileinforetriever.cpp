@@ -13,7 +13,7 @@ FileInfoRetriever::FileInfoRetriever(QObject *parent) : QObject(parent)
 
 FileInfoRetriever::~FileInfoRetriever()
 {
-    qDebug() << "~FileInfoRetriever About to destroy";
+    qDebug() << "FileInfoRetriever::~FileInfoRetriever About to destroy";
 
     if (running.load()) {
         // Abort all the pending threads
@@ -22,7 +22,7 @@ FileInfoRetriever::~FileInfoRetriever()
         pool.waitForDone();
     }
 
-    qDebug() << "~FileInfoRetriever Destroyed";
+    qDebug() << "FileInfoRetriever::~FileInfoRetriever Destroyed";
 }
 
 FileSystemItem *FileInfoRetriever::getRoot(QString path)

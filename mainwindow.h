@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <QItemSelection>
 #include <QMainWindow>
 #include <QModelIndex>
 
@@ -19,6 +20,7 @@ public:
 public slots:
     void expandAndSelect(QString path);
     void collapseAndSelect(QModelIndex index);
+    void changeTitle(const QItemSelection &selected, const QItemSelection &deselected);
 
 private:
     Ui::MainWindow *ui;

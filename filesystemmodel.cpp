@@ -177,12 +177,10 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
                         return QVariant(Qt::AlignRight | Qt::AlignVCenter);
                 }
                 break;
-#ifdef Q_OS_WIN
             case Qt::ForegroundRole:
                 if (fileInfoRetriever->getScope() == FileInfoRetriever::List && fileSystemItem->isFolder()) {
                     return QVariant(QBrush(Qt::darkBlue));
                 }
-#endif
         }
     }
     return QVariant();

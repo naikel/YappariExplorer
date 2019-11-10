@@ -184,7 +184,9 @@ QIcon UnixFileInfoRetriever::getIcon(FileSystemItem *item) const
         QFileInfo fileInfo = QFileInfo(strPath);
         icon = iconProvider.icon(fileInfo);
     }
-    QPixmap pixmap = icon.pixmap(64);
+
+    // This probably would be part of the configuration
+    QPixmap pixmap = icon.pixmap(16);
 
     if (item->isHidden()) {
 
