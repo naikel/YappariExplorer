@@ -78,8 +78,12 @@ void CustomTabWidget::doubleClicked(const QModelIndex &index)
     if (index.isValid() && index.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
         if (fileSystemItem->isDrive() || fileSystemItem->isFolder()) {
+            QString path = fileSystemItem->getPath();
+
+            // This will delete (free) the fileSystemItem and it's no longer valid
             changeRootIndex(index);
-            emit rootChanged(fileSystemItem->getPath());
+
+            emit rootChanged(path);
         }
     }
 }

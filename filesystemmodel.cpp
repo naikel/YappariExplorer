@@ -272,11 +272,7 @@ QModelIndex FileSystemModel::relativeIndex(QString path, QModelIndex parent)
     qDebug() << "FileSystemModel::relativeIndex" << path;
     if (parent.isValid() && parent.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem *>(parent.internalPointer());
-        if (fileSystemItem->deleted)
-            qDebug() << "PARENT WAS DELETED: " << fileSystemItem->getPath();
         FileSystemItem *child = fileSystemItem->getChild(path);
-        if (child->deleted)
-            qDebug() << "CHILD WAS DELETED " << child->getPath();
 
         return createIndex(fileSystemItem->childRow(child), 0, child);
 

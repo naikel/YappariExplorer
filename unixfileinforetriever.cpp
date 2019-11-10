@@ -1,6 +1,7 @@
 #include <QFileIconProvider>
 #include <QMimeDatabase>
 #include <QDateTime>
+#include <QPainter>
 #include <QDebug>
 #include <QString>
 #include <QTime>
@@ -12,9 +13,6 @@
 
 UnixFileInfoRetriever::UnixFileInfoRetriever(QObject *parent) : FileInfoRetriever(parent)
 {
-    qDebug() << QIcon::themeSearchPaths();
-    //QIcon::setThemeName("HighContrast");
-    QIcon::setThemeName("Adwaita");
 }
 
 void UnixFileInfoRetriever::getParentInfo(FileSystemItem *parent)
@@ -27,18 +25,12 @@ void UnixFileInfoRetriever::getParentInfo(FileSystemItem *parent)
     if (parent->getPath() == "/") {
         parent->setDisplayName("File System");
         parent->setHasSubFolders(true);
-        parent->setIcon(iconProvider.icon(QFileIconProvider::Drive));
-
     } else {
-
         fs::path path = parent->getPath().toStdWString();
         parent->setDisplayName(QString::fromStdWString(path.filename().wstring()));
         parent->setHasSubFolders(hasSubFolders(path));
-
-        // Set icon using QFileInfo
-        QFileInfo fileInfo = QFileInfo(parent->getPath());
-        parent->setIcon(iconProvider.icon(fileInfo));
     }
+    parent->setIcon(getIcon(parent));
     qDebug() << "UnixFileInfoRetriever::getParentInfo " << getScope() << " Root name is " << parent->getDisplayName();
 
 }
@@ -77,9 +69,10 @@ void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             qDebug() << "UnixFileInfoRetriever::getChildrenBackground " << getScope() << child->getPath();
 
             // Set basic attributes
+            qDebug() << child->getPath() << "is directory" << fs::is_directory(path);
             child->setFolder(fs::is_directory(path));
             child->setHasSubFolders(hasSubFolders(path));
-            child->setHidden(child->getPath().at(0) == '.');
+            child->setHidden(child->getDisplayName().at(0) == '.');
 
             struct stat buffer;
             stat(strPath.toStdString().c_str(), &buffer);
@@ -184,6 +177,30 @@ QIcon UnixFileInfoRetriever::getIcon(FileSystemItem *item) const
     qDebug() << "UnixFileInfoRetriever::getIcon " << getScope() << strPath;
 
     // Set icon using QFileInfo
-    QFileInfo fileInfo = QFileInfo(strPath);
-    return iconProvider.icon(fileInfo);
+    QIcon icon;
+    if (strPath == "/")
+        icon = iconProvider.icon(QFileIconProvider::Drive);
+    else {
+        QFileInfo fileInfo = QFileInfo(strPath);
+        icon = iconProvider.icon(fileInfo);
+    }
+    QPixmap pixmap = icon.pixmap(64);
+
+    if (item->isHidden()) {
+
+        // The ghosted icon for hidden files is not provided by the OS
+        // Here's an alpha blend implementation using Qt objects only
+
+        if (!pixmap.isNull()) {
+
+            QImage image = pixmap.toImage();
+            QPainter paint(&pixmap);
+            paint.setCompositionMode(QPainter::CompositionMode_Clear);
+            paint.setOpacity(0.5);
+            paint.drawImage(0, 0, image);
+        }
+    }
+
+    return QIcon(pixmap);
 }
+

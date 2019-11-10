@@ -11,17 +11,7 @@ FileSystemItem::FileSystemItem(QString path)
 
 FileSystemItem::~FileSystemItem()
 {
-    qDebug() << "Deleting" << getPath() << "with its" << childrenCount() << "children";
-    for (auto child : children.values()) {
-        qDebug() << "About to delete"  << child->getPath();
-        if (child != nullptr) {
-            //delete child;
-            deleted = true;
-        }
-        else
-            qDebug() << " WHAT???" ;
-
-    }
+    qDeleteAll(children);
 }
 
 QString FileSystemItem::getDisplayName() const
@@ -185,7 +175,8 @@ bool FileSystemItem::isFolder() const
 void FileSystemItem::setFolder(bool value)
 {
     folder = value;
-    extension = QString();
+    if (folder)
+        extension = QString();
 }
 
 bool FileSystemItem::isHidden() const

@@ -31,7 +31,6 @@ void DetailedView::setModel(QAbstractItemModel *model)
     this->header()->resizeSection(FileSystemModel::Columns::LastChangeTime, 230);
     this->header()->setStretchLastSection(false);
     this->header()->setSortIndicator(FileSystemModel::Columns::Extension, Qt::SortOrder::AscendingOrder);
-
 }
 
 void DetailedView::setNormalCursor()
