@@ -257,7 +257,7 @@ void FileSystemModel::fetchMore(const QModelIndex &parent)
 
 void FileSystemModel::sort(int column, Qt::SortOrder order)
 {
-    qDebug() << "FileSystemModel::Model sort requested";
+    qDebug() << "FileSystemModel::sort requested";
     currentSortOrder = order;
     currentSortColumn = column;
     emit layoutAboutToBeChanged();

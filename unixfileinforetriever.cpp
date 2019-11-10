@@ -5,8 +5,6 @@
 #include <QString>
 #include <QTime>
 
-#include <chrono>
-
 #include <sys/stat.h>
 
 #include "unixfileinforetriever.h"

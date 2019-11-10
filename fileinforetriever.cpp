@@ -73,6 +73,10 @@ void FileInfoRetriever::getChildren(FileSystemItem *parent)
 void FileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 {
     emit parentUpdated(parent);
+
+    if (getScope() == FileInfoRetriever::List)
+         getExtendedInfo(parent);
+
     running.store(false);
 }
 

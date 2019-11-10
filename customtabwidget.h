@@ -21,6 +21,9 @@ public slots:
 
 signals:
     void rootChanged(const QString path);
+
+protected:
+    void mouseDoubleClickEvent(QMouseEvent *event) override;
 };
 
 #endif // CUSTOMTABWIDGET_H

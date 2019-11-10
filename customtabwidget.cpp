@@ -9,10 +9,13 @@
 #   include <qt_windows.h>
 #endif
 
+#include "customtabbar.h"
 #include "detailedview.h"
 
 CustomTabWidget::CustomTabWidget(QWidget *parent) : QTabWidget(parent)
 {
+    QTabBar *customTabBar = new CustomTabBar(this);
+    setTabBar(customTabBar);
 
 #ifdef Q_OS_WIN
 
@@ -20,7 +23,7 @@ CustomTabWidget::CustomTabWidget(QWidget *parent) : QTabWidget(parent)
     // I believe this will be fixed in Qt 6 but in the meantime let's just get the default font and apply it to the tab bar
     // Most of the cases it should be Segoi UI 9 pts
 
-    QFont font = tabBar()->font();
+    QFont font = customTabBar->font();
 
     NONCLIENTMETRICS ncm;
     ncm.cbSize = FIELD_OFFSET(NONCLIENTMETRICS, lfMessageFont) + sizeof(LOGFONT);
@@ -32,7 +35,7 @@ CustomTabWidget::CustomTabWidget(QWidget *parent) : QTabWidget(parent)
 
     font.setFamily(QString::fromWCharArray(ncm.lfMenuFont.lfFaceName));
     font.setPointSize(static_cast<int>(qAbs(ncm.lfMenuFont.lfHeight) * 72.0 / qreal(verticalDPI_In)));
-    tabBar()->setFont(font);
+    customTabBar->setFont(font);
 
 #endif
 
@@ -45,6 +48,8 @@ CustomTabWidget::CustomTabWidget(QWidget *parent) : QTabWidget(parent)
 
     addTab(detailedView, fileSystemModel->getRoot()->getDisplayName());
     setTabIcon(0, fileSystemModel->getRoot()->getIcon());
+    setCurrentIndex(0);
+
 }
 
 void CustomTabWidget::changeRootIndex(const QModelIndex &index)
@@ -89,4 +94,11 @@ void CustomTabWidget::updateTab()
     detailedView->scrollToTop();
     qDebug() << "CustomTabWidget::updateTab tab updated. " << fileSystemModel->getRoot()->childrenCount() << " items";
     qDebug() << "---------------------------------------------------------------------------------------------------";
+}
+
+void CustomTabWidget::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    qDebug() << "CustomTabWidget::mouseDoubleClickEvent open new tab";
+
+    QTabWidget::mouseDoubleClickEvent(event);
 }
