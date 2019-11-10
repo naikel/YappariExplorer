@@ -22,8 +22,12 @@ int CustomTabBar::getPaddingForIndex(int index) const
     QFontMetrics fm = opt.fontMetrics;
     int space = fm.size(0, " ").width();
 
+#ifdef Q_OS_WIN
     // If the tab text is empty it means this is the "add new tab" tab, we want that tab even smaller
     return tabText(index).isEmpty() ? space*7 : space*3;
+#else
+    return tabText(index).isEmpty() ? space*2 : 0;
+#endif
 }
 
 QSize CustomTabBar::minimumTabSizeHint(int index) const

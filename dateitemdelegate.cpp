@@ -39,7 +39,7 @@ void DateItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
     int dateSize = fm.size(0, "  " + sampleDateStr).width();
 
     QRect originalRect = opt.rect;
-    opt.displayAlignment = Qt::AlignRight;
+    opt.displayAlignment = Qt::AlignRight | Qt::AlignVCenter;
 
     // Find out the maximum width of the date portion of the control
     int dateWidth = std::max(opt.rect.width() - timeSize, dateSize);

@@ -34,11 +34,12 @@ MainWindow::~MainWindow()
 
 void MainWindow::expandAndSelect(QString path)
 {
-    qDebug() << "MainWindow::expandAndSelect";
+    qDebug() << "MainWindow::expandAndSelect" << path;
     FileSystemModel *fileSystemModel = reinterpret_cast<FileSystemModel *>(ui->treeView->model());
     QModelIndex parent = ui->treeView->selectedItem();
     if (parent.isValid()) {
         FileSystemItem *parentItem = static_cast<FileSystemItem*>(parent.internalPointer());
+        qDebug() << "MainWindow::expandAndSelect parent" << parentItem->getPath();
         if (!parentItem->areAllChildrenFetched()) {
 
             // Call this function again after all items are fetched
@@ -49,8 +50,12 @@ void MainWindow::expandAndSelect(QString path)
             ui->treeView->expand(parent);
 
         } else {
-            if (!ui->treeView->isExpanded(parent))
+
+            qDebug() << "MainWindow::expandAndSelect all children of" << parentItem->getPath() << "are fetched";
+
+            if (!ui->treeView->isExpanded(parent)) {
                 ui->treeView->expand(parent);
+            }
             QModelIndex index = fileSystemModel->relativeIndex(path, parent);
             ui->treeView->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect);
             ui->treeView->scrollTo(index);

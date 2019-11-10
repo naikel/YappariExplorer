@@ -1,3 +1,4 @@
+#include <QApplication>
 #include <QMimeDatabase>
 #include <QDebug>
 
@@ -10,7 +11,17 @@ FileSystemItem::FileSystemItem(QString path)
 
 FileSystemItem::~FileSystemItem()
 {
-    qDeleteAll(children);
+    qDebug() << "Deleting" << getPath() << "with its" << childrenCount() << "children";
+    for (auto child : children.values()) {
+        qDebug() << "About to delete"  << child->getPath();
+        if (child != nullptr) {
+            //delete child;
+            deleted = true;
+        }
+        else
+            qDebug() << " WHAT???" ;
+
+    }
 }
 
 QString FileSystemItem::getDisplayName() const

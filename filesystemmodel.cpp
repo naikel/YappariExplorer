@@ -174,13 +174,15 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
                 switch (index.column()) {
                     case Columns::Size:
                     case Columns::LastChangeTime:
-                        return QVariant(Qt::AlignRight);
+                        return QVariant(Qt::AlignRight | Qt::AlignVCenter);
                 }
                 break;
+#ifdef Q_OS_WIN
             case Qt::ForegroundRole:
                 if (fileInfoRetriever->getScope() == FileInfoRetriever::List && fileSystemItem->isFolder()) {
                     return QVariant(QBrush(Qt::darkBlue));
                 }
+#endif
         }
     }
     return QVariant();
@@ -209,7 +211,7 @@ QVariant FileSystemModel::headerData(int section, Qt::Orientation orientation, i
             switch (section) {
                 case Columns::Size:
                 case Columns::LastChangeTime:
-                    return QVariant(Qt::AlignRight);
+                    return QVariant(Qt::AlignRight | Qt::AlignVCenter);
             }
             break;
     }
@@ -269,8 +271,12 @@ QModelIndex FileSystemModel::relativeIndex(QString path, QModelIndex parent)
 {
     qDebug() << "FileSystemModel::relativeIndex" << path;
     if (parent.isValid() && parent.internalPointer() != nullptr) {
-        FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(parent.internalPointer());
+        FileSystemItem *fileSystemItem = static_cast<FileSystemItem *>(parent.internalPointer());
+        if (fileSystemItem->deleted)
+            qDebug() << "PARENT WAS DELETED: " << fileSystemItem->getPath();
         FileSystemItem *child = fileSystemItem->getChild(path);
+        if (child->deleted)
+            qDebug() << "CHILD WAS DELETED " << child->getPath();
 
         return createIndex(fileSystemItem->childRow(child), 0, child);
 
@@ -280,16 +286,16 @@ QModelIndex FileSystemModel::relativeIndex(QString path, QModelIndex parent)
 
 void FileSystemModel::setRoot(const QString path)
 {
-    qDebug() << "FileSystemModel::setRoot" << path;
+    qDebug() << "FileSystemModel::setRoot" << fileInfoRetriever->getScope() << path;
     settingRoot.store(true);
     emit fetchStarted();
     beginResetModel();
 
     // Abort all the pending threads
     pool.clear();
-    qDebug() << "FileSystemModel::setRoot: Waiting for all threads to finish";
+    qDebug() << "FileSystemModel::setRoot" << fileInfoRetriever->getScope() << "Waiting for all threads to finish";
     pool.waitForDone();
-    qDebug() << "FileSystemModel::setRoot: All threads finished";
+    qDebug() << "FileSystemModel::setRoot" << fileInfoRetriever->getScope() << "All threads finished";
 
     FileSystemItem *deleteLater = root;
     root = fileInfoRetriever->getRoot(path);
@@ -298,9 +304,12 @@ void FileSystemModel::setRoot(const QString path)
     QApplication::processEvents();
 
     // Now we can delete the old root structure safely
-    if (deleteLater != nullptr)
+    if (deleteLater != nullptr) {
+        qDebug() << "FileSystemModel::setRoot" << fileInfoRetriever->getScope() << "freeing older root";
         delete deleteLater;
+    }
 }
+
 
 FileSystemItem *FileSystemModel::getRoot()
 {

@@ -83,7 +83,9 @@ public:
     QDateTime getLastChangeTime() const;
     void setLastChangeTime(const QDateTime &value);
 
+    bool deleted;
 private:
+
     QString     path                {};
     QString     displayName         {};
     QString     extension           {};
