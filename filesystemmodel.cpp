@@ -8,12 +8,15 @@
 #include <limits>
 #include <cmath>
 
+#include "once.h"
 #include "filesystemmodel.h"
 
 #ifdef Q_OS_WIN
 #include "winfileinforetriever.h"
+#define PlatformInfoRetriever()     WinFileInfoRetriever()
 #else
 #include "unixfileinforetriever.h"
+#define PlatformInfoRetriever()     UnixFileInfoRetriever()
 #endif
 
 FileSystemModel::FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent) : QAbstractItemModel(parent)
@@ -23,11 +26,7 @@ FileSystemModel::FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent
     // dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
     qRegisterMetaType<QVector<int> >("QVector<int>");
 
-#ifdef Q_OS_WIN
-    fileInfoRetriever = new WinFileInfoRetriever();
-#else
-    fileInfoRetriever = new UnixFileInfoRetriever();
-#endif
+    fileInfoRetriever = new PlatformInfoRetriever();
 
     // Get the default icons
     QFileIconProvider iconProvider;
@@ -308,6 +307,11 @@ void FileSystemModel::setRoot(const QString path)
 FileSystemItem *FileSystemModel::getRoot()
 {
     return root;
+}
+
+QChar FileSystemModel::separator()
+{
+    return QDir::separator();
 }
 
 void FileSystemModel::parentUpdated(FileSystemItem *parent)

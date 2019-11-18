@@ -3,6 +3,8 @@
 
 #include <QTreeView>
 
+#include "filesystemitem.h"
+
 class DetailedView : public QTreeView
 {
     Q_OBJECT
@@ -11,6 +13,8 @@ public:
     DetailedView(QWidget *parent = nullptr);
 
     void setModel(QAbstractItemModel *model) override;
+
+    void setRoot(QString root);
 
 public slots:
 

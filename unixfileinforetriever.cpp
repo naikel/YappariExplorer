@@ -11,6 +11,18 @@
 #include "unixfileinforetriever.h"
 #include "filesystemitem.h"
 
+#ifdef Q_OS_WIN
+// This is for debugging the Unix implementation from Windows
+#define QString_fromStdString(path)             QString::fromStdWString(path.wstring())
+#define QString_toStdString(str)                str.toStdWString()
+#define QString_toCString(str)                  str.toStdString().c_str()
+#else
+// POSIX systems are already Unicode aware, and attempts to convert to wstring will end up in error anyway
+#define QString_fromStdString(path)             QString::fromStdString(path.string())
+#define QString_toStdString(str)                str.toStdString()
+#define QString_toCString(str)                  str.toStdString().c_str()
+#endif
+
 UnixFileInfoRetriever::UnixFileInfoRetriever(QObject *parent) : FileInfoRetriever(parent)
 {
 }
@@ -26,8 +38,8 @@ void UnixFileInfoRetriever::getParentInfo(FileSystemItem *parent)
         parent->setDisplayName("File System");
         parent->setHasSubFolders(true);
     } else {
-        fs::path path = parent->getPath().toStdWString();
-        parent->setDisplayName(QString::fromStdWString(path.filename().wstring()));
+        fs::path path = QString_toStdString(parent->getPath());
+        parent->setDisplayName(QString_fromStdString(path.filename()));
         parent->setHasSubFolders(hasSubFolders(path));
     }
     parent->setIcon(getIcon(parent));
@@ -47,14 +59,14 @@ void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
         root = "C:\\";
 #endif
 
-    for(auto& path: fs::directory_iterator(root.toStdWString(), fs::directory_options::skip_permission_denied)) {
+    for(auto& path: fs::directory_iterator(QString_toStdString(root), fs::directory_options::skip_permission_denied)) {
 
         if (!running.load())
             break;
 
         if (getScope() == FileInfoRetriever::List || fs::is_directory(path)) {
 
-            QString strPath = QString::fromStdWString(path.path().wstring());
+            QString strPath = QString_fromStdString(path.path());
 
 #ifdef Q_OS_WIN
             // This is for debugging the Unix implementation from Windows
@@ -65,7 +77,7 @@ void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             FileSystemItem *child = new FileSystemItem(strPath);
 
             // Get the display name
-            child->setDisplayName(QString::fromStdWString(path.path().filename().wstring()));
+            child->setDisplayName(QString_fromStdString(path.path().filename()));
             qDebug() << "UnixFileInfoRetriever::getChildrenBackground " << getScope() << child->getPath();
 
             // Set basic attributes
@@ -75,7 +87,7 @@ void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             child->setHidden(child->getDisplayName().at(0) == '.');
 
             struct stat buffer;
-            stat(strPath.toStdString().c_str(), &buffer);
+            stat(QString_toCString(strPath), &buffer);
             child->setSize(static_cast<quint64>(buffer.st_size));
             child->setLastChangeTime(QDateTime::fromTime_t(static_cast<uint>(buffer.st_mtime)));
             child->setLastAccessTime(QDateTime::fromTime_t(static_cast<uint>(buffer.st_atime)));
@@ -185,6 +197,10 @@ QIcon UnixFileInfoRetriever::getIcon(FileSystemItem *item) const
         icon = iconProvider.icon(fileInfo);
     }
 
+#ifdef Q_OS_WIN
+    // This is for debugging the Unix implementation from Windows
+    return icon;
+#else
     // This probably would be part of the configuration
     QPixmap pixmap = icon.pixmap(16);
 
@@ -204,5 +220,6 @@ QIcon UnixFileInfoRetriever::getIcon(FileSystemItem *item) const
     }
 
     return QIcon(pixmap);
+#endif
 }
 

@@ -39,6 +39,7 @@ public:
     QModelIndex relativeIndex(QString path, QModelIndex parent);
     void setRoot(const QString path);
     FileSystemItem *getRoot();
+    QChar separator();
 
 public slots:
     void parentUpdated(FileSystemItem *parent);

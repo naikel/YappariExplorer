@@ -106,7 +106,6 @@ private:
     // Children
     QHash<QString, FileSystemItem *> children;
     QList<FileSystemItem *> indexedChildren;
-
 };
 
 #endif // FILESYSTEMITEM_H

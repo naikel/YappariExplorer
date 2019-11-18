@@ -12,6 +12,7 @@ public:
 
     void setModel(QAbstractItemModel *model) override;
     void setRootIndex(const QModelIndex &index) override;
+
     QModelIndex selectedItem();
 
 public slots:
@@ -19,6 +20,7 @@ public slots:
     void initialize();
     void setNormalCursor();
     void setBusyCursor();
+    void selectIndex(QModelIndex index);
 
 protected:
 

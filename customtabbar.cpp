@@ -13,6 +13,8 @@ CustomTabBar::CustomTabBar(QWidget *parent) : QTabBar(parent)
     setExpanding(false);
     setDrawBase(false);
     addTab(QIcon(":/icons/addtab.png"), QString());
+
+    connect(this, &CustomTabBar::tabBarClicked, this, &CustomTabBar::tabClicked);
 }
 
 int CustomTabBar::getPaddingForIndex(int index) const
@@ -28,6 +30,14 @@ int CustomTabBar::getPaddingForIndex(int index) const
 #else
     return tabText(index).isEmpty() ? space*2 : 0;
 #endif
+}
+
+void CustomTabBar::tabClicked(int index)
+{
+    if (index == count()-1) {
+        qDebug() << "CustomTabBar::tabClicked: new tab requested";
+        emit newTabRequested();
+    }
 }
 
 QSize CustomTabBar::minimumTabSizeHint(int index) const

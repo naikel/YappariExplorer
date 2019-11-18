@@ -67,6 +67,12 @@ void CustomTreeView::setBusyCursor()
     setCursor(Qt::BusyCursor);
 }
 
+void CustomTreeView::selectIndex(QModelIndex index)
+{
+    selectionModel()->select(index, QItemSelectionModel::ClearAndSelect);
+    scrollTo(index);
+}
+
 QModelIndex CustomTreeView::moveCursor(QAbstractItemView::CursorAction cursorAction, Qt::KeyboardModifiers modifiers)
 {
     qDebug() << "CustomTreeView::moveCursor";

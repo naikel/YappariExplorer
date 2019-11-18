@@ -33,6 +33,20 @@ void DetailedView::setModel(QAbstractItemModel *model)
     this->header()->setSortIndicator(FileSystemModel::Columns::Extension, Qt::SortOrder::AscendingOrder);
 }
 
+void DetailedView::setRoot(QString root)
+{
+    if (!root.isEmpty()) {
+
+        // This item is from the tree view model, not from the model of this view
+        FileSystemModel *fileSystemModel = static_cast<FileSystemModel *>(model());
+        if (!(fileSystemModel->getRoot()->getPath() == root)) {
+            qDebug() << "DetailedView::setRoot" << root;
+            fileSystemModel->setRoot(root);
+        } else
+            qDebug() << "DetailedView::setRoot this view's root is already" << root;
+        }
+}
+
 void DetailedView::setNormalCursor()
 {
     setCursor(Qt::ArrowCursor);

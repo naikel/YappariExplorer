@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QMimeDatabase>
+#include <QCollator>
 #include <QDebug>
 
 #include "filesystemitem.h"
@@ -81,6 +82,11 @@ int FileSystemItem::childRow(FileSystemItem *child) {
 
 bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j, int column, Qt::SortOrder order)
 {
+    QCollator collator;
+    bool comparison;
+    collator.setNumericMode(true);
+    collator.setCaseSensitivity(Qt::CaseInsensitive);
+
     // Folders are first
     if (i->isFolder() && !j->isFolder())
         return true;
@@ -90,27 +96,35 @@ bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j, int column, Qt:
         return true;
 
     // Drives are third
-    if (i->isDrive() && j->isDrive())
-        return (order == Qt::AscendingOrder  && i->getPath().toLower() < j->getPath().toLower()) ||
-               (order == Qt::DescendingOrder && i->getPath().toLower() > j->getPath().toLower());
+    if (i->isDrive() && j->isDrive()) {
+
+        comparison = (collator.compare(i->getPath(), j->getPath()) <= 0);
+
+        return (order == Qt::AscendingOrder  && comparison) ||
+               (order == Qt::DescendingOrder && !comparison);
+    }
 
     QVariant left  = i->getData(column);
     QVariant right = j->getData(column);
 
-    if (static_cast<QMetaType::Type>(left.type()) == QMetaType::QString)
-        left = QVariant(left.toString().toLower());
 
-    if (static_cast<QMetaType::Type>(right.type()) == QMetaType::QString)
-        right = QVariant(right.toString().toLower());
+    if (static_cast<QMetaType::Type>(left.type()) == QMetaType::QString) {
+        QString leftStr = left.toString();
+        QString rightStr  = right.toString();
+        comparison = (collator.compare(leftStr, rightStr) <= 0);
+    } else {
+        comparison = (left <= right);
+    }
 
     // If both items are files or both are folders then direct comparison is allowed
     if ((!i->isFolder() && !j->isFolder()) || (i->isFolder() && j->isFolder())) {
         if (left == right) {
-            return (order == Qt::AscendingOrder  && i->getDisplayName().toLower() < j->getDisplayName().toLower()) ||
-                   (order == Qt::DescendingOrder && i->getDisplayName().toLower() > j->getDisplayName().toLower());
+            comparison = (collator.compare(i->getDisplayName(), j->getDisplayName()) < 0);
+            return (order == Qt::AscendingOrder  && comparison) ||
+                   (order == Qt::DescendingOrder && !comparison);
         } else {
-            return (order == Qt::AscendingOrder  && left < right) ||
-                   (order == Qt::DescendingOrder && left > right);
+            return (order == Qt::AscendingOrder  && comparison) ||
+                   (order == Qt::DescendingOrder && !comparison);
         }
     }
 

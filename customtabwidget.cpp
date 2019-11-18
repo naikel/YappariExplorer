@@ -39,25 +39,32 @@ CustomTabWidget::CustomTabWidget(QWidget *parent) : QTabWidget(parent)
 
 #endif
 
+    addNewTab("/");
+}
+
+void CustomTabWidget::addNewTab(const QString path)
+{
     DetailedView *detailedView = new DetailedView(this);
     FileSystemModel *fileSystemModel = new FileSystemModel(FileInfoRetriever::List, detailedView);
-    fileSystemModel->setRoot("/");
+    fileSystemModel->setRoot(path);
     detailedView->setModel(fileSystemModel);
+
     connect(detailedView, &DetailedView::doubleClicked, this, &CustomTabWidget::doubleClicked);
     connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &CustomTabWidget::updateTab);
 
-    addTab(detailedView, fileSystemModel->getRoot()->getDisplayName());
-    setTabIcon(0, fileSystemModel->getRoot()->getIcon());
-    setCurrentIndex(0);
-
+    int pos = tabBar()->count() - 1;
+    insertTab(pos, detailedView, fileSystemModel->getRoot()->getDisplayName());
+    setTabIcon(pos, fileSystemModel->getRoot()->getIcon());
+    setCurrentIndex(pos);
 }
 
-void CustomTabWidget::changeRootIndex(const QModelIndex &index)
+void CustomTabWidget::setViewIndex(const QModelIndex &index)
 {
-    qDebug() << "CustomTabWidget::changeRootIndex";
+    qDebug() << "CustomTabWidget::setViewIndex";
     if (index.isValid() && index.internalPointer() != nullptr) {
+        DetailedView *detailedView = static_cast<DetailedView *>(currentWidget());
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
-        changeRootPath(fileSystemItem->getPath());
+        detailedView->setRoot(fileSystemItem->getPath());
     }
 }
 
@@ -80,8 +87,8 @@ void CustomTabWidget::doubleClicked(const QModelIndex &index)
         if (fileSystemItem->isDrive() || fileSystemItem->isFolder()) {
             QString path = fileSystemItem->getPath();
 
-            // This will delete (free) the fileSystemItem and it's no longer valid
-            changeRootIndex(index);
+            // This will delete (free) the fileSystemItem of index and will be no longer valid
+            setViewIndex(index);
 
             emit rootChanged(path);
         }
@@ -93,8 +100,8 @@ void CustomTabWidget::updateTab()
     qDebug() << "CustomTabWidget::updateTab";
     DetailedView *detailedView = static_cast<DetailedView *>(currentWidget());
     FileSystemModel *fileSystemModel = static_cast<FileSystemModel *>(detailedView->model());
-    setTabText(0, fileSystemModel->getRoot()->getDisplayName());
-    setTabIcon(0, fileSystemModel->getRoot()->getIcon());
+    setTabText(currentIndex(), fileSystemModel->getRoot()->getDisplayName());
+    setTabIcon(currentIndex(), fileSystemModel->getRoot()->getIcon());
     detailedView->scrollToTop();
     qDebug() << "CustomTabWidget::updateTab tab updated. " << fileSystemModel->getRoot()->childrenCount() << " items";
     qDebug() << "---------------------------------------------------------------------------------------------------";

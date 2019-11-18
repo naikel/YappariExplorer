@@ -18,9 +18,12 @@ public:
     ~MainWindow();
 
 public slots:
-    void expandAndSelect(QString path);
+    void expandAndSelectRelative(QString path);
+    void expandAndSelectAbsolute(QString path);
     void collapseAndSelect(QModelIndex index);
     void changeTitle(const QItemSelection &selected, const QItemSelection &deselected);
+    void newTabRequested();
+    void tabChanged(int index);
 
 private:
     Ui::MainWindow *ui;

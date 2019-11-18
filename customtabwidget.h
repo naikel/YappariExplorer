@@ -12,9 +12,10 @@ class CustomTabWidget : public QTabWidget
 
 public:
     CustomTabWidget(QWidget *parent = nullptr);
+    void addNewTab(const QString path);
 
 public slots:
-    void changeRootIndex(const QModelIndex &index);
+    void setViewIndex(const QModelIndex &index);
     void changeRootPath(const QString path);
     void doubleClicked(const QModelIndex &index);
     void updateTab();
