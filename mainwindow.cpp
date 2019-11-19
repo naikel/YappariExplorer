@@ -10,6 +10,8 @@
 #include "filesystemmodel.h"
 #include "customtabbar.h"
 
+#define APPLICATION_TITLE   "YappariExplorer"
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -17,7 +19,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     setWindowIcon(QIcon(":/icons/app2.png"));
-    setWindowTitle("YappariExplorer");
+    setWindowTitle(APPLICATION_TITLE);
 
     FileSystemModel *fileSystemModel = new FileSystemModel(FileInfoRetriever::Tree, this);
     fileSystemModel->setRoot("/");
@@ -33,7 +35,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->treeView, &CustomTreeView::collapsed, this, &MainWindow::collapseAndSelect);
 
     // Tab handling
-    connect(reinterpret_cast<CustomTabBar *>(ui->tabWidget->tabBar()), &CustomTabBar::newTabRequested, this, &MainWindow::newTabRequested);
+    connect(ui->tabWidget, &CustomTabWidget::newTabRequested, this, &MainWindow::newTabRequested);
     connect(ui->tabWidget, &CustomTabWidget::currentChanged, this, &MainWindow::tabChanged);
 }
 
@@ -157,7 +159,7 @@ void MainWindow::changeTitle(const QItemSelection &selected, const QItemSelectio
     Q_UNUSED(selected)
     Q_UNUSED(deselected)
 
-    QString title = "YappariExplorer";
+    QString title = APPLICATION_TITLE;
     QModelIndex index = ui->treeView->selectedItem();
     if (index.isValid()) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());

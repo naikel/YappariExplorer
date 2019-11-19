@@ -361,8 +361,8 @@ void FileSystemModel::extendedInfoUpdated(FileSystemItem *parent)
 {
     Q_UNUSED(parent)
 
-    // If the model is currently sorted by one of the extended info columns, it obviously need resorting
-    if (currentSortColumn >= Columns::Size)
+    // If the model is currently sorted by one of the extended info columns, it obviously needs resorting
+    if (currentSortColumn >= Columns::Type)
         sort(currentSortColumn, currentSortOrder);
 }
 

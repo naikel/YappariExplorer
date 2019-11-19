@@ -14,8 +14,11 @@
 
 CustomTabWidget::CustomTabWidget(QWidget *parent) : QTabWidget(parent)
 {
-    QTabBar *customTabBar = new CustomTabBar(this);
+    CustomTabBar *customTabBar = new CustomTabBar(this);
     setTabBar(customTabBar);
+
+    connect(customTabBar, &CustomTabBar::newTabClicked, this, &CustomTabWidget::newTabClicked);
+    connect(customTabBar, &CustomTabBar::tabBarDoubleClicked, this, &CustomTabWidget::closeTab);
 
 #ifdef Q_OS_WIN
 
@@ -107,9 +110,25 @@ void CustomTabWidget::updateTab()
     qDebug() << "---------------------------------------------------------------------------------------------------";
 }
 
+void CustomTabWidget::newTabClicked()
+{
+    emit newTabRequested();
+}
+
+void CustomTabWidget::closeTab(int index)
+{
+    int tabCount = count();
+    if (tabCount > 2 && index != (tabCount - 1)) {
+        DetailedView *detailedView = static_cast<DetailedView *>(widget(index));
+        removeTab(index);
+        delete detailedView;
+    }
+}
+
 void CustomTabWidget::mouseDoubleClickEvent(QMouseEvent *event)
 {
-    qDebug() << "CustomTabWidget::mouseDoubleClickEvent open new tab";
+    Q_UNUSED(event)
 
-    QTabWidget::mouseDoubleClickEvent(event);
+    qDebug() << "CustomTabWidget::mouseDoubleClickEvent open new tab";
+    emit newTabRequested();
 }

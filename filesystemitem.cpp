@@ -107,25 +107,18 @@ bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j, int column, Qt:
     QVariant left  = i->getData(column);
     QVariant right = j->getData(column);
 
-
-    if (static_cast<QMetaType::Type>(left.type()) == QMetaType::QString) {
-        QString leftStr = left.toString();
-        QString rightStr  = right.toString();
-        comparison = (collator.compare(leftStr, rightStr) <= 0);
-    } else {
+    if (static_cast<QMetaType::Type>(left.type()) == QMetaType::QString)
+        comparison = (collator.compare(left.toString(), right.toString()) <= 0);
+    else
         comparison = (left <= right);
-    }
 
     // If both items are files or both are folders then direct comparison is allowed
     if ((!i->isFolder() && !j->isFolder()) || (i->isFolder() && j->isFolder())) {
-        if (left == right) {
+        if (left == right)
             comparison = (collator.compare(i->getDisplayName(), j->getDisplayName()) < 0);
-            return (order == Qt::AscendingOrder  && comparison) ||
-                   (order == Qt::DescendingOrder && !comparison);
-        } else {
-            return (order == Qt::AscendingOrder  && comparison) ||
-                   (order == Qt::DescendingOrder && !comparison);
-        }
+
+        return (order == Qt::AscendingOrder  && comparison) ||
+               (order == Qt::DescendingOrder && !comparison);
     }
 
     return false;

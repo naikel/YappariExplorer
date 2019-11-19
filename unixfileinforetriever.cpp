@@ -169,12 +169,11 @@ bool UnixFileInfoRetriever::hasSubFolders(fs::path path)
         return false;
 
     try {
-        for(auto& child: fs::directory_iterator(path)) {
+        for (auto& child: fs::directory_iterator(path)) {
             if (fs::is_directory(child))
                 return true;
         }
-    }
-    catch (const std::exception& e) {
+    } catch (const std::exception& e) {
         qDebug() << "Exception while trying to read folder: " << e.what();
     }
 

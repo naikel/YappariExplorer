@@ -19,9 +19,12 @@ public slots:
     void changeRootPath(const QString path);
     void doubleClicked(const QModelIndex &index);
     void updateTab();
+    void newTabClicked();
+    void closeTab(int index);
 
 signals:
     void rootChanged(const QString path);
+    void newTabRequested();
 
 protected:
     void mouseDoubleClickEvent(QMouseEvent *event) override;

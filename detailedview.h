@@ -3,8 +3,6 @@
 
 #include <QTreeView>
 
-#include "filesystemitem.h"
-
 class DetailedView : public QTreeView
 {
     Q_OBJECT

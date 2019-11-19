@@ -36,7 +36,7 @@ void CustomTabBar::tabClicked(int index)
 {
     if (index == count()-1) {
         qDebug() << "CustomTabBar::tabClicked: new tab requested";
-        emit newTabRequested();
+        emit newTabClicked();
     }
 }
 
@@ -51,12 +51,3 @@ QSize CustomTabBar::tabSizeHint(int index) const
     QSize size = QTabBar::tabSizeHint(index);
     return QSize(size.width()-getPaddingForIndex(index), size.height());
 }
-
-void CustomTabBar::mouseDoubleClickEvent(QMouseEvent *event)
-{
-    qDebug() << "CustomTabBar::mouseDoubleClickEvent close tab";
-
-    QTabBar::mouseDoubleClickEvent(event);
-}
-
-

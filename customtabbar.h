@@ -11,12 +11,11 @@ public:
     CustomTabBar(QWidget *parent = nullptr);
 
 signals:
-    void newTabRequested();
+    void newTabClicked();
 
 protected:
     QSize minimumTabSizeHint(int index) const override;
     QSize tabSizeHint(int index) const override;
-    void mouseDoubleClickEvent(QMouseEvent *event) override;
 
 private:
     int getPaddingForIndex(int index) const;
