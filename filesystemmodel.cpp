@@ -21,10 +21,10 @@
 
 FileSystemModel::FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent) : QAbstractItemModel(parent)
 {
-    // This is mandatory if you want the dataChanged signal to work when emitting it in a different thread
+    // This is mandatory if you want the dataChanged signal to work when emitting it in a different thread.
     // It's because of the "roles" argument of the signal. The fingerprint of the method is as follows:
     // dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
-    qRegisterMetaType<QVector<int> >("QVector<int>");
+    qRegisterMetaType<QVector<int>>("QVector<int>");
 
     fileInfoRetriever = new PlatformInfoRetriever();
 

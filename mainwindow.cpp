@@ -3,12 +3,20 @@
 
 #include <QApplication>
 #include <QTabWidget>
+#include <QWindow>
 #include <QTabBar>
 #include <QDebug>
 
 #include "once.h"
-#include "filesystemmodel.h"
 #include "customtabbar.h"
+
+#ifdef Q_OS_WIN
+#include "wincontextmenu.h"
+#define PlatformContextMenu(PARENT)     WinContextMenu(PARENT)
+#else
+#include "unixcontextmenu.h"
+#define PlatformContextMenu(PARENT)     UnixContextMenu(PARENT)
+#endif
 
 #define APPLICATION_TITLE   "YappariExplorer"
 
@@ -37,6 +45,10 @@ MainWindow::MainWindow(QWidget *parent)
     // Tab handling
     connect(ui->tabWidget, &CustomTabWidget::newTabRequested, this, &MainWindow::newTabRequested);
     connect(ui->tabWidget, &CustomTabWidget::currentChanged, this, &MainWindow::tabChanged);
+
+    // Context Menu
+    connect(ui->tabWidget, &CustomTabWidget::contextMenuRequestedForItems, this, &MainWindow::showContextMenu);
+    contextMenu = new PlatformContextMenu(this);
 }
 
 MainWindow::~MainWindow()
@@ -187,4 +199,17 @@ void MainWindow::tabChanged(int index)
     expandAndSelectAbsolute(viewModelCurrentPath);
 }
 
+void MainWindow::showContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect)
+{
+    qDebug() << "MainWindow::showContextMenu";
 
+    contextMenu->show(winId(), pos, fileSystemItems, viewAspect);
+}
+
+bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *result)
+{
+    if (contextMenu && contextMenu->handleNativeEvent(eventType, message, result))
+        return true;
+
+    return QMainWindow::nativeEvent(eventType, message, result);
+}

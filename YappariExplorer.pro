@@ -16,6 +16,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    contextmenu.cpp \
     customtabbar.cpp \
     customtabbarstyle.cpp \
     customtabwidget.cpp \
@@ -26,9 +27,11 @@ SOURCES += \
     filesystemitem.cpp \
     filesystemmodel.cpp \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    wincontextmenu.cpp
 
 HEADERS += \
+    contextmenu.h \
     customtabbar.h \
     customtabbarstyle.h \
     customtabwidget.h \
@@ -39,7 +42,8 @@ HEADERS += \
     filesystemitem.h \
     filesystemmodel.h \
     mainwindow.h \ \
-    once.h
+    once.h \
+    wincontextmenu.h
 
 FORMS += \
     mainwindow.ui

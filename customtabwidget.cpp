@@ -11,6 +11,7 @@
 
 #include "customtabbar.h"
 #include "detailedview.h"
+#include "mainwindow.h"
 
 CustomTabWidget::CustomTabWidget(QWidget *parent) : QTabWidget(parent)
 {
@@ -54,6 +55,9 @@ void CustomTabWidget::addNewTab(const QString path)
 
     connect(detailedView, &DetailedView::doubleClicked, this, &CustomTabWidget::doubleClicked);
     connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &CustomTabWidget::updateTab);
+
+    // Context menu
+    connect(detailedView, &DetailedView::contextMenuRequestedForItems, this, &CustomTabWidget::emitContextMenu);
 
     int pos = tabBar()->count() - 1;
     insertTab(pos, detailedView, fileSystemModel->getRoot()->getDisplayName());
@@ -121,7 +125,12 @@ void CustomTabWidget::closeTab(int index)
     if (tabCount > 2 && index != (tabCount - 1)) {
         DetailedView *detailedView = static_cast<DetailedView *>(widget(index));
         removeTab(index);
-        delete detailedView;
+        detailedView->deleteLater();
+
+        // This will make the current tab the last one created
+        // Eventually this should be changed to the last one active, when history is implemented
+        if (tabBar()->currentIndex() == count() - 1)
+            tabBar()->setCurrentIndex(count() - 2);
     }
 }
 
@@ -131,4 +140,9 @@ void CustomTabWidget::mouseDoubleClickEvent(QMouseEvent *event)
 
     qDebug() << "CustomTabWidget::mouseDoubleClickEvent open new tab";
     emit newTabRequested();
+}
+
+void CustomTabWidget::emitContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect)
+{
+    emit contextMenuRequestedForItems(pos, fileSystemItems, viewAspect);
 }

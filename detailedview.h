@@ -3,6 +3,9 @@
 
 #include <QTreeView>
 
+#include "filesystemmodel.h"
+#include "contextmenu.h"
+
 class DetailedView : public QTreeView
 {
     Q_OBJECT
@@ -14,10 +17,15 @@ public:
 
     void setRoot(QString root);
 
+signals:
+    void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
+
 public slots:
 
     void setNormalCursor();
     void setBusyCursor();
+
+    void contextMenuRequested(const QPoint &pos);
 };
 
 #endif // DETAILEDVIEW_H

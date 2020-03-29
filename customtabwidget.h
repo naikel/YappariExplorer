@@ -25,9 +25,13 @@ public slots:
 signals:
     void rootChanged(const QString path);
     void newTabRequested();
+    void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
 
 protected:
     void mouseDoubleClickEvent(QMouseEvent *event) override;
+
+private slots:
+    void emitContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
 };
 
 #endif // CUSTOMTABWIDGET_H

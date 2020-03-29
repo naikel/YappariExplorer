@@ -5,6 +5,9 @@
 #include <QMainWindow>
 #include <QModelIndex>
 
+#include "filesystemmodel.h"
+#include "contextmenu.h"
+
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -25,7 +28,14 @@ public slots:
     void newTabRequested();
     void tabChanged(int index);
 
+    void showContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
+
+protected:
+    virtual bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
+
 private:
     Ui::MainWindow *ui;
+
+    ContextMenu *contextMenu {};
 };
 #endif // MAINWINDOW_H
