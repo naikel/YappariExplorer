@@ -11,8 +11,8 @@
 #include <knownfolders.h>
 #include <commoncontrols.h>
 
-#include "fileinforetriever.h"
-#include "filesystemitem.h"
+#include "Shell/fileinforetriever.h"
+#include "Shell/filesystemitem.h"
 
 class WinFileInfoRetriever : public FileInfoRetriever
 {

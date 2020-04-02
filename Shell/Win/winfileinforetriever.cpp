@@ -3,8 +3,8 @@
 #include <QDebug>
 #include <QTime>
 
-#include "winfileinforetriever.h"
-#include "filesystemitem.h"
+#include "Shell/Win/winfileinforetriever.h"
+#include "Shell/filesystemitem.h"
 
 #define CONTROL_PANEL_GUID "::{26EE0668-A00A-44D7-9371-BEB064C98683}"
 
@@ -77,7 +77,12 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                 while (running.load() && ppenumIDList->Next(1, &pidlChildren, nullptr) == S_OK) {
 
                     // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << QTime::currentTime() << "Before getting attributes";
-                    SFGAOF attributes { SFGAO_STREAM | SFGAO_FOLDER | SFGAO_HASSUBFOLDER | SFGAO_HIDDEN };
+                    SFGAOF attributes { SFGAO_STREAM | SFGAO_FOLDER | SFGAO_HIDDEN };
+
+                    // Only look for subfolders in the tree view.  Makes no sense in the list view and it's really slow on stream (ZIP) files
+                    if (getScope() == FileInfoRetriever::Tree)
+                        attributes |= SFGAO_HASSUBFOLDER;
+
                     psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChildren), &attributes);
                     // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << QTime::currentTime() << "Got attributes";
 

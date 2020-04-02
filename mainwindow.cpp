@@ -8,13 +8,13 @@
 #include <QDebug>
 
 #include "once.h"
-#include "customtabbar.h"
+#include "View/customtabbar.h"
 
 #ifdef Q_OS_WIN
-#include "wincontextmenu.h"
+#include "Shell/Win/wincontextmenu.h"
 #define PlatformContextMenu(PARENT)     WinContextMenu(PARENT)
 #else
-#include "unixcontextmenu.h"
+#include "Shell/Unix/unixcontextmenu.h"
 #define PlatformContextMenu(PARENT)     UnixContextMenu(PARENT)
 #endif
 

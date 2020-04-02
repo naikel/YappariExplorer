@@ -3,8 +3,8 @@
 
 #include <QTreeView>
 
-#include "filesystemmodel.h"
-#include "contextmenu.h"
+#include "Model/filesystemmodel.h"
+#include "Shell/contextmenu.h"
 
 class DetailedView : public QTreeView
 {

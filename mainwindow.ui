@@ -86,12 +86,12 @@
   <customwidget>
    <class>CustomTreeView</class>
    <extends>QTreeView</extends>
-   <header>customtreeview.h</header>
+   <header>View/customtreeview.h</header>
   </customwidget>
   <customwidget>
    <class>CustomTabWidget</class>
    <extends>QTabWidget</extends>
-   <header>customtabwidget.h</header>
+   <header>View/customtabwidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

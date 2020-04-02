@@ -3,7 +3,7 @@
 
 #include <experimental/filesystem>
 
-#include "fileinforetriever.h"
+#include "Shell/fileinforetriever.h"
 
 namespace fs = std::experimental::filesystem;
 

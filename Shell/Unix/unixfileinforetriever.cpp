@@ -8,8 +8,8 @@
 
 #include <sys/stat.h>
 
-#include "unixfileinforetriever.h"
-#include "filesystemitem.h"
+#include "Shell/Unix/unixfileinforetriever.h"
+#include "Shell/filesystemitem.h"
 
 #ifdef Q_OS_WIN
 // This is for debugging the Unix implementation from Windows

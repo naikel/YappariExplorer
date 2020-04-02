@@ -4,7 +4,7 @@
 #include <qt_windows.h>
 #include <shlobj.h>
 
-#include "contextmenu.h"
+#include "Shell/contextmenu.h"
 
 class WinContextMenu : public ContextMenu
 {
@@ -17,6 +17,8 @@ public:
 private:
     IContextMenu2 *imenu2;
     IContextMenu3 *imenu3;
+
+    void customizeMenu(IContextMenu *imenu, const HMENU hmenu, const ContextMenu::ContextViewAspect viewAspect);
 };
 
 #endif // WINCONTEXTMENU_H

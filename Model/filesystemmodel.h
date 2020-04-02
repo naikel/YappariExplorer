@@ -3,8 +3,8 @@
 
 #include <QAbstractItemModel>
 
-#include "filesystemitem.h"
-#include "fileinforetriever.h"
+#include "Shell/filesystemitem.h"
+#include "Shell/fileinforetriever.h"
 
 class FileSystemModel : public QAbstractItemModel
 {
@@ -35,6 +35,7 @@ public:
     bool canFetchMore(const QModelIndex &parent) const override;
     void fetchMore(const QModelIndex &parent) override;
     void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;
+    Qt::ItemFlags flags(const QModelIndex &index) const override;
 
     QModelIndex relativeIndex(QString path, QModelIndex parent);
     void setRoot(const QString path);

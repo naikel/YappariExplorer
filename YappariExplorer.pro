@@ -16,50 +16,56 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    contextmenu.cpp \
-    customtabbar.cpp \
-    customtabbarstyle.cpp \
-    customtabwidget.cpp \
-    customtreeview.cpp \
-    dateitemdelegate.cpp \
-    detailedview.cpp \
-    fileinforetriever.cpp \
-    filesystemitem.cpp \
-    filesystemmodel.cpp \
+    Model/filesystemmodel.cpp \
+    Shell/contextmenu.cpp \
+    Shell/fileinforetriever.cpp \
+    Shell/filesystemitem.cpp \
+    View/Base/baseitemdelegate.cpp \
+    View/customtabbar.cpp \
+    View/customtabbarstyle.cpp \
+    View/customtabwidget.cpp \
+    View/customtreeview.cpp \
+    View/dateitemdelegate.cpp \
+    View/detailedview.cpp \
     main.cpp \
-    mainwindow.cpp \
-    wincontextmenu.cpp
+    mainwindow.cpp
 
 HEADERS += \
-    contextmenu.h \
-    customtabbar.h \
-    customtabbarstyle.h \
-    customtabwidget.h \
-    customtreeview.h \
-    dateitemdelegate.h \
-    detailedview.h \
-    fileinforetriever.h \
-    filesystemitem.h \
-    filesystemmodel.h \
-    mainwindow.h \ \
-    once.h \
-    wincontextmenu.h
+    Model/filesystemmodel.h \
+    Shell/contextmenu.h \
+    Shell/fileinforetriever.h \
+    Shell/filesystemitem.h \
+    View/Base/baseitemdelegate.h \
+    View/customtabbar.h \
+    View/customtabbarstyle.h \
+    View/customtabwidget.h \
+    View/customtreeview.h \
+    View/dateitemdelegate.h \
+    View/detailedview.h \
+    mainwindow.h \
+    once.h
 
 FORMS += \
     mainwindow.ui
 
 unix {
     CONFIG(debug, debug|release) {
-        SOURCES += unixfileinforetriever.cpp
-        HEADERS += unixfileinforetriever.h
+        SOURCES += \
+            Shell/Unix/unixfileinforetriever.cpp
+        HEADERS += \
+            Shell/Unix/unixfileinforetriever.h
         LIBS += -lstdc++fs
     }
 }
 
 win32 {
     CONFIG(debug, debug|release) {
-        SOURCES += winfileinforetriever.cpp
-        HEADERS += winfileinforetriever.h
+        SOURCES += \
+            Shell/Win/wincontextmenu.cpp \
+            Shell/Win/winfileinforetriever.cpp
+        HEADERS += \
+            Shell/Win/wincontextmenu.h \
+            Shell/Win/winfileinforetriever.h
         LIBS += -lole32 -lgdi32
     }
 }

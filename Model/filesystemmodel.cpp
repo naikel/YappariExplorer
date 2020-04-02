@@ -12,10 +12,10 @@
 #include "filesystemmodel.h"
 
 #ifdef Q_OS_WIN
-#include "winfileinforetriever.h"
+#include "Shell/Win/winfileinforetriever.h"
 #define PlatformInfoRetriever()     WinFileInfoRetriever()
 #else
-#include "unixfileinforetriever.h"
+#include "Shell/Unix/unixfileinforetriever.h"
 #define PlatformInfoRetriever()     UnixFileInfoRetriever()
 #endif
 
@@ -262,6 +262,15 @@ void FileSystemModel::sort(int column, Qt::SortOrder order)
     emit layoutAboutToBeChanged();
     root->sortChildren(column, order);
     emit layoutChanged();
+}
+
+Qt::ItemFlags FileSystemModel::flags(const QModelIndex &index) const
+{
+    // We don't want items to be selectable if they are not in the first column
+    if (index.column() > 0)
+        return Qt::ItemIsEnabled;
+
+    return QAbstractItemModel::flags(index);
 }
 
 QModelIndex FileSystemModel::relativeIndex(QString path, QModelIndex parent)

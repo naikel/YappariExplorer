@@ -3,7 +3,7 @@
 
 #include <QObject>
 
-#include "filesystemmodel.h"
+#include "Model/filesystemmodel.h"
 
 class ContextMenu : public QObject
 {

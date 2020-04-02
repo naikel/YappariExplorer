@@ -5,6 +5,11 @@
 #define SCRATCH_QCM_FIRST      1
 #define SCRATCH_QCM_LAST  0x7FFF
 
+// Menu verbs
+#define VERB_VIEW     "view"
+#define VERB_SORTBY   "arrange"
+#define VERB_GROUPBY  "groupby"
+
 WinContextMenu::WinContextMenu(QObject *parent) : ContextMenu(parent)
 {
 
@@ -53,7 +58,7 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
                 for (FileSystemItem *fileSystemItem : fileSystemItems) {
 
                     // We already have the first one
-                    // Saving a couple of nanoseconds here by not calling ParseDisplaName on it :)
+                    // Saving a couple of nanoseconds here by not calling ParseDisplayName on it :)
                     if (!i) {
                         pidlList[i++] = pidlChild;
                         continue;
@@ -74,7 +79,13 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
 
             if (SUCCEEDED(hr)) {
                 HMENU hmenu = ::CreatePopupMenu();
-                if (SUCCEEDED(imenu->QueryContextMenu(hmenu, 0, SCRATCH_QCM_FIRST, SCRATCH_QCM_LAST, CMF_CANRENAME))) {
+
+                // Populate the menu
+                // ToDo: CMF_EXTENDEDVERBS should be added if the context menu was right clicked
+                if (SUCCEEDED(imenu->QueryContextMenu(hmenu, 0, SCRATCH_QCM_FIRST, SCRATCH_QCM_LAST, CMF_CANRENAME | CMF_EXPLORE))) {
+
+                    // Delete/Add custom menu items
+                    customizeMenu(imenu, hmenu, viewAspect);
 
                     imenu->QueryInterface(IID_IContextMenu2, reinterpret_cast<void**>(&imenu2));
                     imenu->QueryInterface(IID_IContextMenu3, reinterpret_cast<void**>(&imenu3));
@@ -91,15 +102,17 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
 
                     if (iCmd > 0) {
                         qDebug() << "WinContextMenu::show command selected " << iCmd;
-                        CMINVOKECOMMANDINFOEX info = { };
+                        CMINVOKECOMMANDINFOEX info = {};
                         info.cbSize = sizeof(info);
-                        info.fMask = CMIC_MASK_UNICODE; //| CMIC_MASK_PTINVOKE;
+                        info.fMask = CMIC_MASK_ASYNCOK | CMIC_MASK_UNICODE | CMIC_MASK_PTINVOKE; // | CMIC_MASK_FLAG_NO_UI;
                         info.hwnd = hwnd;
                         info.lpVerb  = MAKEINTRESOURCEA(iCmd - SCRATCH_QCM_FIRST);
                         info.lpVerbW  = MAKEINTRESOURCEW(iCmd - SCRATCH_QCM_FIRST);
                         info.nShow = SW_SHOWNORMAL;
-                        //info.ptInvoke =
-                        imenu->InvokeCommand(reinterpret_cast<LPCMINVOKECOMMANDINFO>(&info));
+                        info.ptInvoke.x = pos.x();
+                        info.ptInvoke.y = pos.y();
+                        HRESULT hr = imenu->InvokeCommand(reinterpret_cast<LPCMINVOKECOMMANDINFO>(&info));
+                        qDebug() << "WinContextMenu::show result code " << hr;
                     }
                 }
                 DestroyMenu(hmenu);
@@ -138,4 +151,51 @@ bool WinContextMenu::handleNativeEvent(const QByteArray &eventType, void *messag
         }
     }
     return false;
+}
+
+void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const ContextMenu::ContextViewAspect viewAspect)
+{
+
+    // Browse the explorer menu
+    int count = GetMenuItemCount(hmenu);
+    qDebug() << "Menu items" << count;
+    wchar_t buffer[1024];
+    QString verb;
+    QList<UINT> verbsToDelete;
+    for (int i = 0 ; i < count; i++) {
+        MENUITEMINFO info {};
+        info.fMask = MIIM_ID | MIIM_FTYPE | MIIM_STRING;
+        info.fType = MFT_STRING;
+        info.cbSize = sizeof(MENUITEMINFO);
+        info.cch = 1024;
+        info.dwTypeData = buffer;
+        if (!GetMenuItemInfoW(hmenu, static_cast<UINT>(i), TRUE, &info))
+            qDebug() << "failed";
+        CHAR cBuffer[256] {};
+
+        qDebug() << info.wID << QString::fromWCharArray(info.dwTypeData);
+
+        if (!(info.fType & MFT_SEPARATOR) && info.wID > SCRATCH_QCM_FIRST) {
+
+            // Get language-independent verb
+            imenu->GetCommandString(info.wID - SCRATCH_QCM_FIRST, GCS_VERBW, nullptr, cBuffer, 255);
+            verb = QString::fromWCharArray(reinterpret_cast<wchar_t *>(cBuffer));
+            if (viewAspect == ContextMenu::Background) {
+
+                if (verb == VERB_VIEW || verb == VERB_SORTBY || verb == VERB_GROUPBY)
+                    verbsToDelete.append(info.wID);
+            }
+        }
+
+        qDebug() << "VERB: " << verb;
+
+        // Delete separators at the end
+        if (i == (count - 1) && (info.fType & MFT_SEPARATOR))
+            DeleteMenu(hmenu, static_cast<UINT>(i), MF_BYPOSITION);
+    }
+
+    // Delete verbs we do not want
+    for (UINT id : verbsToDelete)
+        DeleteMenu(hmenu, id, MF_BYCOMMAND);
+
 }

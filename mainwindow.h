@@ -5,8 +5,8 @@
 #include <QMainWindow>
 #include <QModelIndex>
 
-#include "filesystemmodel.h"
-#include "contextmenu.h"
+#include "Model/filesystemmodel.h"
+#include "Shell/contextmenu.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -18,7 +18,7 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow(QWidget *parent = nullptr);
-    ~MainWindow();
+    ~MainWindow() override;
 
 public slots:
     void expandAndSelectRelative(QString path);

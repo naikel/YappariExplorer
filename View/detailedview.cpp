@@ -17,6 +17,12 @@ DetailedView::DetailedView(QWidget *parent) : QTreeView(parent)
     DateItemDelegate *dateDelegate = new DateItemDelegate(this);
     setItemDelegateForColumn(FileSystemModel::Columns::LastChangeTime, dateDelegate);
 
+    BaseItemDelegate *baseDelegate = new BaseItemDelegate(this);
+    setItemDelegateForColumn(FileSystemModel::Columns::Name, baseDelegate);
+    setItemDelegateForColumn(FileSystemModel::Columns::Extension, baseDelegate);
+    setItemDelegateForColumn(FileSystemModel::Columns::Size, baseDelegate);
+    setItemDelegateForColumn(FileSystemModel::Columns::Type, baseDelegate);
+
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &QTreeView::customContextMenuRequested, this, &DetailedView::contextMenuRequested);
 }

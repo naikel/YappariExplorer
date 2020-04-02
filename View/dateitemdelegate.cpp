@@ -3,12 +3,12 @@
 #include <QDebug>
 #include <algorithm>
 
-#include "dateitemdelegate.h"
-#include "filesystemitem.h"
+#include "View/dateitemdelegate.h"
+#include "Shell/filesystemitem.h"
 
 #define QDATETIME_EMPTY     "18000000"
 
-DateItemDelegate::DateItemDelegate(QObject *parent) : QStyledItemDelegate(parent)
+DateItemDelegate::DateItemDelegate(QObject *parent) : BaseItemDelegate(parent)
 {
 
 }
@@ -59,13 +59,4 @@ void DateItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
         opt.text = dateTime.time().toString(Qt::SystemLocaleShortDate);
         style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, widget);
     }
-}
-
-void DateItemDelegate::initStyleOption(QStyleOptionViewItem *option, const QModelIndex &index) const
-{
-    QStyledItemDelegate::initStyleOption(option, index);
-
-    // Turn off that really ugly gray dotted border when an item has focus
-    if(option->state & QStyle::State_HasFocus)
-        option->state = option->state & ~QStyle::State_HasFocus;
 }

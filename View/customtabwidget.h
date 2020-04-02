@@ -4,7 +4,7 @@
 #include <QTabWidget>
 
 #include "detailedview.h"
-#include "filesystemmodel.h"
+#include "Model/filesystemmodel.h"
 
 class CustomTabWidget : public QTabWidget
 {

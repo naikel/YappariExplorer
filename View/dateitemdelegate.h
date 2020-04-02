@@ -1,17 +1,14 @@
 #ifndef DATEITEMDELEGATE_H
 #define DATEITEMDELEGATE_H
 
-#include <QStyledItemDelegate>
+#include "View/Base/baseitemdelegate.h"
 
-class DateItemDelegate : public QStyledItemDelegate
+class DateItemDelegate : public BaseItemDelegate
 {
 public:
     DateItemDelegate(QObject *parent);
 
     void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-
-protected:
-    void initStyleOption(QStyleOptionViewItem *option, const QModelIndex &index) const override;
 };
 
 #endif // DATEITEMDELEGATE_H
