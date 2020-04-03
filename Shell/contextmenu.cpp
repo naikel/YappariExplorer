@@ -13,6 +13,11 @@ void ContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSystemI
     Q_UNUSED(viewAspect)
 }
 
+void ContextMenu::defaultAction(const WId wId, const FileSystemItem *fileSystemItem)
+{
+    Q_UNUSED(fileSystemItem)
+}
+
 bool ContextMenu::handleNativeEvent(const QByteArray &eventType, void *message, long *result)
 {
     Q_UNUSED(eventType)

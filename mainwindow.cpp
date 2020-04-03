@@ -49,6 +49,9 @@ MainWindow::MainWindow(QWidget *parent)
     // Context Menu
     connect(ui->tabWidget, &CustomTabWidget::contextMenuRequestedForItems, this, &MainWindow::showContextMenu);
     contextMenu = new PlatformContextMenu(this);
+
+    // Actions
+    connect(ui->tabWidget, &CustomTabWidget::defaultActionRequestedForItem, this, &MainWindow::defaultAction);
 }
 
 MainWindow::~MainWindow()
@@ -204,6 +207,11 @@ void MainWindow::showContextMenu(const QPoint &pos, const QList<FileSystemItem *
     qDebug() << "MainWindow::showContextMenu";
 
     contextMenu->show(winId(), pos, fileSystemItems, viewAspect);
+}
+
+void MainWindow::defaultAction(const FileSystemItem *fileSystemItem)
+{
+    contextMenu->defaultAction(winId(), fileSystemItem);
 }
 
 bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *result)

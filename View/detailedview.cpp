@@ -54,9 +54,10 @@ void DetailedView::setRoot(QString root)
         if (!(fileSystemModel->getRoot()->getPath() == root)) {
             qDebug() << "DetailedView::setRoot" << root;
             fileSystemModel->setRoot(root);
-        } else
+        } else {
             qDebug() << "DetailedView::setRoot this view's root is already" << root;
         }
+    }
 }
 
 void DetailedView::setNormalCursor()

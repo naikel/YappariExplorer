@@ -29,6 +29,7 @@ public slots:
     void tabChanged(int index);
 
     void showContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
+    void defaultAction(const FileSystemItem *fileSystemItem);
 
 protected:
     virtual bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;

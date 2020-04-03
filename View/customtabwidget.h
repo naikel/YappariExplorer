@@ -26,6 +26,7 @@ signals:
     void rootChanged(const QString path);
     void newTabRequested();
     void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
+    void defaultActionRequestedForItem(FileSystemItem *fileSystemItem);
 
 protected:
     void mouseDoubleClickEvent(QMouseEvent *event) override;

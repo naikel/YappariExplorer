@@ -17,9 +17,11 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     Model/filesystemmodel.cpp \
+    Shell/Win/winshellactions.cpp \
     Shell/contextmenu.cpp \
     Shell/fileinforetriever.cpp \
     Shell/filesystemitem.cpp \
+    Shell/shellactions.cpp \
     View/Base/baseitemdelegate.cpp \
     View/customtabbar.cpp \
     View/customtabbarstyle.cpp \
@@ -32,9 +34,11 @@ SOURCES += \
 
 HEADERS += \
     Model/filesystemmodel.h \
+    Shell/Win/winshellactions.h \
     Shell/contextmenu.h \
     Shell/fileinforetriever.h \
     Shell/filesystemitem.h \
+    Shell/shellactions.h \
     View/Base/baseitemdelegate.h \
     View/customtabbar.h \
     View/customtabbarstyle.h \
