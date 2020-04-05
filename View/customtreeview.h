@@ -15,6 +15,10 @@ public:
 
     QModelIndex selectedItem();
 
+signals:
+
+    void resized();
+
 public slots:
 
     void initialize();
@@ -27,6 +31,7 @@ protected:
     QModelIndex moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers modifiers) override;
     void keyPressEvent(QKeyEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
 
 private:
     bool initialized {false};

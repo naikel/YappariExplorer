@@ -23,6 +23,7 @@ SOURCES += \
     Shell/filesystemitem.cpp \
     Shell/shellactions.cpp \
     View/Base/baseitemdelegate.cpp \
+    View/customexplorer.cpp \
     View/customtabbar.cpp \
     View/customtabbarstyle.cpp \
     View/customtabwidget.cpp \
@@ -40,6 +41,7 @@ HEADERS += \
     Shell/filesystemitem.h \
     Shell/shellactions.h \
     View/Base/baseitemdelegate.h \
+    View/customexplorer.h \
     View/customtabbar.h \
     View/customtabbarstyle.h \
     View/customtabwidget.h \

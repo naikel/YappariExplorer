@@ -3,8 +3,7 @@
 #include <QDebug>
 #include <QTime>
 
-#include "Shell/Win/winfileinforetriever.h"
-#include "Shell/filesystemitem.h"
+#include "winfileinforetriever.h"
 
 #define CONTROL_PANEL_GUID "::{26EE0668-A00A-44D7-9371-BEB064C98683}"
 
@@ -114,21 +113,23 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                             child->setType(QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer"));
 
                         // File Size - Method 3 - FASTEST
-                        WIN32_FIND_DATAW fileAttributeData;
-                        if (SUCCEEDED(::SHGetDataFromIDListW(psf, pidlChildren, SHGDFIL_FINDDATA, &fileAttributeData, sizeof(fileAttributeData)))) {
-                            quint64 size = fileAttributeData.nFileSizeHigh;
-                            size = (size << 32) + fileAttributeData.nFileSizeLow;
-                            child->setSize(size);
+                        if (!child->isDrive()) {
+                            WIN32_FIND_DATAW fileAttributeData;
+                            if (SUCCEEDED(::SHGetDataFromIDListW(psf, pidlChildren, SHGDFIL_FINDDATA, &fileAttributeData, sizeof(fileAttributeData)))) {
+                                quint64 size = fileAttributeData.nFileSizeHigh;
+                                size = (size << 32) + fileAttributeData.nFileSizeLow;
+                                child->setSize(size);
 
-                            child->setCreationTime(fileTimeToQDateTime(&(fileAttributeData.ftCreationTime)));
-                            child->setLastChangeTime(fileTimeToQDateTime(&(fileAttributeData.ftLastWriteTime)));
-                            child->setLastAccessTime(fileTimeToQDateTime(&(fileAttributeData.ftLastAccessTime)));
+                                child->setCreationTime(fileTimeToQDateTime(&(fileAttributeData.ftCreationTime)));
+                                child->setLastChangeTime(fileTimeToQDateTime(&(fileAttributeData.ftLastWriteTime)));
+                                child->setLastAccessTime(fileTimeToQDateTime(&(fileAttributeData.ftLastAccessTime)));
+                            }
                         }
 
                         parent->addChild(child);
                     }
 
-                    ILFree(pidlChildren);
+                    ::ILFree(pidlChildren);
                 }
 
                 ppenumIDList->Release();
@@ -136,7 +137,7 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             psf->Release();
         }
 
-        ILFree(pidl);
+        ::ILFree(pidl);
 
         if (!running.load()) {
             qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "Parent path " << parent->getPath() << " aborted!";
@@ -226,7 +227,7 @@ QIcon WinFileInfoRetriever::getIcon(FileSystemItem *item) const
     LPITEMIDLIST pidl;
     if (SUCCEEDED(::SHParseDisplayName(item->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr))) {
         QIcon icon = getIconFromPIDL(pidl, item->isHidden());
-        ILFree(pidl);
+        ::ILFree(pidl);
         return icon;
     }
     return QIcon();
@@ -263,7 +264,7 @@ QIcon WinFileInfoRetriever::getIconFromFileInfo(SHFILEINFOW sfi, bool isHidden) 
             paint.setOpacity(0.5);
             paint.drawImage(0, 0, image);
         }
-        DestroyIcon(sfi.hIcon);
+        ::DestroyIcon(sfi.hIcon);
         return QIcon(pixmap);
     }
     return QIcon();
@@ -279,7 +280,7 @@ QPixmap WinFileInfoRetriever::getPixmapFromIndex(int index) const
 
         if (SUCCEEDED(spiml->GetIcon(index, ILD_TRANSPARENT | ILD_IMAGE, &hIcon))) {
             QPixmap pixmap = qt_pixmapFromWinHICON(hIcon);
-            DestroyIcon(hIcon);
+            ::DestroyIcon(hIcon);
             return pixmap;
         }
     }
@@ -309,7 +310,7 @@ SHFILEINFOW WinFileInfoRetriever::getSystemImageListIndexFromPath(QString path) 
 QDateTime WinFileInfoRetriever::fileTimeToQDateTime(LPFILETIME fileTime)
 {
     SYSTEMTIME systemTime;
-    FileTimeToSystemTime(fileTime, &systemTime);
+    ::FileTimeToSystemTime(fileTime, &systemTime);
     QDate date = QDate(systemTime.wYear, systemTime.wMonth, systemTime.wDay);
     QTime time = QTime(systemTime.wHour, systemTime.wMinute, systemTime.wSecond, systemTime.wMilliseconds);
     return(QDateTime(date, time, Qt::UTC));

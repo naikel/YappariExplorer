@@ -348,12 +348,11 @@ void FileSystemModel::itemUpdated(FileSystemItem *item)
 {
     // Send the dataChanged signal only if this item has been already updated by the icon
     // Otherwise it's not necessary since the getIcon will send a dataChanged signal for it
-
     if (item != nullptr && !item->getIcon().isNull() && !item->hasFakeIcon()) {
 
         FileSystemItem *parent = item->getParent();
 
-        // This could be an old signal
+        // This could be an old signal (different path)
         if (item->getParent()->getPath() == root->getPath()) {
             int row = parent->childRow(item);
             qDebug() << "FileSystemModel::itemUpdated" << item->getPath() << "row" << row;
@@ -377,7 +376,7 @@ void FileSystemModel::extendedInfoUpdated(FileSystemItem *parent)
 
 void FileSystemModel::getIcon(const QModelIndex &index)
 {
-    if (index.isValid()  && index.internalPointer() != nullptr) {
+    if (index.isValid() && index.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
         QIcon icon = fileInfoRetriever->getIcon(fileSystemItem);
         if (!icon.isNull()) {

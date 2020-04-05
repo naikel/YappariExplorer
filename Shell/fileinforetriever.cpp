@@ -55,6 +55,14 @@ void FileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
     Q_UNUSED(parent)
 }
 
+/*!
+ * \brief Gets all the children of a FileSystemItem parent.
+ * \param parent a FileSystemItem
+ *
+ * Gets all the children of a FileSystemItem parent (a folder or a drive) concurrently.
+ *
+ * The children will be retrieved on the background in a new thread.
+ */
 void FileInfoRetriever::getChildren(FileSystemItem *parent)
 {
     // This function might get called several times for the same parent

@@ -21,15 +21,14 @@ public:
     ~MainWindow() override;
 
 public slots:
-    void expandAndSelectRelative(QString path);
-    void expandAndSelectAbsolute(QString path);
-    void collapseAndSelect(QModelIndex index);
     void changeTitle(const QItemSelection &selected, const QItemSelection &deselected);
-    void newTabRequested();
-    void tabChanged(int index);
 
     void showContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
     void defaultAction(const FileSystemItem *fileSystemItem);
+
+    void resizeBottomTreeView();
+    void resizeTopTreeView();
+
 
 protected:
     virtual bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;

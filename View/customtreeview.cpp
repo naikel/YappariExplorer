@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QHeaderView>
 #include <QKeyEvent>
 #include <QDebug>
 
@@ -13,6 +14,8 @@ CustomTreeView::CustomTreeView(QWidget *parent) : QTreeView(parent)
     setSelectionBehavior(QAbstractItemView::SelectItems);
     setSelectionMode(QAbstractItemView::SingleSelection);
     setFrameShape(QFrame::NoFrame);
+
+    header()->setSectionResizeMode(QHeaderView::ResizeToContents);
 
     // Animations don't really work when rows are inserted dynamically
     setAnimated(false);
@@ -113,4 +116,13 @@ void CustomTreeView::mousePressEvent(QMouseEvent *event)
     if (event->button() == Qt::BackButton)
         qDebug() << "Back button pressed";
     QTreeView::mousePressEvent(event);
+}
+
+void CustomTreeView::resizeEvent(QResizeEvent *event)
+{
+    emit resized();
+
+    qDebug() << "CustomTreeView::resizeEvent resize to " << event->size();
+
+    QTreeView::resizeEvent(event);
 }
