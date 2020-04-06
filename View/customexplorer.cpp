@@ -61,6 +61,7 @@ void CustomExplorer::initialize(MainWindow *mainWindow, CustomTreeView *treeView
 
     // Context Menu
     connect(tabWidget, &CustomTabWidget::contextMenuRequestedForItems, mainWindow, &MainWindow::showContextMenu);
+    connect(treeView, &CustomTreeView::contextMenuRequestedForItems, mainWindow, &MainWindow::showContextMenu);
 
     // Actions
     connect(tabWidget, &CustomTabWidget::defaultActionRequestedForItem, mainWindow, &MainWindow::defaultAction);

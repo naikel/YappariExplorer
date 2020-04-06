@@ -15,6 +15,7 @@ void ContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSystemI
 
 void ContextMenu::defaultAction(const WId wId, const FileSystemItem *fileSystemItem)
 {
+    Q_UNUSED(wId)
     Q_UNUSED(fileSystemItem)
 }
 

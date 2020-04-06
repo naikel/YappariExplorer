@@ -7,7 +7,7 @@
 #include "customtreeview.h"
 #include "Model/filesystemmodel.h"
 
-CustomTreeView::CustomTreeView(QWidget *parent) : QTreeView(parent)
+CustomTreeView::CustomTreeView(QWidget *parent) : BaseTreeView(parent)
 {
     // Custom initialization
     setHeaderHidden(true);
@@ -19,17 +19,6 @@ CustomTreeView::CustomTreeView(QWidget *parent) : QTreeView(parent)
 
     // Animations don't really work when rows are inserted dynamically
     setAnimated(false);
-}
-
-void CustomTreeView::setModel(QAbstractItemModel *model)
-{
-    FileSystemModel *fileSystemModel = reinterpret_cast<FileSystemModel *>(model);
-    Once::connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &CustomTreeView::initialize);
-
-    connect(fileSystemModel, &FileSystemModel::fetchStarted, this, &CustomTreeView::setBusyCursor);
-    connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &CustomTreeView::setNormalCursor);
-
-    QTreeView::setModel(model);
 }
 
 void CustomTreeView::setRootIndex(const QModelIndex &index)
@@ -60,16 +49,6 @@ void CustomTreeView::initialize()
     selectionModel()->select(root, QItemSelectionModel::SelectCurrent);
 }
 
-void CustomTreeView::setNormalCursor()
-{
-    setCursor(Qt::ArrowCursor);
-}
-
-void CustomTreeView::setBusyCursor()
-{
-    setCursor(Qt::BusyCursor);
-}
-
 void CustomTreeView::selectIndex(QModelIndex index)
 {
     selectionModel()->select(index, QItemSelectionModel::ClearAndSelect);
@@ -84,40 +63,6 @@ QModelIndex CustomTreeView::moveCursor(QAbstractItemView::CursorAction cursorAct
     return newIndex;
 }
 
-void CustomTreeView::keyPressEvent(QKeyEvent *event)
-{
-    switch (event->key()) {
-
-        case Qt::Key_Select:
-        case Qt::Key_Enter:
-        case Qt::Key_Return:
-            if (currentIndex().isValid()) {
-                if (!isExpanded(currentIndex()))
-                    expand(currentIndex());
-                else
-                    collapse(currentIndex());
-            }
-            event->accept();
-            break;
-
-        case Qt::Key_Back:
-        case Qt::Key_Backspace:
-            qDebug() << "Backspace!";
-            event->ignore();
-            break;
-
-        default:
-            QTreeView::keyPressEvent(event);
-    }
-}
-
-void CustomTreeView::mousePressEvent(QMouseEvent *event)
-{
-    if (event->button() == Qt::BackButton)
-        qDebug() << "Back button pressed";
-    QTreeView::mousePressEvent(event);
-}
-
 void CustomTreeView::resizeEvent(QResizeEvent *event)
 {
     emit resized();
@@ -125,4 +70,15 @@ void CustomTreeView::resizeEvent(QResizeEvent *event)
     qDebug() << "CustomTreeView::resizeEvent resize to " << event->size();
 
     QTreeView::resizeEvent(event);
+}
+
+void CustomTreeView::selectEvent()
+{
+    qDebug() << "CustomTreeView::selectEvent";
+    if (currentIndex().isValid()) {
+        if (!isExpanded(currentIndex()))
+            expand(currentIndex());
+        else
+            collapse(currentIndex());
+    }
 }

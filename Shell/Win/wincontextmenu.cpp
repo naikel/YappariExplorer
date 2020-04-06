@@ -1,4 +1,5 @@
 #include <QDebug>
+#include <QTime>
 
 #include "wincontextmenu.h"
 
@@ -84,14 +85,17 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
 
                 // Populate the menu
                 // ToDo: CMF_EXTENDEDVERBS should be added if the context menu was right clicked
+                qDebug() << "WinContextMenu::show " << QTime::currentTime() << "Before populating the menu";
                 if (SUCCEEDED(imenu->QueryContextMenu(hmenu, 0, SCRATCH_QCM_FIRST, SCRATCH_QCM_LAST, CMF_CANRENAME | CMF_EXPLORE))) {
 
                     // Delete/Add custom menu items
+                    qDebug() << "WinContextMenu::show " << QTime::currentTime() << "Before customizing the menu";
                     customizeMenu(imenu, hmenu, viewAspect);
 
                     imenu->QueryInterface(IID_IContextMenu2, reinterpret_cast<void**>(&imenu2));
                     imenu->QueryInterface(IID_IContextMenu3, reinterpret_cast<void**>(&imenu3));
 
+                    qDebug() << "WinContextMenu::show " << QTime::currentTime() << "Before calling the menu";
                     UINT iCmd = static_cast<UINT>(::TrackPopupMenuEx(hmenu, TPM_RETURNCMD, pos.x(), pos.y(), hwnd, nullptr));
                     if (imenu2) {
                       imenu2->Release();
@@ -196,7 +200,6 @@ bool WinContextMenu::handleNativeEvent(const QByteArray &eventType, void *messag
 
 void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const ContextMenu::ContextViewAspect viewAspect)
 {
-
     // Browse the explorer menu
     int count = GetMenuItemCount(hmenu);
     qDebug() << "Menu items" << count;

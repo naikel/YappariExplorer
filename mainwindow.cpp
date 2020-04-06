@@ -36,8 +36,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->topTreeView, &CustomTreeView::resized, this, &MainWindow::resizeBottomTreeView);
     connect(ui->bottomTreeView, &CustomTreeView::resized, this, &MainWindow::resizeTopTreeView);
 
-    // NEW METHOD
-
+    // Initialize explorers
     ui->bottomExplorer->initialize(this, ui->bottomTreeView, ui->bottomTabWidget);
     ui->topExplorer->initialize(this, ui->topTreeView, ui->topTabWidget);
 
@@ -47,7 +46,6 @@ MainWindow::~MainWindow()
 {
     delete ui;
 }
-
 
 void MainWindow::resizeBottomTreeView()
 {
@@ -68,11 +66,13 @@ void MainWindow::changeTitle(const QItemSelection &selected, const QItemSelectio
     Q_UNUSED(selected)
     Q_UNUSED(deselected)
 
-    QString title = APPLICATION_TITLE;
+    QString title;
     QModelIndex index = selected.indexes().at(0);
     if (index.isValid()) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
         title = fileSystemItem->getDisplayName() + " - " + title;
+    } else {
+        title = APPLICATION_TITLE;
     }
     setWindowTitle(title);
 }

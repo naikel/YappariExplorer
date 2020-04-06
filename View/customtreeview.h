@@ -1,16 +1,15 @@
 #ifndef CUSTOMTREEVIEW_H
 #define CUSTOMTREEVIEW_H
 
-#include <QTreeView>
+#include "Base/basetreeview.h"
 
-class CustomTreeView : public QTreeView
+class CustomTreeView : public BaseTreeView
 {
     Q_OBJECT
 
 public:
     CustomTreeView(QWidget *parent = nullptr);
 
-    void setModel(QAbstractItemModel *model) override;
     void setRootIndex(const QModelIndex &index) override;
 
     QModelIndex selectedItem();
@@ -21,21 +20,15 @@ signals:
 
 public slots:
 
-    void initialize();
-    void setNormalCursor();
-    void setBusyCursor();
+    void initialize() override;
     void selectIndex(QModelIndex index);
 
 protected:
 
     QModelIndex moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers modifiers) override;
-    void keyPressEvent(QKeyEvent *event) override;
-    void mousePressEvent(QMouseEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
 
-private:
-    bool initialized {false};
-
+    void selectEvent() override;
 };
 
 #endif // CUSTOMTREEVIEW_H
