@@ -48,6 +48,7 @@ public:
     BaseTreeView(QWidget *parent = nullptr);
 
     void setModel(QAbstractItemModel *model) override;
+    bool isDragging() const;
 
 signals:
     void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
@@ -59,12 +60,15 @@ public slots:
     void contextMenuRequested(const QPoint &pos);
 
 protected:
-
     void keyPressEvent(QKeyEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
+    void dragEnterEvent(QDragEnterEvent *event) override;
+    void dragMoveEvent(QDragMoveEvent *event) override;
+    void dropEvent(QDropEvent *event) override;
 
     virtual void selectEvent();
     virtual void backEvent();
+
 };
 
 #endif // BASETREEVIEW_H

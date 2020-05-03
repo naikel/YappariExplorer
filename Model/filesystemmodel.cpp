@@ -1,9 +1,11 @@
 #include <QApplication>
 #include <QFileIconProvider>
 #include <QtConcurrent/QtConcurrentRun>
+#include <QMimeData>
 #include <QBrush>
 #include <QDebug>
 #include <QDir>
+#include <QUrl>
 
 #include <limits>
 #include <cmath>
@@ -123,6 +125,7 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
     if (index.isValid()  && index.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
         switch (role) {
+            case Qt::EditRole:
             case Qt::DisplayRole:
                 switch (index.column()) {
                     case Columns::Name:
@@ -163,7 +166,7 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
 
                         fileSystemItem->setIcon(icon);
 
-                        // This icon is fake and needs a real one the next time
+                        // This icon is fake and needs a real one the next time it is requested
                         fileSystemItem->setFakeIcon(true);
                     }
                     return icon;
@@ -211,6 +214,7 @@ QVariant FileSystemModel::headerData(int section, Qt::Orientation orientation, i
                     return QVariant(Qt::AlignRight | Qt::AlignVCenter);
             }
             break;
+
     }
     return QVariant();
 }
@@ -264,14 +268,72 @@ void FileSystemModel::sort(int column, Qt::SortOrder order)
     emit layoutChanged();
 }
 
+/*!
+ * \brief Returns the item flags for the given index.
+ * \param index the QModelIndex index.
+ * \return A Qt::ItemFlags object with the flags for the given index.
+ *
+ * This function will return only Qt::ItemIsEnabled if the index is not a filename, that is,
+ * if it's not the first column.  This way the user can only select items in column 0.
+ *
+ * If the index is in column 0, it is indeed a filename and it can be editable and dragable.
+ * Also if the index is a folder (or a drive in Windows) it can also support drops.
+ */
 Qt::ItemFlags FileSystemModel::flags(const QModelIndex &index) const
 {
-    // We don't want items to be selectable if they are not in the first column
-    if (index.column() > 0)
-        return Qt::ItemIsEnabled;
+    Qt::ItemFlags itemFlags = QAbstractItemModel::flags(index);
 
-    return QAbstractItemModel::flags(index);
+    if (index.isValid()) {
+
+        // We don't want items to be selectable if they are not in the first column
+        if (index.column() > 0)
+            return Qt::ItemIsEnabled;
+
+        itemFlags |= Qt::ItemIsEditable | Qt::ItemIsDragEnabled;
+
+        FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
+        if (fileSystemItem->isFolder() || fileSystemItem->isDrive())
+            itemFlags |= Qt::ItemIsDropEnabled;
+
+    } else
+        itemFlags |= Qt::ItemIsDropEnabled;
+
+    return itemFlags;
 }
+/*!
+ * \brief Returns the drop actions supported by this model
+ * \return a Qt::DropActions object with the drop actions supported
+ *
+ * This function returns Qt::CopyAction | Qt::MoveAction | Qt::LinkAction.
+ *
+ * There's no need to implement supportedDragActions() since its default implementation calls
+ * this function.
+ */
+Qt::DropActions FileSystemModel::supportedDropActions() const
+{
+    return Qt::CopyAction | Qt::MoveAction | Qt::LinkAction;
+}
+
+
+QMimeData *FileSystemModel::mimeData(const QModelIndexList &indexes) const
+{
+    QMimeData *data = new QMimeData();
+    QList<QUrl> urls;
+    for (QModelIndex index : indexes) {
+        if (index.column() == 0 && index.internalPointer() != nullptr) {
+            FileSystemItem *fileSystemItem = static_cast<FileSystemItem *>(index.internalPointer());
+            urls.append(QUrl::fromLocalFile(fileSystemItem->getPath()));
+        }
+    }
+    data->setUrls(urls);
+    return data;
+}
+
+QStringList FileSystemModel::mimeTypes() const
+{
+    return QStringList(QLatin1String("text/uri-list"));
+}
+
 
 QModelIndex FileSystemModel::relativeIndex(QString path, QModelIndex parent)
 {

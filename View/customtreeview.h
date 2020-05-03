@@ -10,8 +10,6 @@ class CustomTreeView : public BaseTreeView
 public:
     CustomTreeView(QWidget *parent = nullptr);
 
-    void setRootIndex(const QModelIndex &index) override;
-
     QModelIndex selectedItem();
 
 signals:
@@ -22,11 +20,14 @@ public slots:
 
     void initialize() override;
     void selectIndex(QModelIndex index);
+    void contextMenuRequested(const QPoint &pos);
 
 protected:
 
+    void mousePressEvent(QMouseEvent *event) override;
     QModelIndex moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers modifiers) override;
     void resizeEvent(QResizeEvent *event) override;
+
 
     void selectEvent() override;
 };

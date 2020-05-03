@@ -12,8 +12,12 @@ class DetailedView : public BaseTreeView
 public:
     DetailedView(QWidget *parent = nullptr);
 
-    void initialize();
+    void initialize() override;
     void setRoot(QString root);
+
+protected:
+    void selectEvent() override;
+
 };
 
 #endif // DETAILEDVIEW_H

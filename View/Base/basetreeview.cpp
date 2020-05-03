@@ -1,5 +1,8 @@
+#include <QApplication>
+#include <QMimeData>
 #include <QKeyEvent>
 #include <QDebug>
+#include <QDrag>
 
 #include "basetreeview.h"
 
@@ -14,8 +17,14 @@
  */
 BaseTreeView::BaseTreeView(QWidget *parent) : QTreeView(parent)
 {
+    setAcceptDrops(true);
+    setDragEnabled(true);
+    setDragDropMode(QAbstractItemView::DragDrop);
+    setDropIndicatorShown(false);
+    setEditTriggers(QAbstractItemView::SelectedClicked | QAbstractItemView::EditKeyPressed);
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &QTreeView::customContextMenuRequested, this, &BaseTreeView::contextMenuRequested);
+
 }
 
 /*!
@@ -107,11 +116,60 @@ void BaseTreeView::keyPressEvent(QKeyEvent *event)
  */
 void BaseTreeView::mousePressEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::BackButton) {
-        backEvent();
-        event->accept();
+    switch (event->button()) {
+        case Qt::BackButton:
+            backEvent();
+            event->accept();
+            break;
+        default:
+            QTreeView::mousePressEvent(event);
+    }
+}
+
+void BaseTreeView::dragEnterEvent(QDragEnterEvent *event)
+{
+    qDebug() << "BaseTreeView::dragEnterEvent";
+
+    // This will set the QAbstractItemView state to DraggingState and allows autoexpand of trees
+    QTreeView::dragEnterEvent(event);
+
+    if (event->mimeData()->hasFormat("text/uri-list")) {
+        event->acceptProposedAction();
     } else
-        QTreeView::mousePressEvent(event);
+        event->ignore();
+}
+
+void BaseTreeView::dragMoveEvent(QDragMoveEvent *event)
+{
+    // Process default events (autoexpand tree on drag, keyboard modifiers and highlight of destination)
+    QTreeView::dragMoveEvent(event);
+
+    // Also accept drops anywhere in the QTreeView widget, we'll handle them properly in the drop
+    //event->accept();
+}
+
+void BaseTreeView::dropEvent(QDropEvent *event)
+{
+    qDebug() << "BaseTreeView::dropEvent" << event->dropAction();
+
+    QList<QUrl> urls = event->mimeData()->urls();
+
+    QModelIndex index = indexAt(event->pos());
+
+    QString dstPath;
+    if (!index.isValid() || !(index.flags() & Qt::ItemIsDropEnabled)) {
+        FileSystemModel *fileSystemModel = static_cast<FileSystemModel *>(model());
+        dstPath = fileSystemModel->getRoot()->getPath();
+    } else {
+        qDebug() << index.flags();
+        if (index.internalPointer() != nullptr)
+            dstPath = (static_cast<FileSystemItem *>(index.internalPointer()))->getPath();
+    }
+
+    qDebug() << "Dropping" << urls << "to" << dstPath;
+
+    event->acceptProposedAction();
+    QTreeView::dropEvent(event);
 }
 
 /*!
@@ -132,6 +190,11 @@ void BaseTreeView::selectEvent()
 void BaseTreeView::backEvent()
 {
     qDebug() << "BaseTreeView::backEvent";
+}
+
+bool BaseTreeView::isDragging() const
+{
+    return state() == DraggingState;
 }
 
 /*!

@@ -36,7 +36,9 @@ public:
     void fetchMore(const QModelIndex &parent) override;
     void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;
     Qt::ItemFlags flags(const QModelIndex &index) const override;
-
+    Qt::DropActions supportedDropActions() const override;
+    QMimeData *mimeData(const QModelIndexList &indexes) const override;
+    QStringList mimeTypes() const override;
     QModelIndex relativeIndex(QString path, QModelIndex parent);
     void setRoot(const QString path);
     FileSystemItem *getRoot();

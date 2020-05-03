@@ -10,6 +10,7 @@
 CustomTreeView::CustomTreeView(QWidget *parent) : BaseTreeView(parent)
 {
     // Custom initialization
+    setAutoExpandDelay(500);
     setHeaderHidden(true);
     setSelectionBehavior(QAbstractItemView::SelectItems);
     setSelectionMode(QAbstractItemView::SingleSelection);
@@ -19,11 +20,10 @@ CustomTreeView::CustomTreeView(QWidget *parent) : BaseTreeView(parent)
 
     // Animations don't really work when rows are inserted dynamically
     setAnimated(false);
-}
 
-void CustomTreeView::setRootIndex(const QModelIndex &index)
-{
-    QTreeView::setRootIndex(index);
+    // Disconnect the default customContextMenuRequested and connect our own
+    disconnect(this, &QTreeView::customContextMenuRequested, this, &BaseTreeView::contextMenuRequested);
+    //connect(this, &QTreeView::customContextMenuRequested, this, &CustomTreeView::contextMenuRequested);
 }
 
 QModelIndex CustomTreeView::selectedItem()
@@ -80,5 +80,45 @@ void CustomTreeView::selectEvent()
             expand(currentIndex());
         else
             collapse(currentIndex());
+    }
+}
+
+void CustomTreeView::mousePressEvent(QMouseEvent *event)
+{
+    switch (event->button()) {
+        case Qt::RightButton:
+            {
+                QPoint pos = event->pos();
+
+                // Save current selection
+                QModelIndex lastSelection = selectedItem();
+
+                // Change the selection temporary to the item at the event position
+                QModelIndex index = indexAt(pos);
+                selectIndex(index);
+                contextMenuRequested(event->pos());
+
+                // Restore previous selection
+                selectIndex(lastSelection);
+                event->accept();
+            }
+            break;
+        default:
+            BaseTreeView::mousePressEvent(event);
+    }
+}
+
+/*!
+ * \brief A context menu was requested.
+ * \param pos the QPoint position where the context menu was requested, relative to the widget.
+ *
+ * This function verifies if the context menu was requested on an item, to avoid background requests.
+ */
+void CustomTreeView::contextMenuRequested(const QPoint &pos)
+{
+    // Only allow context menu on an item, and ignore background context menu requests
+    QModelIndex index = indexAt(pos);
+    if (index.isValid() && index.internalPointer() != nullptr) {
+        BaseTreeView::contextMenuRequested(pos);
     }
 }

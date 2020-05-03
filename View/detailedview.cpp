@@ -48,3 +48,16 @@ void DetailedView::setRoot(QString root)
         }
     }
 }
+
+void DetailedView::selectEvent()
+{
+    qDebug() << "DetailedView::selectEvent";
+    for (QModelIndex selectedIndex : selectedIndexes()) {
+        if (selectedIndex.column() == 0 && selectedIndex.internalPointer() != nullptr) {
+            FileSystemItem *fileSystemItem = static_cast<FileSystemItem *>(selectedIndex.internalPointer());
+            qDebug() << "DetailedView::selectEvent selected for " << fileSystemItem->getPath();
+            emit doubleClicked(selectedIndex);
+        }
+    }
+}
+

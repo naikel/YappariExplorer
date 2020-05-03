@@ -15,6 +15,7 @@
 
 CustomTabWidget::CustomTabWidget(QWidget *parent) : QTabWidget(parent)
 {
+    setAcceptDrops(true);
     CustomTabBar *customTabBar = new CustomTabBar(this);
     setTabBar(customTabBar);
 
