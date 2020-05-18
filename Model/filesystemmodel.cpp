@@ -183,6 +183,7 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
                 if (fileInfoRetriever->getScope() == FileInfoRetriever::List && fileSystemItem->isFolder()) {
                     return QVariant(QBrush(Qt::darkBlue));
                 }
+                break;
         }
     }
     return QVariant();
@@ -295,11 +296,14 @@ Qt::ItemFlags FileSystemModel::flags(const QModelIndex &index) const
         if (fileSystemItem->isFolder() || fileSystemItem->isDrive())
             itemFlags |= Qt::ItemIsDropEnabled;
 
-    } else
+    } else {
+        // Enable drop to the background (empty areas)
         itemFlags |= Qt::ItemIsDropEnabled;
+    }
 
     return itemFlags;
 }
+
 /*!
  * \brief Returns the drop actions supported by this model
  * \return a Qt::DropActions object with the drop actions supported
@@ -317,6 +321,7 @@ Qt::DropActions FileSystemModel::supportedDropActions() const
 
 QMimeData *FileSystemModel::mimeData(const QModelIndexList &indexes) const
 {
+    qDebug() << "FileSystemModel::mimeData";
     QMimeData *data = new QMimeData();
     QList<QUrl> urls;
     for (QModelIndex index : indexes) {
@@ -329,9 +334,135 @@ QMimeData *FileSystemModel::mimeData(const QModelIndexList &indexes) const
     return data;
 }
 
+bool FileSystemModel::canDropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) const
+{
+    // Check if dropping to itself
+    if (QAbstractItemModel::canDropMimeData(data, action, row, column, parent)) {
+        QString dstPath = getDropPath(parent);
+        for (QUrl url : data->urls()) {
+            QString path = url.toLocalFile().replace('/', separator());
+            if (path == dstPath) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+bool FileSystemModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent)
+{
+    Q_UNUSED(row)
+    Q_UNUSED(column)
+    qDebug() << "FileSystemMode::dropMimeData" << action;
+    QList<QUrl> urls = data->urls();
+
+    QString dstPath = getDropPath(parent);
+    qDebug() << "Dropping" << urls << "to" << dstPath;
+
+    return true;
+}
+
 QStringList FileSystemModel::mimeTypes() const
 {
     return QStringList(QLatin1String("text/uri-list"));
+}
+
+/*!
+ * \brief Returns the path of a drop in an index item
+ * \param index a QModelIndex where the user is making the drop
+ * \return a QString with the path of the drop
+ *
+ * This function returns the path of the QModelIndex index if this index has the drop feature enabled,
+ * otherwise it will return the path of the background view.
+ */
+QString FileSystemModel::getDropPath(QModelIndex index) const {
+
+    QString dstPath;
+
+    if (!index.isValid() || !(index.flags() & Qt::ItemIsDropEnabled)) {
+        dstPath = getRoot()->getPath();
+    } else {
+        if (index.isValid() && index.internalPointer() != nullptr)
+            dstPath = getFileSystemItem(index)->getPath();
+    }
+
+    return dstPath;
+}
+
+/*!
+ * \brief Returns the drag actions supported by this model for the specified indexes
+ * \param indexes a list of QModelIndex objects
+ * \return a Qt::DropActions object with the drop actions supported for the indexes
+ *
+ * This function returns the drag actions supported by the specified indexes.
+ *
+ * A drive cannot be moved or copied, but the user can create a link to it.
+ */
+Qt::DropActions FileSystemModel::supportedDragActionsForIndexes(QModelIndexList indexes)
+{
+#ifdef Q_OS_WIN
+    for (QModelIndex index : indexes) {
+        if (index.isValid() && index.flags() & Qt::ItemIsDragEnabled) {
+            FileSystemItem *fileSystemItem = static_cast<FileSystemItem *>(index.internalPointer());
+            if (fileSystemItem->isDrive())
+                return Qt::LinkAction;
+        }
+    }
+#endif
+
+    return supportedDragActions();
+}
+
+/*!
+ * \brief Returns a default drop action for the mime data when it's being dropped on an index
+ * \param index a QModelIndex object where the mime data is being dropped on
+ * \param data QMimeData with the MIME data being dragged and dropped on the index
+ * \param possibleActions a Qt::DropActions object with the possible actions
+ * \return a Qt::DropAction object with the default drop action
+ *
+ * In Windows, this function will choose a default MoveAction if some files are being dragged in the same drive.
+ *
+ * Otherwise it will choose a CopyAction as default if supported, or a MoveAction if CopyAction is not supported,
+ * and finally a LinkAction if nothing else is supported. LinkActions are always supported.
+ */
+Qt::DropAction FileSystemModel::defaultDropActionForIndex(QModelIndex index, const QMimeData *data, Qt::DropActions possibleActions)
+{
+    qDebug() << "FileSystemModel::defaultDropActionForIndex";
+
+#ifdef Q_OS_WIN
+    if (possibleActions & Qt::MoveAction) {
+
+        // All items being dragged must be from the same drive
+        QString drive;
+        for (QUrl url : data->urls()) {
+            QString path = url.toLocalFile();
+            if (drive.isEmpty()) {
+                drive = path.left(3);
+            } else if (drive != path.left(3)) {
+                drive = QString();
+                break;
+            }
+        }
+
+        if (drive.right(1) == '/')
+            drive = drive.left(2) + separator();
+
+        QString dstPath = getDropPath(index);
+        if (!drive.isEmpty() && index.isValid() && index.internalPointer() != nullptr && dstPath.left(3) == drive) {
+            // Default action for files in the same drive is MoveAction
+            return Qt::MoveAction;
+        }
+    }
+#endif
+
+    if (possibleActions & Qt::CopyAction)
+        return Qt::CopyAction;
+
+    if (possibleActions & Qt::MoveAction)
+        return Qt::MoveAction;
+
+    return Qt::LinkAction;
 }
 
 
@@ -375,12 +506,12 @@ void FileSystemModel::setRoot(const QString path)
 }
 
 
-FileSystemItem *FileSystemModel::getRoot()
+FileSystemItem *FileSystemModel::getRoot() const
 {
     return root;
 }
 
-QChar FileSystemModel::separator()
+QChar FileSystemModel::separator() const
 {
     return QDir::separator();
 }

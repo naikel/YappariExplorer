@@ -24,7 +24,6 @@ BaseTreeView::BaseTreeView(QWidget *parent) : QTreeView(parent)
     setEditTriggers(QAbstractItemView::SelectedClicked | QAbstractItemView::EditKeyPressed);
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &QTreeView::customContextMenuRequested, this, &BaseTreeView::contextMenuRequested);
-
 }
 
 /*!
@@ -33,7 +32,7 @@ BaseTreeView::BaseTreeView(QWidget *parent) : QTreeView(parent)
  *
  * Sets the model for the view to present.  The model is a FileSystemModel.
  *
- * After the model has finished fecthing the initial items the function BaseTreeView::initialize will be called
+ * After the model has finished fetching the initial items the function BaseTreeView::initialize will be called
  * to finish initialization of the view.
  *
  * This function also configures the mouse cursor to show a busy icon when the model is fetching new items.
@@ -48,7 +47,7 @@ void BaseTreeView::setModel(QAbstractItemModel *model)
     connect(fileSystemModel, &FileSystemModel::fetchStarted, this, &BaseTreeView::setBusyCursor);
     connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &BaseTreeView::setNormalCursor);
 
-    QTreeView::setModel(model);
+    QTreeView::setModel(fileSystemModel);
 }
 
 /*!
@@ -126,6 +125,16 @@ void BaseTreeView::mousePressEvent(QMouseEvent *event)
     }
 }
 
+void BaseTreeView::startDrag(Qt::DropActions supportedActions)
+{
+    Q_UNUSED(supportedActions)
+
+    qDebug() << "BaseTreeView:startDrag";
+
+    Qt::DropActions dropActions = getFileSystemModel()->supportedDragActionsForIndexes(selectedIndexes());
+    QTreeView::startDrag(dropActions);
+}
+
 void BaseTreeView::dragEnterEvent(QDragEnterEvent *event)
 {
     qDebug() << "BaseTreeView::dragEnterEvent";
@@ -144,31 +153,20 @@ void BaseTreeView::dragMoveEvent(QDragMoveEvent *event)
     // Process default events (autoexpand tree on drag, keyboard modifiers and highlight of destination)
     QTreeView::dragMoveEvent(event);
 
-    // Also accept drops anywhere in the QTreeView widget, we'll handle them properly in the drop
-    //event->accept();
+    // If no keyboard modifiers are being pressed, select the default action for the drop target
+    if (event->isAccepted() && !event->keyboardModifiers()) {
+        event->setDropAction(getFileSystemModel()->defaultDropActionForIndex(indexAt(event->pos()), event->mimeData(), event->possibleActions()));
+    }
 }
 
 void BaseTreeView::dropEvent(QDropEvent *event)
 {
     qDebug() << "BaseTreeView::dropEvent" << event->dropAction();
 
-    QList<QUrl> urls = event->mimeData()->urls();
-
-    QModelIndex index = indexAt(event->pos());
-
-    QString dstPath;
-    if (!index.isValid() || !(index.flags() & Qt::ItemIsDropEnabled)) {
-        FileSystemModel *fileSystemModel = static_cast<FileSystemModel *>(model());
-        dstPath = fileSystemModel->getRoot()->getPath();
-    } else {
-        qDebug() << index.flags();
-        if (index.internalPointer() != nullptr)
-            dstPath = (static_cast<FileSystemItem *>(index.internalPointer()))->getPath();
+    // If no keyboard modifiers are being pressed, select the default action for the drop target
+    if (!event->keyboardModifiers()) {
+        event->setDropAction(getFileSystemModel()->defaultDropActionForIndex(indexAt(event->pos()), event->mimeData(), event->possibleActions()));
     }
-
-    qDebug() << "Dropping" << urls << "to" << dstPath;
-
-    event->acceptProposedAction();
     QTreeView::dropEvent(event);
 }
 
@@ -215,15 +213,14 @@ void BaseTreeView::contextMenuRequested(const QPoint &pos)
         viewAspect = ContextMenu::Selection;
         for (QModelIndex selectedIndex : selectedIndexes()) {
             if (selectedIndex.column() == 0 && selectedIndex.internalPointer() != nullptr) {
-                FileSystemItem *fileSystemItem = static_cast<FileSystemItem *>(selectedIndex.internalPointer());
+                FileSystemItem *fileSystemItem = getFileSystemModel()->getFileSystemItem(selectedIndex);
                 fileSystemItems.append(fileSystemItem);
                 qDebug() << "BaseTreeView::contextMenuRequested selected for " << fileSystemItem->getPath();
             }
         }
     } else {
         viewAspect = ContextMenu::Background;
-        FileSystemModel *fileSystemModel = static_cast<FileSystemModel *>(model());
-        FileSystemItem *fileSystemItem = fileSystemModel->getRoot();
+        FileSystemItem *fileSystemItem = getFileSystemModel()->getRoot();
         fileSystemItems.append(fileSystemItem);
         qDebug() << "BaseTreeView::contextMenuRequested selected for the background on " << fileSystemItem->getPath();
     }

@@ -50,6 +50,11 @@ public:
     void setModel(QAbstractItemModel *model) override;
     bool isDragging() const;
 
+    // inline functions
+    inline FileSystemModel *getFileSystemModel() const {
+        return static_cast<FileSystemModel *>(model());
+    }
+
 signals:
     void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
 
@@ -62,6 +67,7 @@ public slots:
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
+    void startDrag(Qt::DropActions supportedActions) override;
     void dragEnterEvent(QDragEnterEvent *event) override;
     void dragMoveEvent(QDragMoveEvent *event) override;
     void dropEvent(QDropEvent *event) override;

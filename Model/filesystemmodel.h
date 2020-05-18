@@ -24,7 +24,7 @@ public:
     FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent = nullptr);
     ~FileSystemModel() override;
 
-    // Model functions
+    // Model reimplemented functions
     QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override;
     QModelIndex parent(const QModelIndex &index) const override;
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -38,11 +38,23 @@ public:
     Qt::ItemFlags flags(const QModelIndex &index) const override;
     Qt::DropActions supportedDropActions() const override;
     QMimeData *mimeData(const QModelIndexList &indexes) const override;
+    bool canDropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) const override;
+    bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) override;
     QStringList mimeTypes() const override;
+
+    // Custom functions
+    QString getDropPath(QModelIndex index) const;
+    Qt::DropActions supportedDragActionsForIndexes(QModelIndexList indexes);
+    Qt::DropAction defaultDropActionForIndex(QModelIndex index, const QMimeData *data, Qt::DropActions possibleActions);
     QModelIndex relativeIndex(QString path, QModelIndex parent);
     void setRoot(const QString path);
-    FileSystemItem *getRoot();
-    QChar separator();
+    FileSystemItem *getRoot() const;
+    QChar separator() const;
+
+    // Inline functions
+    inline FileSystemItem *getFileSystemItem(QModelIndex index) const {
+        return static_cast<FileSystemItem *>(index.internalPointer());
+    }
 
 public slots:
     void parentUpdated(FileSystemItem *parent);

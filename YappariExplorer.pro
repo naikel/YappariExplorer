@@ -84,7 +84,8 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 DISTFILES += \
-    UML/filesystem.qmodel
+    UML/filesystem.qmodel \
+    qt.conf
 
 RESOURCES += \
     resources.qrc

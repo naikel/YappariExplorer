@@ -20,7 +20,6 @@ public slots:
 
     void initialize() override;
     void selectIndex(QModelIndex index);
-    void contextMenuRequested(const QPoint &pos);
 
 protected:
 

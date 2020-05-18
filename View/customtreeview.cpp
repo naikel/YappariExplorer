@@ -21,9 +21,9 @@ CustomTreeView::CustomTreeView(QWidget *parent) : BaseTreeView(parent)
     // Animations don't really work when rows are inserted dynamically
     setAnimated(false);
 
-    // Disconnect the default customContextMenuRequested and connect our own
-    disconnect(this, &QTreeView::customContextMenuRequested, this, &BaseTreeView::contextMenuRequested);
-    //connect(this, &QTreeView::customContextMenuRequested, this, &CustomTreeView::contextMenuRequested);
+    // Disconnect the default customContextMenuRequested to disable background context menu requests
+    // Context menu on items is done by mousePressEvent directly
+    disconnect(this, &QTreeView::customContextMenuRequested, 0, 0);
 }
 
 QModelIndex CustomTreeView::selectedItem()
@@ -40,7 +40,7 @@ void CustomTreeView::initialize()
 {
     qDebug() << "CustomTreeView::initialize";
 
-    FileSystemModel *fileSystemModel = reinterpret_cast<FileSystemModel *>(model());
+    FileSystemModel *fileSystemModel = getFileSystemModel();
 
     QModelIndex root = fileSystemModel->index(0, 0, QModelIndex());
 
@@ -89,36 +89,25 @@ void CustomTreeView::mousePressEvent(QMouseEvent *event)
         case Qt::RightButton:
             {
                 QPoint pos = event->pos();
-
-                // Save current selection
-                QModelIndex lastSelection = selectedItem();
-
-                // Change the selection temporary to the item at the event position
                 QModelIndex index = indexAt(pos);
-                selectIndex(index);
-                contextMenuRequested(event->pos());
 
-                // Restore previous selection
-                selectIndex(lastSelection);
-                event->accept();
+                // Only allow context menu on an item, and ignore background context menu requests
+                if (index.isValid() && index.internalPointer() != nullptr) {
+
+                    // Save current selection
+                    QModelIndex lastSelection = selectedItem();
+
+                    // Select temporarily the index and request context menu
+                    selectIndex(index);
+                    contextMenuRequested(event->pos());
+
+                    // Restore previous selection
+                    selectIndex(lastSelection);
+                    event->accept();
+                }
             }
             break;
         default:
             BaseTreeView::mousePressEvent(event);
-    }
-}
-
-/*!
- * \brief A context menu was requested.
- * \param pos the QPoint position where the context menu was requested, relative to the widget.
- *
- * This function verifies if the context menu was requested on an item, to avoid background requests.
- */
-void CustomTreeView::contextMenuRequested(const QPoint &pos)
-{
-    // Only allow context menu on an item, and ignore background context menu requests
-    QModelIndex index = indexAt(pos);
-    if (index.isValid() && index.internalPointer() != nullptr) {
-        BaseTreeView::contextMenuRequested(pos);
     }
 }

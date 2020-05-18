@@ -39,7 +39,7 @@ void DetailedView::setRoot(QString root)
     if (!root.isEmpty()) {
 
         // This item is from the tree view model, not from the model of this view
-        FileSystemModel *fileSystemModel = static_cast<FileSystemModel *>(model());
+        FileSystemModel *fileSystemModel = getFileSystemModel();
         if (!(fileSystemModel->getRoot()->getPath() == root)) {
             qDebug() << "DetailedView::setRoot" << root;
             fileSystemModel->setRoot(root);
@@ -54,7 +54,7 @@ void DetailedView::selectEvent()
     qDebug() << "DetailedView::selectEvent";
     for (QModelIndex selectedIndex : selectedIndexes()) {
         if (selectedIndex.column() == 0 && selectedIndex.internalPointer() != nullptr) {
-            FileSystemItem *fileSystemItem = static_cast<FileSystemItem *>(selectedIndex.internalPointer());
+            FileSystemItem *fileSystemItem = getFileSystemModel()->getFileSystemItem(selectedIndex);
             qDebug() << "DetailedView::selectEvent selected for " << fileSystemItem->getPath();
             emit doubleClicked(selectedIndex);
         }
