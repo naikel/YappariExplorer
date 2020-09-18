@@ -14,11 +14,15 @@
 #include "filesystemmodel.h"
 
 #ifdef Q_OS_WIN
-#include "Shell/Win/winfileinforetriever.h"
-#define PlatformInfoRetriever()     WinFileInfoRetriever()
+#   include "Shell/Win/winfileinforetriever.h"
+#   include "Shell/Win/winshellactions.h"
+#   define PlatformInfoRetriever()     WinFileInfoRetriever()
+#   define PlatformShellActions()      WinShellActions()
 #else
-#include "Shell/Unix/unixfileinforetriever.h"
-#define PlatformInfoRetriever()     UnixFileInfoRetriever()
+#   include "Shell/Unix/unixfileinforetriever.h"
+#   include "Shell/Unix/unixshellactions.h"
+#   define PlatformInfoRetriever()     UnixFileInfoRetriever()
+#   define PlatformShellActions()      UnixShellActions()
 #endif
 
 FileSystemModel::FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent) : QAbstractItemModel(parent)
@@ -29,6 +33,7 @@ FileSystemModel::FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent
     qRegisterMetaType<QVector<int>>("QVector<int>");
 
     fileInfoRetriever = new PlatformInfoRetriever();
+    shellActions = new PlatformShellActions();
 
     // Get the default icons
     QFileIconProvider iconProvider;
@@ -360,6 +365,20 @@ bool FileSystemModel::dropMimeData(const QMimeData *data, Qt::DropAction action,
     QString dstPath = getDropPath(parent);
     qDebug() << "Dropping" << urls << "to" << dstPath;
 
+    switch(action) {
+        case Qt::CopyAction:
+            shellActions->copyItems(urls, dstPath);
+            break;
+        case Qt::MoveAction:
+            shellActions->moveItems(urls, dstPath);
+            break;
+        case Qt::LinkAction:
+            shellActions->linkItems(urls, dstPath);
+            break;
+        default:
+            break;
+    }
+
     return true;
 }
 
@@ -428,8 +447,6 @@ Qt::DropActions FileSystemModel::supportedDragActionsForIndexes(QModelIndexList 
  */
 Qt::DropAction FileSystemModel::defaultDropActionForIndex(QModelIndex index, const QMimeData *data, Qt::DropActions possibleActions)
 {
-    qDebug() << "FileSystemModel::defaultDropActionForIndex";
-
 #ifdef Q_OS_WIN
     if (possibleActions & Qt::MoveAction) {
 

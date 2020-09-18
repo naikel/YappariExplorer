@@ -68,13 +68,14 @@ unix {
 
 win32 {
     CONFIG(debug, debug|release) {
+        DEFINES += _WIN32_IE=0x700
         SOURCES += \
             Shell/Win/wincontextmenu.cpp \
             Shell/Win/winfileinforetriever.cpp
         HEADERS += \
             Shell/Win/wincontextmenu.h \
             Shell/Win/winfileinforetriever.h
-        LIBS += -lole32 -lgdi32
+        LIBS += -lole32 -lgdi32 -luuid
     }
 }
 

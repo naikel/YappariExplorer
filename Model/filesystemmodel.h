@@ -5,6 +5,7 @@
 
 #include "Shell/filesystemitem.h"
 #include "Shell/fileinforetriever.h"
+#include "Shell/shellactions.h"
 
 class FileSystemModel : public QAbstractItemModel
 {
@@ -73,6 +74,7 @@ private:
     int currentSortColumn                   {0};
     Qt::SortOrder currentSortOrder          {Qt::AscendingOrder};
     FileInfoRetriever *fileInfoRetriever    {nullptr};
+    ShellActions *shellActions              {nullptr};
     QList<QString> sizeUnits                {"byte", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
 
     // Default icons
