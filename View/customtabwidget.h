@@ -15,15 +15,17 @@ public:
     void addNewTab(const QString path);
 
 public slots:
-    void setViewIndex(const QModelIndex &index);
+    bool setViewIndex(const QModelIndex &index);
     void changeRootPath(const QString path);
     void doubleClicked(const QModelIndex &index);
     void updateTab();
+    void tabFailed(qint32 err, QString errMessage);
     void newTabClicked();
     void closeTab(int index);
 
 signals:
     void rootChanged(const QString path);
+    void rootChangeFailed(const QString path);
     void newTabRequested();
     void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
     void defaultActionRequestedForItem(FileSystemItem *fileSystemItem);

@@ -70,7 +70,8 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
                     LPITEMIDLIST pidlItem;
 
                     // Path should be relative to the folder, not absolute.  We'll use getDisplayName() for this
-                    LPWSTR path = const_cast<LPWSTR>(fileSystemItem->getDisplayName().toStdWString().c_str());
+                    std::wstring wstrDisplayName = fileSystemItem->getDisplayName().toStdWString();
+                    LPWSTR path = const_cast<LPWSTR>(wstrDisplayName.c_str());
 
                     if (SUCCEEDED(psf->ParseDisplayName(nullptr, nullptr, path, nullptr, &pidlItem, nullptr))) {
                         pidlList[i++] = pidlItem;
@@ -84,7 +85,7 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
                 HMENU hmenu = ::CreatePopupMenu();
 
                 // Populate the menu
-                // ToDo: CMF_EXTENDEDVERBS should be added if the context menu was right clicked
+                // TODO: CMF_EXTENDEDVERBS should be added if the context menu was right clicked
                 qDebug() << "WinContextMenu::show " << QTime::currentTime() << "Before populating the menu";
                 if (SUCCEEDED(imenu->QueryContextMenu(hmenu, 0, SCRATCH_QCM_FIRST, SCRATCH_QCM_LAST, CMF_CANRENAME | CMF_EXPLORE))) {
 
@@ -106,8 +107,16 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
                       imenu3 = nullptr;
                     }
 
-                    if (iCmd > 0)
-                        invokeCommand(hwnd, iCmd, imenu, pos);
+                    if (iCmd > 0) {
+
+                        // All entries have the same root and at least there's one
+                        QString workingDirectory;
+                        FileSystemItem *parent = fileSystemItems[0]->getParent();
+                        if (parent)
+                            workingDirectory = parent->getPath();
+
+                        invokeCommand(hwnd, iCmd, imenu, pos, workingDirectory);
+                    }
                 }
                 ::DestroyMenu(hmenu);
                 imenu->Release();
@@ -146,8 +155,13 @@ void WinContextMenu::defaultAction(const WId wId, const FileSystemItem *fileSyst
             if (SUCCEEDED(imenu->QueryContextMenu(hmenu, 0, SCRATCH_QCM_FIRST, SCRATCH_QCM_LAST, CMF_DEFAULTONLY))) {
 
                 UINT iCmd = ::GetMenuDefaultItem(hmenu, FALSE, 0);
-                if (iCmd != static_cast<UINT>(-1))
-                    invokeCommand(hwnd, iCmd, imenu, QPoint());
+
+                if (iCmd != static_cast<UINT>(-1)) {
+                    QString workingDirectory;
+                    if (fileSystemItem->getParent())
+                        workingDirectory = fileSystemItem->getParent()->getPath();
+                    invokeCommand(hwnd, iCmd, imenu, QPoint(), workingDirectory);
+                }
             }
             ::DestroyMenu(hmenu);
             imenu->Release();
@@ -158,7 +172,7 @@ void WinContextMenu::defaultAction(const WId wId, const FileSystemItem *fileSyst
     }
 }
 
-void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QPoint pos)
+void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QPoint pos, QString workingDirectory)
 {
     qDebug() << "WinContextMenu::invokeCommand command selected " << iCmd;
     CMINVOKECOMMANDINFOEX info = {};
@@ -173,6 +187,13 @@ void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QP
     info.lpVerb  = MAKEINTRESOURCEA(iCmd - SCRATCH_QCM_FIRST);
     info.lpVerbW  = MAKEINTRESOURCEW(iCmd - SCRATCH_QCM_FIRST);
     info.nShow = SW_SHOWNORMAL;
+
+    if (workingDirectory != nullptr && !workingDirectory.isEmpty()) {
+        std::wstring wrkDir = workingDirectory.toStdWString();
+        info.lpDirectoryW = wrkDir.c_str();
+        qDebug() << workingDirectory;
+    }
+
     HRESULT hr = imenu->InvokeCommand(reinterpret_cast<LPCMINVOKECOMMANDINFO>(&info));
     qDebug() << "WinContextMenu::invokeCommand result code " << QString("%1").arg(hr, 0, 16) << "HWND" << hwnd;
 }

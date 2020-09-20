@@ -63,6 +63,8 @@ public slots:
     void setNormalCursor();
     void setBusyCursor();
     void contextMenuRequested(const QPoint &pos);
+    void showError(qint32 err, QString errMessage);
+    virtual bool setRoot(QString path);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;

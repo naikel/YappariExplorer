@@ -33,6 +33,7 @@ public:
     FileSystemItem *getChild(QString path);
     void removeChild(QString path);
     QList<FileSystemItem *> getChildren();
+    void removeChildren();
 
     int childrenCount();
     int childRow(FileSystemItem *child);

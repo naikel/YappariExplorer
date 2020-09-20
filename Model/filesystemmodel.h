@@ -49,12 +49,13 @@ public:
     QStringList mimeTypes() const override;
 
     // Custom functions
-    QModelIndex index(QString path, int column = 0) const;   QString getDropPath(QModelIndex index) const;
+    QString getDropPath(QModelIndex index) const;
     Qt::DropActions supportedDragActionsForIndexes(QModelIndexList indexes);
     Qt::DropAction defaultDropActionForIndex(QModelIndex index, const QMimeData *data, Qt::DropActions possibleActions);
     QModelIndex relativeIndex(QString path, QModelIndex parent);
-    void setRoot(const QString path);
+    bool setRoot(const QString path);
     FileSystemItem *getRoot() const;
+    bool removeAllRows(QModelIndex &parent);
     QChar separator() const;
 
     // Inline functions
@@ -63,13 +64,14 @@ public:
     }
 
 public slots:
-    void parentUpdated(FileSystemItem *parent);
+    void parentUpdated(FileSystemItem *parent, qint32 err, QString errMessage);
     void itemUpdated(FileSystemItem *item);
     void extendedInfoUpdated(FileSystemItem *parent);
 
 signals:
     void fetchStarted();
     void fetchFinished();
+    void fetchFailed(qint32 err, QString errMessage);
 
 private:
 

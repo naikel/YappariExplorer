@@ -66,13 +66,11 @@ void MainWindow::changeTitle(const QItemSelection &selected, const QItemSelectio
     Q_UNUSED(selected)
     Q_UNUSED(deselected)
 
-    QString title;
+    QString title = APPLICATION_TITLE;
     QModelIndex index = selected.indexes().at(0);
     if (index.isValid()) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
         title = fileSystemItem->getDisplayName() + " - " + title;
-    } else {
-        title = APPLICATION_TITLE;
     }
     setWindowTitle(title);
 }

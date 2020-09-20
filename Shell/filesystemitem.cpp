@@ -12,7 +12,7 @@ FileSystemItem::FileSystemItem(QString path)
 
 FileSystemItem::~FileSystemItem()
 {
-    qDeleteAll(children);
+    removeChildren();
 }
 
 QString FileSystemItem::getDisplayName() const
@@ -78,6 +78,15 @@ void FileSystemItem::removeChild(QString path)
 QList<FileSystemItem *> FileSystemItem::getChildren()
 {
     return children.values();
+}
+
+void FileSystemItem::removeChildren()
+{
+    qDeleteAll(indexedChildren);
+    children.clear();
+    indexedChildren.clear();
+    setAllChildrenFetched(false);
+    setHasSubFolders(false);
 }
 
 int FileSystemItem::childrenCount()

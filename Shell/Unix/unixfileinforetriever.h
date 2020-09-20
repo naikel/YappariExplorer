@@ -15,7 +15,7 @@ public:
 
 protected:
     void getChildrenBackground(FileSystemItem *parent) override;
-    void getParentInfo(FileSystemItem *parent) override;
+    bool getParentInfo(FileSystemItem *parent) override;
     void getExtendedInfo(FileSystemItem *parent) override;
 
 private:

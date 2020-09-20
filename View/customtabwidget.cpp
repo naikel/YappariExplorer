@@ -56,6 +56,7 @@ void CustomTabWidget::addNewTab(const QString path)
 
     connect(detailedView, &DetailedView::doubleClicked, this, &CustomTabWidget::doubleClicked);
     connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &CustomTabWidget::updateTab);
+    connect(fileSystemModel, &FileSystemModel::fetchFailed, this, &CustomTabWidget::tabFailed);
 
     // Context menu
     connect(detailedView, &DetailedView::contextMenuRequestedForItems, this, &CustomTabWidget::emitContextMenu);
@@ -66,14 +67,16 @@ void CustomTabWidget::addNewTab(const QString path)
     setCurrentIndex(pos);
 }
 
-void CustomTabWidget::setViewIndex(const QModelIndex &index)
+bool CustomTabWidget::setViewIndex(const QModelIndex &index)
 {
     qDebug() << "CustomTabWidget::setViewIndex";
     if (index.isValid() && index.internalPointer() != nullptr) {
         DetailedView *detailedView = static_cast<DetailedView *>(currentWidget());
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
-        detailedView->setRoot(fileSystemItem->getPath());
+        return detailedView->setRoot(fileSystemItem->getPath());
     }
+
+    return false;
 }
 
 void CustomTabWidget::changeRootPath(const QString path)
@@ -96,9 +99,8 @@ void CustomTabWidget::doubleClicked(const QModelIndex &index)
             QString path = fileSystemItem->getPath();
 
             // This will delete (free) the fileSystemItem of index and will be no longer valid
-            setViewIndex(index);
-
-            emit rootChanged(path);
+            if (setViewIndex(index))
+                emit rootChanged(path);
         } else {
 
             emit defaultActionRequestedForItem(fileSystemItem);
@@ -116,6 +118,17 @@ void CustomTabWidget::updateTab()
     detailedView->scrollToTop();
     qDebug() << "CustomTabWidget::updateTab tab updated. " << fileSystemModel->getRoot()->childrenCount() << " items";
     qDebug() << "---------------------------------------------------------------------------------------------------";
+}
+
+void CustomTabWidget::tabFailed(qint32 err, QString errMessage)
+{
+    Q_UNUSED(err)
+    Q_UNUSED(errMessage)
+    qDebug() << "CustomTabWidget::tabFailed";
+
+    DetailedView *detailedView = static_cast<DetailedView *>(currentWidget());
+    FileSystemModel *fileSystemModel = static_cast<FileSystemModel *>(detailedView->model());
+    emit rootChangeFailed(fileSystemModel->getRoot()->getPath());
 }
 
 void CustomTabWidget::newTabClicked()

@@ -25,29 +25,35 @@ FileInfoRetriever::~FileInfoRetriever()
     qDebug() << "FileInfoRetriever::~FileInfoRetriever Destroyed";
 }
 
-FileSystemItem *FileInfoRetriever::getRoot(QString path)
+bool FileInfoRetriever::getInfo(FileSystemItem *root)
 {
-    // If this thread is still doing a previous task we have to abort it and wait until it finishes
-    if (running.load()) {
-        // Abort all the pending threads
-        qDebug() << "FileInfoRetriever::getRoot: " << getScope() << "Stopping all threads";
-        running.store(false);
-        pool.clear();
-        qDebug() << "FileInfoRetriever::getRoot: " << getScope() << "Waiting for all threads to finish";
-        pool.waitForDone();
-        qDebug() << "FileInfoRetriever::getRoot: " << getScope() << "All threads finished";
-    }
+    if (root != nullptr && !root->getPath().isEmpty()) {
 
-    FileSystemItem *root = new FileSystemItem(path);
+        // If this thread is still doing a previous task we have to abort it and wait until it finishes
+        if (running.load()) {
+            // Abort all the pending threads
+            qDebug() << "FileInfoRetriever::getInfo" << getScope() << "Stopping all threads";
+            running.store(false);
+            pool.clear();
+            qDebug() << "FileInfoRetriever::getInfo" << getScope() << "Waiting for all threads to finish";
+            pool.waitForDone();
+            qDebug() << "FileInfoRetriever::getInfo" << getScope() << "All threads finished";
+        }
 
-    getParentInfo(root);
-    getChildren(root);
-    return root;
+       if (getParentInfo(root)) {
+            getChildren(root);
+            return true;
+       }
+   }
+
+   return false;
 }
 
-void FileInfoRetriever::getParentInfo(FileSystemItem *parent)
+bool FileInfoRetriever::getParentInfo(FileSystemItem *parent)
 {
     Q_UNUSED(parent)
+
+    return true;
 }
 
 void FileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
@@ -80,7 +86,7 @@ void FileInfoRetriever::getChildren(FileSystemItem *parent)
 
 void FileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 {
-    emit parentUpdated(parent);
+    emit parentUpdated(parent, 0, QString());
 
     if (getScope() == FileInfoRetriever::List)
          getExtendedInfo(parent);

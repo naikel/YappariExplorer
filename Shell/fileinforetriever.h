@@ -20,7 +20,7 @@ public:
     FileInfoRetriever(QObject *parent = nullptr);
     ~FileInfoRetriever() override;
 
-    FileSystemItem *getRoot(QString path);
+    bool getInfo(FileSystemItem *root);
 
     Scope getScope() const;
     void setScope(const Scope &value);
@@ -30,15 +30,16 @@ public:
     virtual void setDisplayNameOf(FileSystemItem *fileSystemItem);
 
 signals:
-    void parentUpdated(FileSystemItem *parent);
+    void parentUpdated(FileSystemItem *parent, qint32 err, QString errMessage);
     void itemUpdated(FileSystemItem *item);
     void extendedInfoUpdated(FileSystemItem *parent);
+
 
 protected:
     QAtomicInt running;
 
     virtual void getChildrenBackground(FileSystemItem *parent);
-    virtual void getParentInfo(FileSystemItem *parent);
+    virtual bool getParentInfo(FileSystemItem *parent);
     virtual void getExtendedInfo(FileSystemItem *parent);
 
 private:

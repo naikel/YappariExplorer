@@ -20,7 +20,7 @@ private:
     IContextMenu3 *imenu3;
 
     void customizeMenu(IContextMenu *imenu, const HMENU hmenu, const ContextMenu::ContextViewAspect viewAspect);
-    void invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QPoint pos);
+    void invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QPoint pos, QString workingDirectory);
 };
 
 #endif // WINCONTEXTMENU_H

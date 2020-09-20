@@ -55,6 +55,7 @@ public slots:
     void collapseAndSelect(QModelIndex index);
     void newTabRequested();
     void tabChanged(int index);
+    void rootChangeFailed(QString path);
 
 private:
     MainWindow *mainWindow;

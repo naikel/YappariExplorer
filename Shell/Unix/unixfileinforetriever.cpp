@@ -27,7 +27,7 @@ UnixFileInfoRetriever::UnixFileInfoRetriever(QObject *parent) : FileInfoRetrieve
 {
 }
 
-void UnixFileInfoRetriever::getParentInfo(FileSystemItem *parent)
+bool UnixFileInfoRetriever::getParentInfo(FileSystemItem *parent)
 {
     QFileIconProvider iconProvider;
 
@@ -45,11 +45,17 @@ void UnixFileInfoRetriever::getParentInfo(FileSystemItem *parent)
     parent->setIcon(getIcon(parent));
     qDebug() << "UnixFileInfoRetriever::getParentInfo " << getScope() << " Root name is " << parent->getDisplayName();
 
+
+    return true;
 }
 
 void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 {
     qDebug() << "UnixFileInfoRetriever::getChildrenBackground " << getScope();
+
+    // Sometimes the last folder is deleted between getParentInfo and this function
+    // We need to double check it
+    bool subFolders {};
 
     QString root = parent->getPath();
 
@@ -81,8 +87,11 @@ void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             qDebug() << "UnixFileInfoRetriever::getChildrenBackground " << getScope() << child->getPath();
 
             // Set basic attributes
-            qDebug() << child->getPath() << "is directory" << fs::is_directory(path);
-            child->setFolder(fs::is_directory(path));
+            bool isDirectory = fs::is_directory(path);
+            qDebug() << child->getPath() << "is directory" << isDirectory;
+            child->setFolder(isDirectory);
+            if (!subFolders && isDirectory)
+                subFolders = true;
             child->setHasSubFolders(hasSubFolders(path));
             child->setHidden(child->getDisplayName().at(0) == '.');
 
@@ -97,6 +106,7 @@ void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
         }
     }
 
+    parent->setHasSubFolders(subFolders);
     parent->setAllChildrenFetched(true);
     emit parentUpdated(parent);
 

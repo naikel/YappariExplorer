@@ -15,7 +15,7 @@ WinFileInfoRetriever::WinFileInfoRetriever(QObject *parent) : FileInfoRetriever(
 {
 }
 
-void WinFileInfoRetriever::getParentInfo(FileSystemItem *parent)
+bool WinFileInfoRetriever::getParentInfo(FileSystemItem *parent)
 {
     LPITEMIDLIST pidl;
     HRESULT hr;
@@ -35,6 +35,18 @@ void WinFileInfoRetriever::getParentInfo(FileSystemItem *parent)
         parent->setDisplayName(rootName);
         parent->setIcon(getIconFromPIDL(pidl, false));
         ::CoTaskMemFree(pwstrName);
+
+        return true;
+    } else {
+        WCHAR buffer[256];
+        FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, hr, 0, buffer, sizeof(buffer), nullptr);
+
+        QString errMessage = QString::fromWCharArray(buffer);
+
+        qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << "Couldn't access" << parent->getPath() << "HRESULT" << hr << "(" << errMessage << ")";
+        emit parentUpdated(parent, hr, errMessage);
+
+        return false;
     }
 }
 
@@ -42,6 +54,9 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 {
     ::CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
+    // Sometimes the last folder is deleted between getParentInfo and this function
+    // We need to double check it
+    bool subFolders         {};
     LPITEMIDLIST pidl;
     HRESULT hr;
     qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "Parent path " << parent->getPath();
@@ -71,7 +86,7 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
                 qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "Children enumerated";
 
-                LPITEMIDLIST pidlChildren;
+                LPITEMIDLIST pidlChildren {};
 
                 while (running.load() && ppenumIDList->Next(1, &pidlChildren, nullptr) == S_OK) {
 
@@ -109,8 +124,13 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                         child->setFolder((attributes & SFGAO_FOLDER) && !(attributes & SFGAO_STREAM) && !child->isDrive());
                         child->setHasSubFolders((getScope() == FileInfoRetriever::Tree) ? (attributes & SFGAO_HASSUBFOLDER) : false);
                         child->setHidden(attributes & SFGAO_HIDDEN);
-                        if (child->isFolder())
+                        if (child->isFolder()) {
+
+                            if (!subFolders)
+                                subFolders = true;
+
                             child->setType(QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer"));
+                        }
 
                         // File Size - Method 3 - FASTEST
                         if (!child->isDrive()) {
@@ -144,9 +164,9 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             return;
         }
 
-        parent->setHasSubFolders(true);
+        parent->setHasSubFolders(subFolders);
         parent->setAllChildrenFetched(true);
-        emit parentUpdated(parent);
+        emit parentUpdated(parent, 0, QString());
 
         if (getScope() == FileInfoRetriever::List)
              getExtendedInfo(parent);

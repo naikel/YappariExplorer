@@ -13,7 +13,7 @@ public:
     DetailedView(QWidget *parent = nullptr);
 
     void initialize() override;
-    void setRoot(QString root);
+    bool setRoot(QString root) override;
 
 protected:
     void selectEvent() override;

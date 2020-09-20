@@ -41,7 +41,8 @@ void WinDirectoryWatcher::run()
         OVERLAPPED overlapped;
         overlapped.hEvent = event;
 
-        if (!ReadDirectoryChangesW(handle, static_cast<LPVOID>(&info), sizeof(info), false,
+        if (!ReadDirectoryChangesW(handle, static_cast<LPVOID>(&info), sizeof(info),
+                                   false,
                                    FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
                                    FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE,
                                    &dwBytesReturned, &overlapped, nullptr)) {

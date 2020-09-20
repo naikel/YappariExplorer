@@ -22,6 +22,8 @@ DetailedView::DetailedView(QWidget *parent) : BaseTreeView(parent)
     setItemDelegateForColumn(FileSystemModel::Columns::Extension, baseDelegate);
     setItemDelegateForColumn(FileSystemModel::Columns::Size, baseDelegate);
     setItemDelegateForColumn(FileSystemModel::Columns::Type, baseDelegate);
+
+
 }
 
 void DetailedView::initialize()
@@ -34,7 +36,7 @@ void DetailedView::initialize()
     this->header()->setSortIndicator(FileSystemModel::Columns::Extension, Qt::SortOrder::AscendingOrder);
 }
 
-void DetailedView::setRoot(QString root)
+bool DetailedView::setRoot(QString root)
 {
     if (!root.isEmpty()) {
 
@@ -42,7 +44,7 @@ void DetailedView::setRoot(QString root)
         FileSystemModel *fileSystemModel = getFileSystemModel();
         if (!(fileSystemModel->getRoot()->getPath() == root)) {
             qDebug() << "DetailedView::setRoot" << root;
-            fileSystemModel->setRoot(root);
+            return fileSystemModel->setRoot(root);
         } else {
             qDebug() << "DetailedView::setRoot this view's root is already" << root;
         }

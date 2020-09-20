@@ -65,6 +65,9 @@ void CustomExplorer::initialize(MainWindow *mainWindow, CustomTreeView *treeView
 
     // Actions
     connect(tabWidget, &CustomTabWidget::defaultActionRequestedForItem, mainWindow, &MainWindow::defaultAction);
+
+    // Errors
+    connect(tabWidget, &CustomTabWidget::rootChangeFailed, this, &CustomExplorer::rootChangeFailed);
 }
 
 /*!
@@ -84,7 +87,7 @@ void CustomExplorer::initialize(MainWindow *mainWindow, CustomTreeView *treeView
 void CustomExplorer::expandAndSelectRelative(QString path)
 {
     qDebug() << "CustomExplorer::expandAndSelectRelative" << path;
-    FileSystemModel *fileSystemModel = reinterpret_cast<FileSystemModel *>(treeView->model());
+    FileSystemModel *treeViewModel = reinterpret_cast<FileSystemModel *>(treeView->model());
     QModelIndex parent = treeView->selectedItem();
     if (parent.isValid()) {
         FileSystemItem *parentItem = static_cast<FileSystemItem*>(parent.internalPointer());
@@ -93,7 +96,7 @@ void CustomExplorer::expandAndSelectRelative(QString path)
 
             // Call this function again after all items are fetched
             qDebug() << "CustomExplorer::expandAndSelectRelative will be called again after fetch";
-            Once::connect(fileSystemModel, &FileSystemModel::fetchFinished, this, [this, path]() { this->expandAndSelectRelative(path); });
+            Once::connect(treeViewModel, &FileSystemModel::fetchFinished, this, [this, path]() { this->expandAndSelectRelative(path); });
 
             // This will trigger the background fetching
             treeView->expand(parent);
@@ -105,8 +108,26 @@ void CustomExplorer::expandAndSelectRelative(QString path)
             if (!treeView->isExpanded(parent)) {
                 treeView->expand(parent);
             }
-            QModelIndex index = fileSystemModel->relativeIndex(path, parent);
-            treeView->selectIndex(index);
+            QModelIndex index = treeViewModel->relativeIndex(path, parent);
+
+            if (index.isValid())
+                treeView->selectIndex(index);
+            else {
+                qDebug() << "CustomExplorer::expandAndSelectRelative can't find the index: the Tree View is not synchronized";
+
+                // TODO: Refresh parent in the Tree View
+
+                // Remove all children from the Tree View
+                treeViewModel->removeAllRows(parent);
+
+                // Fetch again the children
+                parentItem->setHasSubFolders(true);
+                treeViewModel->fetchMore(parent);
+
+                // Call this function again when finished
+                // TODO This might create an infinite cycle
+                Once::connect(treeViewModel, &FileSystemModel::fetchFinished, this, [this, path]() { this->expandAndSelectRelative(path); });
+            }
         }
     }
 }
@@ -241,9 +262,44 @@ void CustomExplorer::newTabRequested()
  */
 void CustomExplorer::tabChanged(int index)
 {
-    qDebug() << "MainWindow::tabChanged to index" << index;
+    qDebug() << "CustomExplorer::tabChanged to index" << index;
     DetailedView *detailedView = static_cast<DetailedView *>(tabWidget->currentWidget());
     FileSystemModel *viewModel = static_cast<FileSystemModel *>(detailedView->model());
     QString viewModelCurrentPath = viewModel->getRoot()->getPath();
     expandAndSelectAbsolute(viewModelCurrentPath);
+}
+
+void CustomExplorer::rootChangeFailed(QString path)
+{
+    qDebug() << "CustomExplorer::rootChangeFailed" << path;
+
+    // Change back current tab to last selected index in Tree View
+    QModelIndex index = treeView->selectedItem();
+    if (index.isValid()) {
+        FileSystemModel *treeViewModel = reinterpret_cast<FileSystemModel *>(treeView->model());
+        FileSystemItem *indexItem = static_cast<FileSystemItem*>(index.internalPointer());
+
+        if (indexItem != nullptr && indexItem->getPath() == path) {
+            index = index.parent();
+            treeView->selectIndex(index);
+            indexItem = static_cast<FileSystemItem*>(index.internalPointer());
+            qDebug() << index.row() << index.column() << indexItem->getPath();
+        }
+
+        tabWidget->setViewIndex(index);
+
+        // Refresh
+
+        treeViewModel->removeAllRows(index);
+
+        // Fetch again the children
+        indexItem->setHasSubFolders(true);
+        treeViewModel->fetchMore(index);
+
+    } else {
+        FileSystemModel *treeViewModel = reinterpret_cast<FileSystemModel *>(treeView->model());
+        index = treeViewModel->index(0, 0);
+        treeView->selectIndex(index);
+        tabWidget->setViewIndex(index);
+    }
 }

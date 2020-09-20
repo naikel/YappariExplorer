@@ -57,9 +57,12 @@ void CustomTreeView::selectIndex(QModelIndex index)
 
 QModelIndex CustomTreeView::moveCursor(QAbstractItemView::CursorAction cursorAction, Qt::KeyboardModifiers modifiers)
 {
-    qDebug() << "CustomTreeView::moveCursor";
+    qDebug() << "CustomTreeView::moveCursor" << cursorAction;
     QModelIndex newIndex = QTreeView::moveCursor(cursorAction, modifiers);
-    emit clicked(newIndex);
+
+    if (cursorAction < QAbstractItemView::MoveNext)
+        emit clicked(newIndex);
+
     return newIndex;
 }
 

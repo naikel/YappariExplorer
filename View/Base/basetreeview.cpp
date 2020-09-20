@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QMessageBox>
 #include <QMimeData>
 #include <QKeyEvent>
 #include <QDebug>
@@ -46,6 +47,7 @@ void BaseTreeView::setModel(QAbstractItemModel *model)
 
     connect(fileSystemModel, &FileSystemModel::fetchStarted, this, &BaseTreeView::setBusyCursor);
     connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &BaseTreeView::setNormalCursor);
+    connect(fileSystemModel, &FileSystemModel::fetchFailed, this, &BaseTreeView::showError);
 
     QTreeView::setModel(fileSystemModel);
 }
@@ -228,4 +230,22 @@ void BaseTreeView::contextMenuRequested(const QPoint &pos)
     }
 
     emit contextMenuRequestedForItems(mapToGlobal(pos), fileSystemItems, viewAspect);
+}
+
+void BaseTreeView::showError(qint32 err, QString errMessage)
+{
+    Q_UNUSED(err)
+
+    setNormalCursor();
+
+    FileSystemModel *fileSystemModel = getFileSystemModel();
+    QString path = fileSystemModel->getRoot()->getPath();
+    QMessageBox::critical(this, tr("Error"), errMessage + "\n" + path);
+}
+
+bool BaseTreeView::setRoot(QString path)
+{
+    Q_UNUSED(path)
+
+    return true;
 }
