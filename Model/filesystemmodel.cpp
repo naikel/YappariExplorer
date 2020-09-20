@@ -47,7 +47,6 @@ FileSystemModel::FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent
     connect(fileInfoRetriever, &FileInfoRetriever::parentUpdated, this, &FileSystemModel::parentUpdated);
     connect(fileInfoRetriever, &FileInfoRetriever::itemUpdated, this, &FileSystemModel::itemUpdated);
     connect(fileInfoRetriever, &FileInfoRetriever::extendedInfoUpdated, this, &FileSystemModel::extendedInfoUpdated);
-
 }
 
 FileSystemModel::~FileSystemModel()
@@ -58,8 +57,13 @@ FileSystemModel::~FileSystemModel()
     pool.waitForDone();
     qDebug() << "FileSystemModel::~FileSystemModel: All threads finished";
 
-    if (root != nullptr)
+    if (root != nullptr) {
+        if (watcher != nullptr) {
+            delete watcher;
+            watcher = nullptr;
+        }
         delete root;
+    }
 
     if (fileInfoRetriever != nullptr)
         delete fileInfoRetriever;
@@ -84,6 +88,7 @@ QModelIndex FileSystemModel::index(int row, int column, const QModelIndex &paren
 
     return QModelIndex();
 }
+
 
 QModelIndex FileSystemModel::parent(const QModelIndex &index) const
 {
@@ -518,8 +523,20 @@ void FileSystemModel::setRoot(const QString path)
     // Now we can delete the old root structure safely
     if (deleteLater != nullptr) {
         qDebug() << "FileSystemModel::setRoot" << fileInfoRetriever->getScope() << "freeing older root";
+
+        if (watcher != nullptr) {
+            disconnect(watcher, &WinDirectoryWatcher::fileRename, this, &FileSystemModel::renameItem);
+            watcher->stop();
+            watcher->deleteLater();
+            watcher = nullptr;
+        }
         delete deleteLater;
     }
+
+    // Start new directory watcher to monitor this directory
+    watcher = new WinDirectoryWatcher(path, this);
+    connect(watcher, &WinDirectoryWatcher::fileRename, this, &FileSystemModel::renameItem);
+    watcher->start();
 }
 
 
@@ -614,5 +631,28 @@ QString FileSystemModel::humanReadableSize(quint64 size) const
         strSize = QString::number(sizeDouble, 'f', 2);
 
     return QString("%1 %2%3 ").arg(strSize).arg(sizeUnits.at(i)).arg((i == 0 && size != 1) ? "s" : QString());
+}
+
+void FileSystemModel::renameItem(QString oldFileName, QString newFileName)
+{
+    qDebug() << "FileSystemModel::renameItem" << oldFileName << newFileName;
+    FileSystemItem *fileSystemItem = root->getChild(oldFileName);
+    if (fileSystemItem) {
+
+        root->removeChild(oldFileName);
+        fileSystemItem->setPath(newFileName);
+        fileInfoRetriever->setDisplayNameOf(fileSystemItem);
+
+        root->addChild(fileSystemItem);
+
+        // Tell the view the item was modified
+        itemUpdated(fileSystemItem);
+
+        // Sort the model again if it's sorted by Name, Extension or Type
+        if (currentSortColumn <= Columns::Type && currentSortColumn != Columns::Size)
+            sort(currentSortColumn, currentSortOrder);
+
+    } else
+        qDebug() << "FileSystemModel::renameItem couldn't find index for" << oldFileName;
 }
 

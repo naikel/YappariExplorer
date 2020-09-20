@@ -27,6 +27,7 @@ public:
 
     void getChildren(FileSystemItem *parent);
     virtual QIcon getIcon(FileSystemItem *fileSystemItem) const;
+    virtual void setDisplayNameOf(FileSystemItem *fileSystemItem);
 
 signals:
     void parentUpdated(FileSystemItem *parent);

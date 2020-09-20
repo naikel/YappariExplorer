@@ -31,6 +31,7 @@ public:
     void addChild(FileSystemItem *child);
     FileSystemItem *getChildAt(int n);
     FileSystemItem *getChild(QString path);
+    void removeChild(QString path);
     QList<FileSystemItem *> getChildren();
 
     int childrenCount();

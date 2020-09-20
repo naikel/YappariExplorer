@@ -57,6 +57,7 @@ void DetailedView::selectEvent()
             FileSystemItem *fileSystemItem = getFileSystemModel()->getFileSystemItem(selectedIndex);
             qDebug() << "DetailedView::selectEvent selected for " << fileSystemItem->getPath();
             emit doubleClicked(selectedIndex);
+            return;
         }
     }
 }

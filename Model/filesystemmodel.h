@@ -7,6 +7,11 @@
 #include "Shell/fileinforetriever.h"
 #include "Shell/shellactions.h"
 
+#ifdef Q_OS_WIN
+#   include "Shell/Win/windirectorywatcher.h"
+#   define PlatformFileSystemWatcher() WinFileSystemWatcher()
+#endif
+
 class FileSystemModel : public QAbstractItemModel
 {
     Q_OBJECT
@@ -44,7 +49,7 @@ public:
     QStringList mimeTypes() const override;
 
     // Custom functions
-    QString getDropPath(QModelIndex index) const;
+    QModelIndex index(QString path, int column = 0) const;   QString getDropPath(QModelIndex index) const;
     Qt::DropActions supportedDragActionsForIndexes(QModelIndexList indexes);
     Qt::DropAction defaultDropActionForIndex(QModelIndex index, const QMimeData *data, Qt::DropActions possibleActions);
     QModelIndex relativeIndex(QString path, QModelIndex parent);
@@ -67,6 +72,9 @@ signals:
     void fetchFinished();
 
 private:
+
+    WinDirectoryWatcher *watcher            {};
+
     QAtomicInt fetchingMore;
     QAtomicInt settingRoot;
 
@@ -83,8 +91,10 @@ private:
     QThreadPool pool;
 
     void getIcon(const QModelIndex &index);
-
     QString humanReadableSize(quint64 size) const;
+
+private slots:
+    void renameItem(QString oldFileName, QString newFileName);
 };
 
 #endif // FILESYSTEMMODEL_H

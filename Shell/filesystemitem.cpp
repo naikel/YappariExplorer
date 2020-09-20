@@ -66,6 +66,15 @@ FileSystemItem *FileSystemItem::getChild(QString path)
     return children.value(path);
 }
 
+void FileSystemItem::removeChild(QString path)
+{
+    FileSystemItem *item = getChild(path);
+    if (item) {
+        children.remove(path);
+        indexedChildren.removeOne(item);
+    }
+}
+
 QList<FileSystemItem *> FileSystemItem::getChildren()
 {
     return children.values();

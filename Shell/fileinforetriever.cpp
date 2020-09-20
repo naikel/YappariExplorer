@@ -104,3 +104,8 @@ QIcon FileInfoRetriever::getIcon(FileSystemItem *item) const
     return QIcon();
 }
 
+void FileInfoRetriever::setDisplayNameOf(FileSystemItem *item)
+{
+    Q_UNUSED(item)
+}
+

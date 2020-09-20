@@ -233,6 +233,24 @@ QIcon WinFileInfoRetriever::getIcon(FileSystemItem *item) const
     return QIcon();
 }
 
+void WinFileInfoRetriever::setDisplayNameOf(FileSystemItem *fileSystemItem)
+{
+    SFGAOF attributes {};
+    UINT flags = SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME | SHGFI_DISPLAYNAME;
+    SHFILEINFOW info;
+    if (SUCCEEDED(::SHGetFileInfoW(fileSystemItem->getPath().toStdWString().c_str(), attributes, &info, sizeof(SHFILEINFO), flags))) {
+        fileSystemItem->setDisplayName(QString::fromStdWString(info.szDisplayName));
+
+        QString type = QString::fromStdWString(info.szTypeName);
+        if (type != fileSystemItem->getType()) {
+            // We need to get a new icon since the file changed types
+            fileSystemItem->setIcon(getIconFromPath(fileSystemItem->getPath(), fileSystemItem->isHidden()));
+        }
+
+        fileSystemItem->setType(fileSystemItem->isFolder() ? QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer") : QString::fromStdWString(info.szTypeName));
+    }
+}
+
 QIcon WinFileInfoRetriever::getIconFromPath(QString path, bool isHidden) const
 {
     SHFILEINFOW sfi = getSystemImageListIndexFromPath(path);
