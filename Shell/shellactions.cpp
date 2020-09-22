@@ -22,6 +22,18 @@ ShellActions::~ShellActions()
     qDebug() << "ShellActions::~ShellActions Destroyed";
 }
 
+void ShellActions::renameItem(QUrl srcPath, QString newName)
+{
+    qDebug() << "ShellActions::renameItem";
+
+    if (running.load()) {
+        pool.waitForDone();
+    }
+
+    running.store(true);
+    QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<ShellActions *>(this), &ShellActions::renameItemBackground, srcPath, newName);
+}
+
 void ShellActions::copyItems(QList<QUrl> srcPaths, QString dstPath)
 {
     qDebug() << "ShellActions::copyItems";
@@ -56,6 +68,13 @@ void ShellActions::linkItems(QList<QUrl> srcPaths, QString dstPath)
 
     running.store(true);
     QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<ShellActions *>(this), &ShellActions::linkItemsBackground, srcPaths, dstPath);
+}
+
+void ShellActions::renameItemBackground(QUrl srcUrl, QString newName)
+{
+    Q_UNUSED(srcUrl)
+    Q_UNUSED(newName)
+    running.store(false);
 }
 
 void ShellActions::copyItemsBackground(QList<QUrl> srcPaths, QString dstPath)

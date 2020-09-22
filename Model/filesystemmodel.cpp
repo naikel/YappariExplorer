@@ -395,6 +395,21 @@ QStringList FileSystemModel::mimeTypes() const
     return QStringList(QLatin1String("text/uri-list"));
 }
 
+bool FileSystemModel::setData(const QModelIndex &index, const QVariant &value, int role)
+{
+    // TODO: Not everything is a file
+
+    if (role == Qt::EditRole && index.isValid() && index.column() == 0 && index.internalPointer() != nullptr) {
+        FileSystemItem *fileSystemItem = static_cast<FileSystemItem *>(index.internalPointer());
+
+        qDebug() << "FileSystemModel::setData rename" << fileSystemItem->getPath() << "to" << value.toString();
+        QUrl url = QUrl::fromLocalFile(fileSystemItem->getPath());
+        shellActions->renameItem(url, value.toString());
+    }
+
+    return true;
+}
+
 /*!
  * \brief Returns the path of a drop in an index item
  * \param index a QModelIndex where the user is making the drop
@@ -584,6 +599,7 @@ void FileSystemModel::parentUpdated(FileSystemItem *parent, qint32 err, QString 
     if (!err) {
         qDebug() << "FileSystemModel::parentUpdated" << parent->childrenCount() << " children";
 
+        // TODO sort might block the GUI, what about sorting in the background?
         parent->sortChildren(currentSortColumn, currentSortOrder);
     }
 
@@ -617,7 +633,6 @@ void FileSystemModel::itemUpdated(FileSystemItem *item)
         // This could be an old signal (different path)
         if (item->getParent()->getPath() == root->getPath()) {
             int row = parent->childRow(item);
-            qDebug() << "FileSystemModel::itemUpdated" << item->getPath() << "row" << row;
             QModelIndex fromIndex = createIndex(row, Columns::Size, item);
             QModelIndex lastIndex = createIndex(row, Columns::MaxColumns, item);
             QVector<int> roles;

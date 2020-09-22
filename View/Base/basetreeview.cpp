@@ -94,8 +94,11 @@ void BaseTreeView::keyPressEvent(QKeyEvent *event)
         case Qt::Key_Select:
         case Qt::Key_Enter:
         case Qt::Key_Return:
-            selectEvent();
-            event->accept();
+            if (state() != QAbstractItemView::EditingState) {
+                selectEvent();
+                event->accept();
+            } else
+                QTreeView::keyPressEvent(event);
             break;
 
         case Qt::Key_Back:

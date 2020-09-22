@@ -11,6 +11,40 @@ WinShellActions::WinShellActions(QObject *parent) : ShellActions(parent)
 {
 }
 
+void WinShellActions::renameItemBackground(QUrl srcPath, QString newName)
+{
+    qDebug() << "WinShellActions::renameItem";
+    // Initialize COM as STA.
+    if (SUCCEEDED(::CoInitializeEx(nullptr, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE))) {
+
+        IFileOperation *pfo {nullptr};
+
+        // ToDo: Request elevation through pfo->SetOperationFlags
+
+        // Create the IFileOperation interface
+        if (SUCCEEDED(CoCreateInstance(CLSID_FileOperation, nullptr, CLSCTX_ALL, IID_IFileOperation, reinterpret_cast<void**>(&pfo)))) {
+
+            // Create an IShellItem from the supplied source path.
+            IShellItem *psiFrom {nullptr};
+
+            QString source = srcPath.toLocalFile().replace('/','\\');
+            if (SUCCEEDED(SHCreateItemFromParsingName(source.toStdWString().c_str(), nullptr, IID_PPV_ARGS(&psiFrom)))) {
+
+                pfo->RenameItem(psiFrom, newName.toStdWString().c_str(), nullptr);
+                psiFrom->Release();
+            }
+
+            // Perform operations
+            pfo->PerformOperations();
+
+            // Release the IFileOperation interface.
+            pfo->Release();
+        }
+        CoUninitialize();
+    }
+    running.store(false);
+}
+
 void WinShellActions::copyItemsBackground(QList<QUrl> srcUrls, QString dstPath)
 {
     performFileOperations(srcUrls, dstPath, true);

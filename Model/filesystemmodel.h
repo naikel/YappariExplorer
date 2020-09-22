@@ -47,6 +47,7 @@ public:
     bool canDropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) const override;
     bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) override;
     QStringList mimeTypes() const override;
+    bool setData(const QModelIndex &index, const QVariant &value, int role) override;
 
     // Custom functions
     QString getDropPath(QModelIndex index) const;

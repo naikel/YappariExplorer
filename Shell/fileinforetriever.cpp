@@ -29,6 +29,8 @@ bool FileInfoRetriever::getInfo(FileSystemItem *root)
 {
     if (root != nullptr && !root->getPath().isEmpty()) {
 
+        // TODO Use a QMutex here
+
         // If this thread is still doing a previous task we have to abort it and wait until it finishes
         if (running.load()) {
             // Abort all the pending threads

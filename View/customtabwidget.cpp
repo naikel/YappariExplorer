@@ -102,7 +102,6 @@ void CustomTabWidget::doubleClicked(const QModelIndex &index)
             if (setViewIndex(index))
                 emit rootChanged(path);
         } else {
-
             emit defaultActionRequestedForItem(fileSystemItem);
         }
     }

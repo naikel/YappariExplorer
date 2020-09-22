@@ -118,7 +118,7 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                         // Get the display name
                         psf->GetDisplayNameOf(pidlChildren, SHGDN_NORMAL, &strRet);
                         child->setDisplayName(QString::fromWCharArray(strRet.pOleStr));
-                        qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << child->getPath() << "isDrive" << child->isDrive();
+                        // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << child->getPath() << "isDrive" << child->isDrive();
 
                         // Set basic attributes
                         child->setFolder((attributes & SFGAO_FOLDER) && !(attributes & SFGAO_STREAM) && !child->isDrive());

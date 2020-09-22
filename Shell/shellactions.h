@@ -13,6 +13,7 @@ public:
     ShellActions(QObject *parent = nullptr);
     ~ShellActions();
 
+    void renameItem(QUrl srcPath, QString newName);
     void copyItems(QList<QUrl> srcPaths, QString dstPath);
     void moveItems(QList<QUrl> srcPaths, QString dstPath);
     void linkItems(QList<QUrl> srcPaths, QString dstPath);
@@ -20,6 +21,7 @@ public:
 protected:
     QAtomicInt running;
 
+    virtual void renameItemBackground(QUrl srcPath, QString newName);
     virtual void copyItemsBackground(QList<QUrl> srcPaths, QString dstPath);
     virtual void moveItemsBackground(QList<QUrl> srcUrls, QString dstPath);
     virtual void linkItemsBackground(QList<QUrl> srcPaths, QString dstPath);

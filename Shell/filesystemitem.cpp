@@ -68,6 +68,7 @@ FileSystemItem *FileSystemItem::getChild(QString path)
 
 void FileSystemItem::removeChild(QString path)
 {
+    // This does not delete child, caller has to delete it.
     FileSystemItem *item = getChild(path);
     if (item) {
         children.remove(path);
@@ -116,7 +117,7 @@ bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j, int column, Qt:
     // Drives are third
     if (i->isDrive() && j->isDrive()) {
 
-        comparison = (collator.compare(i->getPath(), j->getPath()) <= 0);
+        comparison = (collator.compare(i->getPath(), j->getPath()) < 0);
 
         return (order == Qt::AscendingOrder  && comparison) ||
                (order == Qt::DescendingOrder && !comparison);
@@ -126,9 +127,9 @@ bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j, int column, Qt:
     QVariant right = j->getData(column);
 
     if (static_cast<QMetaType::Type>(left.type()) == QMetaType::QString)
-        comparison = (collator.compare(left.toString(), right.toString()) <= 0);
+        comparison = (collator.compare(left.toString(), right.toString()) < 0);
     else
-        comparison = (left <= right);
+        comparison = (left < right);
 
     // If both items are files or both are folders then direct comparison is allowed
     if ((!i->isFolder() && !j->isFolder()) || (i->isFolder() && j->isFolder())) {
@@ -144,7 +145,11 @@ bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j, int column, Qt:
 
 void FileSystemItem::sortChildren(int column, Qt::SortOrder order)
 {
+    QTime start;
+    start.start();
+    qDebug() << "FileSystemItem::sortChildren Started sorting";
     std::sort(indexedChildren.begin(), indexedChildren.end(), [column, order](FileSystemItem *i, FileSystemItem *j) { return fileSystemItemCompare(i, j, column, order); } );
+    qDebug() << "FileSystemItem::sortChildren Finished in" << start.elapsed() << "milliseconds";
 }
 
 bool FileSystemItem::getHasSubFolders() const

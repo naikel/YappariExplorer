@@ -11,6 +11,7 @@ public:
     WinShellActions(QObject *parent = nullptr);
 
 protected:
+    void renameItemBackground(QUrl srcUrl, QString newName) override;
     void copyItemsBackground(QList<QUrl> srcUrls, QString dstPath) override;
     void moveItemsBackground(QList<QUrl> srcUrls, QString dstPath) override;
     void linkItemsBackground(QList<QUrl> srcUrls, QString dstPath) override;

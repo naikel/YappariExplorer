@@ -31,20 +31,29 @@ bool UnixFileInfoRetriever::getParentInfo(FileSystemItem *parent)
 {
     QFileIconProvider iconProvider;
 
-    qDebug() << "UnixFileInfoRetriever::getParentInfo " << getScope() << " Parent path " << parent->getPath();
+    qDebug() << "UnixFileInfoRetriever::getParentInfo" << getScope() << "Parent path" << parent->getPath();
 
     // If this is the root we need to retrieve the display name of it and its icon
     if (parent->getPath() == "/") {
         parent->setDisplayName("File System");
         parent->setHasSubFolders(true);
     } else {
+        std::error_code ec;
         fs::path path = QString_toStdString(parent->getPath());
-        parent->setDisplayName(QString_fromStdString(path.filename()));
-        parent->setHasSubFolders(hasSubFolders(path));
+        if (fs::exists(path), &ec) {
+            parent->setDisplayName(QString_fromStdString(path.filename()));
+            parent->setHasSubFolders(hasSubFolders(path));
+        } else {
+            QString errMessage = QString::fromStdString(ec.message());
+            qint32 err = ec.value();
+
+            qDebug() << "UnixFileInfoRetriever::getParentInfo" << getScope() << "Couldn't access" << parent->getPath() << "error_code" << err << "(" << errMessage << ")";
+            emit parentUpdated(parent, err, errMessage);
+            return false;
+        }
     }
     parent->setIcon(getIcon(parent));
-    qDebug() << "UnixFileInfoRetriever::getParentInfo " << getScope() << " Root name is " << parent->getDisplayName();
-
+    qDebug() << "UnixFileInfoRetriever::getParentInfo" << getScope() << "Root name is " << parent->getDisplayName();
 
     return true;
 }
@@ -78,37 +87,37 @@ void UnixFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             // This is for debugging the Unix implementation from Windows
             strPath = strPath.replace('\\', '/');
 #endif
-
             // Get the absolute path and create a FileSystemItem with it
             FileSystemItem *child = new FileSystemItem(strPath);
 
             // Get the display name
             child->setDisplayName(QString_fromStdString(path.path().filename()));
-            qDebug() << "UnixFileInfoRetriever::getChildrenBackground " << getScope() << child->getPath();
+            qDebug() << "UnixFileInfoRetriever::getChildrenBackground" << getScope() << child->getPath();
 
             // Set basic attributes
             bool isDirectory = fs::is_directory(path);
-            qDebug() << child->getPath() << "is directory" << isDirectory;
             child->setFolder(isDirectory);
-            if (!subFolders && isDirectory)
-                subFolders = true;
-            child->setHasSubFolders(hasSubFolders(path));
+            if (isDirectory) {
+                qDebug() << "UnixFileInfoRetriever::getChildrenBackground" << child->getPath() << "is a directory";
+                if (!subFolders && isDirectory)
+                    subFolders = true;
+            }
+            child->setHasSubFolders(isDirectory ? hasSubFolders(path) : false);
             child->setHidden(child->getDisplayName().at(0) == '.');
 
-            struct stat buffer;
+            struct stat buffer {};
             stat(QString_toCString(strPath), &buffer);
             child->setSize(static_cast<quint64>(buffer.st_size));
             child->setLastChangeTime(QDateTime::fromTime_t(static_cast<uint>(buffer.st_mtime)));
             child->setLastAccessTime(QDateTime::fromTime_t(static_cast<uint>(buffer.st_atime)));
 
             parent->addChild(child);
-
         }
     }
 
     parent->setHasSubFolders(subFolders);
     parent->setAllChildrenFetched(true);
-    emit parentUpdated(parent);
+    emit parentUpdated(parent, 0, QString());
 
     if (getScope() == FileInfoRetriever::List)
          getExtendedInfo(parent);
