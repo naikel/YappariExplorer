@@ -278,7 +278,36 @@ void FileSystemModel::sort(int column, Qt::SortOrder order)
     currentSortOrder = order;
     currentSortColumn = column;
     emit layoutAboutToBeChanged();
+
+    // We need to preserve the current persistent index list so we can change it later accordingly
+    // The persistent index list keeps track of moving indexes, so if the user has an index selected
+    // in the view, updating the list will reflect the selection change in the view.
+    // Otherwise if the persistent index list is not updated the selection will stay in the same row
+    // even if the item selected is in another row after the sorting.
+
+    QModelIndexList oldList = persistentIndexList();
+    QVector<QPair<FileSystemItem *, int>> oldNodes;
+    for (QModelIndex &index : oldList) {
+        QPair<FileSystemItem *, int> pair(static_cast<FileSystemItem*>(index.internalPointer()), index.column());
+        oldNodes.append(pair);
+    }
+
+    // Sort the model
     root->sortChildren(column, order);
+
+    // Create the new persistent index list which is basically the same list than before but with the
+    // row updated in each entry
+    QModelIndexList newList;
+    const int numOldNodes = oldNodes.size();
+    newList.reserve(numOldNodes);
+    for (int i = 0; i < numOldNodes; ++i) {
+        const QPair<FileSystemItem *, int> &oldNode = oldNodes.at(i);
+        QModelIndex newIndex = createIndex(root->childRow(oldNode.first), oldNode.second, oldNode.first);
+        newList.append(newIndex);
+    }
+
+    // Report the model changes
+    changePersistentIndexList(oldList, newList);
     emit layoutChanged();
 }
 
@@ -306,8 +335,9 @@ Qt::ItemFlags FileSystemModel::flags(const QModelIndex &index) const
         itemFlags |= Qt::ItemIsEditable | Qt::ItemIsDragEnabled;
 
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
-        if (fileSystemItem->isFolder() || fileSystemItem->isDrive())
-            itemFlags |= Qt::ItemIsDropEnabled;
+        Q_ASSERT(fileSystemItem);
+        if (fileSystemItem != nullptr && (fileSystemItem->isFolder() || fileSystemItem->isDrive()))
+                itemFlags |= Qt::ItemIsDropEnabled;
 
     } else {
         // Enable drop to the background (empty areas)
@@ -397,17 +427,24 @@ QStringList FileSystemModel::mimeTypes() const
 
 bool FileSystemModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
+    // TODO: Do nothing if there's no change
+
     // TODO: Not everything is a file
 
     if (role == Qt::EditRole && index.isValid() && index.column() == 0 && index.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem *>(index.internalPointer());
 
-        qDebug() << "FileSystemModel::setData rename" << fileSystemItem->getPath() << "to" << value.toString();
+        QString newName = value.toString();
+        if (fileSystemItem->getDisplayName() == newName)
+            return false;
+
+        qDebug() << "FileSystemModel::setData rename" << fileSystemItem->getPath() << "to" << newName;
         QUrl url = QUrl::fromLocalFile(fileSystemItem->getPath());
-        shellActions->renameItem(url, value.toString());
+        shellActions->renameItem(url, newName);
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 /*!
@@ -658,6 +695,8 @@ void FileSystemModel::getIcon(const QModelIndex &index)
         QIcon icon = fileInfoRetriever->getIcon(fileSystemItem);
         if (!icon.isNull()) {
             fileSystemItem->setIcon(icon);
+
+            // TODO This signal has very bad performance: queue @ dataChanged in BaseTreeView or emit QueueDataChange
             emit dataChanged(index, index);
         }
     }

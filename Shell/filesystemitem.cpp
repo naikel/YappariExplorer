@@ -174,7 +174,7 @@ void FileSystemItem::setAllChildrenFetched(bool value)
 
 bool FileSystemItem::isDrive() const
 {
-    return (path.length() == 3 && path.at(0).isLetter() && path.at(1) == ':' && path.at(2) == '\\');
+    return (!path.isNull() && path.length() == 3 && path.at(0).isLetter() && path.at(1) == ':' && path.at(2) == '\\');
 }
 
 QString FileSystemItem::getPath() const

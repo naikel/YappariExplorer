@@ -1,4 +1,5 @@
 #include <QHeaderView>
+#include <QMouseEvent>
 #include <QDebug>
 
 #include "detailedview.h"
@@ -49,6 +50,8 @@ bool DetailedView::setRoot(QString root)
             qDebug() << "DetailedView::setRoot this view's root is already" << root;
         }
     }
+
+    return false;
 }
 
 void DetailedView::selectEvent()
@@ -62,5 +65,19 @@ void DetailedView::selectEvent()
             return;
         }
     }
+}
+
+void DetailedView::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    // QTreeView implementation of this function calls QAbstractViewItem::edit on an index which the internal pointer,
+    // a FileSystemItem pointer, might be no longer valid since the model changed and all the FileSystemItem pointers
+    // will be freed.
+
+    // So basically this is the minimum reimplementation that does what we need it to do
+
+    qDebug() << "DetailedView::mouseDoubleClickEvent";
+    const QPersistentModelIndex persistent = indexAt(event->pos());
+    if (persistent.isValid())
+        emit doubleClicked(persistent);
 }
 

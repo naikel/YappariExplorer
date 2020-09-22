@@ -93,7 +93,7 @@ void CustomTabWidget::changeRootPath(const QString path)
 void CustomTabWidget::doubleClicked(const QModelIndex &index)
 {
     qDebug() << "CustomTabWidget::doubleClicked";
-    if (index.isValid() && index.internalPointer() != nullptr) {
+    if (index.isValid() && index.column() == 0 && index.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
         if (fileSystemItem->isDrive() || fileSystemItem->isFolder()) {
             QString path = fileSystemItem->getPath();

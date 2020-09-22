@@ -17,6 +17,7 @@ public:
 
 protected:
     void selectEvent() override;
+    void mouseDoubleClickEvent(QMouseEvent *event) override;
 
 };
 
