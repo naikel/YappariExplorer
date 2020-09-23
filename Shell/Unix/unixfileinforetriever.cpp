@@ -220,6 +220,7 @@ QIcon UnixFileInfoRetriever::getIcon(FileSystemItem *item) const
     return icon;
 #else
     // This probably would be part of the configuration
+    // TODO: Check QApplication::style()->pixelMetric(QStyle::PM_SmallIconSize);
     QPixmap pixmap = icon.pixmap(16);
 
     if (item->isHidden()) {

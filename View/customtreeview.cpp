@@ -114,3 +114,39 @@ void CustomTreeView::mousePressEvent(QMouseEvent *event)
             BaseTreeView::mousePressEvent(event);
     }
 }
+
+/*!
+ * \brief Handles a viewport event
+ * \param event the viewport event
+ *
+ * This function fixes a Qt bug where expand/collapse icons do not return to normal colors after
+ * hovering the mouse out of them.  See QTBUG-86852.
+ *
+ * Basically this function updates the old row.
+ */
+bool CustomTreeView::viewportEvent(QEvent *event)
+{
+    switch (event->type()) {
+        case QEvent::HoverEnter:
+        case QEvent::HoverLeave:
+        case QEvent::HoverMove: {
+
+            QHoverEvent *he = static_cast<QHoverEvent*>(event);
+            QModelIndex index = indexAt(he->pos());
+            if (index.isValid() && index != hoverIndex) {
+
+                // Workaround for QTBUG-86852
+                QRect rect = visualRect(hoverIndex);
+                rect.setX(0);
+                rect.setWidth(viewport()->width());
+                viewport()->update(rect);
+            }
+            hoverIndex = index;
+            break;
+        }
+        default:
+            break;
+    }
+
+    return QTreeView::viewportEvent(event);
+}

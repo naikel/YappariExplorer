@@ -6,6 +6,9 @@
 #include <QDebug>
 #include <QDrag>
 
+#include <QPaintEngine>
+#include <QPainter>
+
 #include "basetreeview.h"
 
 #include "once.h"
@@ -214,7 +217,7 @@ bool BaseTreeView::isDragging() const
  * \param bottomRight QModelIndex at the bottom right of the model changes rectangle
  * \param roles Roles that the model has changed
  *
- * This function will queue signals with role Qt:DecorationRole (icons) signals for delayed processing as a bundle.
+ * This function will queue signals with role Qt:DecorationRole (icons) for delayed processing as a bundle.
  * For all other signals, they are sent to the QTreeView base implementation.
  *
  * \see BaseTreeView::processQueuedSignals
@@ -264,8 +267,7 @@ QModelIndex BaseTreeView::indexAt(const QPoint &point) const
         x2 += padding;
 
         if (rootIsDecorated()) {
-            // TODO Where is this magic number from?
-            x2 += iconSize + 8;
+            x2 += indentation();
         }
 
         if (x1 > point.x() || x2 < point.x()) {
@@ -364,7 +366,7 @@ void BaseTreeView::processQueuedSignals()
                 bottomRow = row;
                 bottomIndex = queue->value(row);
 
-           } else {
+            } else {
 
                 qDebug() << "BaseTreeView::processQueuedSignals from" << topRow << "to" << bottomRow;
                 QTreeView::dataChanged(topIndex, bottomIndex, roles);

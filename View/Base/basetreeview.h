@@ -91,7 +91,6 @@ private:
     // Each children is indexed by its row:
     // QMap<parent, QMap<row, child>>
     QMap<QModelIndex, QMap<int, QModelIndex>*> signalsQueue;
-
 };
 
 #endif // BASETREEVIEW_H

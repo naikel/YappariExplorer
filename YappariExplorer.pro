@@ -17,8 +17,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     Model/filesystemmodel.cpp \
-    Shell/Win/windirectorywatcher.cpp \
-    Shell/Win/winshellactions.cpp \
     Shell/contextmenu.cpp \
     Shell/fileinforetriever.cpp \
     Shell/filesystemitem.cpp \
@@ -37,8 +35,6 @@ SOURCES += \
 
 HEADERS += \
     Model/filesystemmodel.h \
-    Shell/Win/windirectorywatcher.h \
-    Shell/Win/winshellactions.h \
     Shell/contextmenu.h \
     Shell/fileinforetriever.h \
     Shell/filesystemitem.h \
@@ -73,8 +69,12 @@ win32 {
         DEFINES += _WIN32_IE=0x700
         SOURCES += \
             Shell/Win/wincontextmenu.cpp \
-            Shell/Win/winfileinforetriever.cpp
+            Shell/Win/winfileinforetriever.cpp \
+            Shell/Win/windirectorywatcher.cpp \
+            Shell/Win/winshellactions.cpp
         HEADERS += \
+            Shell/Win/windirectorywatcher.h \
+            Shell/Win/winshellactions.h \
             Shell/Win/wincontextmenu.h \
             Shell/Win/winfileinforetriever.h
         LIBS += -lole32 -lgdi32 -luuid
