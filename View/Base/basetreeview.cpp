@@ -240,6 +240,43 @@ void BaseTreeView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bo
         QTreeView::dataChanged(topLeft, bottomRight, roles);
 }
 
+QModelIndex BaseTreeView::indexAt(const QPoint &point) const
+{
+    QModelIndex index = QTreeView::indexAt(point);
+
+    if (index.isValid() && index.column() == 0) {
+        QFontMetrics fm = QFontMetrics(font());
+        int x1 = 1;
+        int x2 = fm.size(0, index.data().toString()).width();
+        int iconSize = QApplication::style()->pixelMetric(QStyle::PM_SmallIconSize);
+
+        // TODO Where is this magic number from
+        x2 += iconSize + 11;
+
+        FileSystemItem *parent = getFileSystemModel()->getFileSystemItem(index)->getParent();
+        int level = (rootIsDecorated()) ? 0 : -1;
+        while (parent != nullptr) {
+            level++;
+            parent = parent->getParent();
+        }
+        int padding = level * indentation();
+        x1 += padding;
+        x2 += padding;
+
+        if (rootIsDecorated()) {
+            // TODO Where is this magic number from?
+            x2 += iconSize + 8;
+        }
+
+        if (x1 > point.x() || x2 < point.x()) {
+            // Invalid index
+            return QModelIndex();
+        }
+    }
+
+    return index;
+}
+
 /*!
  * \brief A context menu was requested.
  * \param pos the QPoint position where the context menu was requested, relative to the widget.
