@@ -1,3 +1,4 @@
+#include <QFileIconProvider>
 #include <QApplication>
 #include <QMimeDatabase>
 #include <QCollator>

@@ -31,6 +31,7 @@
 #define BASETREEVIEW_H
 
 #include <QTreeView>
+#include <QMutex>
 
 #include "Shell/contextmenu.h"
 #include "Shell/filesystemitem.h"
@@ -55,6 +56,8 @@ public:
         return static_cast<FileSystemModel *>(model());
     }
 
+    void dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles = QVector<int>()) override;
+
 signals:
     void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
 
@@ -65,6 +68,7 @@ public slots:
     void contextMenuRequested(const QPoint &pos);
     void showError(qint32 err, QString errMessage);
     virtual bool setRoot(QString path);
+    void processQueuedSignals();
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -76,6 +80,16 @@ protected:
 
     virtual void selectEvent();
     virtual void backEvent();
+
+private:
+
+    QMutex mutex;
+
+    // Signals queue for delayed processing
+    // It's basically a list of parents that have children that must be updated.
+    // Each children is indexed by its row:
+    // QMap<parent, QMap<row, child>>
+    QMap<QModelIndex, QMap<int, QModelIndex>*> signalsQueue;
 
 };
 

@@ -27,9 +27,9 @@ protected:
     void getExtendedInfo(FileSystemItem *parent) override;
 
 private:
-    QIcon getIconFromFileInfo(SHFILEINFOW sfi, bool isHidden) const;
-    QIcon getIconFromPath(QString path, bool isHidden) const;
-    QIcon getIconFromPIDL(LPITEMIDLIST pidl, bool isHidden) const;
+    QIcon getIconFromFileInfo(SHFILEINFOW sfi, bool isHidden, bool ignoreDefault = false) const;
+    QIcon getIconFromPath(QString path, bool isHidden, bool ignoreDefault = false) const;
+    QIcon getIconFromPIDL(LPITEMIDLIST pidl, bool isHidden, bool ignoreDefault = false) const;
     QPixmap getPixmapFromIndex(int index) const;
     SHFILEINFOW getSystemImageListIndexFromPIDL(LPITEMIDLIST pidl) const;
     SHFILEINFOW getSystemImageListIndexFromPath(QString path) const;

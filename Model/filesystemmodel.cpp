@@ -694,10 +694,14 @@ void FileSystemModel::getIcon(const QModelIndex &index)
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
         QIcon icon = fileInfoRetriever->getIcon(fileSystemItem);
         if (!icon.isNull()) {
+
             fileSystemItem->setIcon(icon);
 
-            // TODO This signal has very bad performance: queue @ dataChanged in BaseTreeView or emit QueueDataChange
-            emit dataChanged(index, index);
+            // This signal has very bad performance
+            // The view queue these and bundle them as efficient as possible
+            QVector<int> roles;
+            roles.append(Qt::DecorationRole);
+            emit dataChanged(index, index, roles);
         }
     }
 }

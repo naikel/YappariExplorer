@@ -2,6 +2,7 @@
 #include <QMessageBox>
 #include <QMimeData>
 #include <QKeyEvent>
+#include <QTimer>
 #include <QDebug>
 #include <QDrag>
 
@@ -25,6 +26,11 @@ BaseTreeView::BaseTreeView(QWidget *parent) : QTreeView(parent)
     setEditTriggers(QAbstractItemView::SelectedClicked | QAbstractItemView::EditKeyPressed);
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &QTreeView::customContextMenuRequested, this, &BaseTreeView::contextMenuRequested);
+
+    // This is the timer to process queued dataChanged signals (of icons updates only) and send them as a few signals as possible
+    QTimer *timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, &BaseTreeView::processQueuedSignals);
+    timer->start(100);
 }
 
 /*!
@@ -203,6 +209,38 @@ bool BaseTreeView::isDragging() const
 }
 
 /*!
+ * \brief Process items that have been changed in the model.
+ * \param topLeft QModelIndex at the top left of the model changes rectangle
+ * \param bottomRight QModelIndex at the bottom right of the model changes rectangle
+ * \param roles Roles that the model has changed
+ *
+ * This function will queue signals with role Qt:DecorationRole (icons) signals for delayed processing as a bundle.
+ * For all other signals, they are sent to the QTreeView base implementation.
+ *
+ * \see BaseTreeView::processQueuedSignals
+ */
+void BaseTreeView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
+{
+    if (topLeft == bottomRight && roles.contains(Qt::DecorationRole)) {
+
+        QModelIndex parent = topLeft.parent();
+
+        // We need exlusive access to the signalsQueue object
+        mutex.lock();
+        if (signalsQueue.contains(parent)) {
+            QMap<int, QModelIndex> *queue = signalsQueue.value(parent);
+            queue->insert(topLeft.row(), topLeft);
+        } else {
+            QMap<int, QModelIndex> *queue = new QMap<int, QModelIndex>();
+            queue->insert(topLeft.row(), topLeft);
+            signalsQueue.insert(parent, queue);
+        }
+        mutex.unlock();
+    } else
+        QTreeView::dataChanged(topLeft, bottomRight, roles);
+}
+
+/*!
  * \brief A context menu was requested.
  * \param pos the QPoint position where the context menu was requested, relative to the widget.
  *
@@ -251,4 +289,61 @@ bool BaseTreeView::setRoot(QString path)
     Q_UNUSED(path)
 
     return true;
+}
+
+/*!
+ * \brief Process queued dataChanged signals
+ *
+ * This function will try to bundle all the queued signals in as few signals as possible
+ * to achieve better performance.
+ *
+ * Only Qt:DecorationRole (icons) signals are queued.
+ *
+ * \see BaseTreeView::dataChanged
+ */
+void BaseTreeView::processQueuedSignals()
+{
+    mutex.lock();
+    for (QModelIndex parent : signalsQueue.keys()) {
+        QMap<int, QModelIndex> *queue = signalsQueue.value(parent);
+
+        QModelIndex topIndex     {};
+        QModelIndex bottomIndex  {};
+
+        int topRow               { -1 };
+        int bottomRow            { -1 };
+
+        QVector<int> roles;
+        roles.append(Qt::DecorationRole);
+
+        for (int row : queue->keys()) {
+
+            if (topRow < 0) {
+                topRow = row;
+                topIndex = queue->value(row);
+            }
+
+            if (bottomRow < 0 || (bottomRow + 1) == row) {
+                bottomRow = row;
+                bottomIndex = queue->value(row);
+
+           } else {
+
+                qDebug() << "BaseTreeView::processQueuedSignals from" << topRow << "to" << bottomRow;
+                QTreeView::dataChanged(topIndex, bottomIndex, roles);
+
+                topRow = -1;
+                bottomRow = -1;
+            }
+        }
+
+        if (topRow >= 0 && bottomRow >= 0) {
+            qDebug() << "BaseTreeView::processQueuedSignals from" << topRow << "to" << bottomRow;
+            QTreeView::dataChanged(topIndex, bottomIndex, roles);
+        }
+
+        delete queue;
+    }
+    signalsQueue.clear();
+    mutex.unlock();
 }

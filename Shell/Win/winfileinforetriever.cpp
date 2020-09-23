@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QFileIconProvider>
 #include <QPainter>
 #include <QDebug>
 #include <QTime>
@@ -6,6 +7,10 @@
 #include "winfileinforetriever.h"
 
 #define CONTROL_PANEL_GUID "::{26EE0668-A00A-44D7-9371-BEB064C98683}"
+
+// Known icon indexes from the Windows System List
+#define DEFAULT_FILE_ICON_INDEX       0
+#define DEFAULT_FOLDER_ICON_INDEX     3
 
 // Qt exports a non-documented function to convert a native Windows HICON to a QPixmap
 // This function is found in Qt5Gui.dll
@@ -33,7 +38,8 @@ bool WinFileInfoRetriever::getParentInfo(FileSystemItem *parent)
         QString rootName = QString::fromWCharArray(pwstrName);
         qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " Root name is " << rootName;
         parent->setDisplayName(rootName);
-        parent->setIcon(getIconFromPIDL(pidl, false));
+        QIcon icon = getIconFromPIDL(pidl, false, true);
+        parent->setIcon(icon);
         ::CoTaskMemFree(pwstrName);
 
         return true;
@@ -264,28 +270,47 @@ void WinFileInfoRetriever::setDisplayNameOf(FileSystemItem *fileSystemItem)
         QString type = QString::fromStdWString(info.szTypeName);
         if (type != fileSystemItem->getType()) {
             // We need to get a new icon since the file changed types
-            fileSystemItem->setIcon(getIconFromPath(fileSystemItem->getPath(), fileSystemItem->isHidden()));
+            fileSystemItem->setIcon(getIconFromPath(fileSystemItem->getPath(), fileSystemItem->isHidden(), true));
         }
 
         fileSystemItem->setType(fileSystemItem->isFolder() ? QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer") : QString::fromStdWString(info.szTypeName));
     }
 }
 
-QIcon WinFileInfoRetriever::getIconFromPath(QString path, bool isHidden) const
+QIcon WinFileInfoRetriever::getIconFromPath(QString path, bool isHidden, bool ignoreDefault) const
 {
     SHFILEINFOW sfi = getSystemImageListIndexFromPath(path);
-    return getIconFromFileInfo(sfi, isHidden);
+    return getIconFromFileInfo(sfi, isHidden, ignoreDefault);
 }
 
-QIcon WinFileInfoRetriever::getIconFromPIDL(LPITEMIDLIST pidl, bool isHidden) const
+QIcon WinFileInfoRetriever::getIconFromPIDL(LPITEMIDLIST pidl, bool isHidden, bool ignoreDefault) const
 {
     SHFILEINFOW sfi = getSystemImageListIndexFromPIDL(pidl);
-    return getIconFromFileInfo(sfi, isHidden);
+    return getIconFromFileInfo(sfi, isHidden, ignoreDefault);
 }
 
-QIcon WinFileInfoRetriever::getIconFromFileInfo(SHFILEINFOW sfi, bool isHidden) const
+/*!
+ * \brief Returns a QIcon with the icon stored in a SHFILEINFOW from an specific cile
+ * \param sfi a SHFILEINFOW structure with an index or a handle to the icon
+ * \param isHidden true if the file has the hidden attribute
+ * \param ignoreDefault true if this function should return a valid QIcon even if it's a default one
+ * \return a QIcon with the file icon
+ *
+ * This function returns a QIcon constructed from a Windows HICON or from an index of the Windows System Image List.
+ * If the file has the hidden attribute the icon will be alpha blended to look ghosted.
+ * By default this function will return an null QIcon if the icon is the default Windows folder icon or the default
+ * file icon, unless ignoreDefault is true; in that case the QIcon is returned anyway.
+ */
+QIcon WinFileInfoRetriever::getIconFromFileInfo(SHFILEINFOW sfi, bool isHidden, bool ignoreDefault) const
 {
     if (sfi.iIcon > -1) {
+
+        // Just a bit of optimization: don't update default icons if the caller doesn't want it. They are already there
+        if (!ignoreDefault && !isHidden && (sfi.iIcon == DEFAULT_FOLDER_ICON_INDEX || sfi.iIcon == DEFAULT_FILE_ICON_INDEX)) {
+            ::DestroyIcon(sfi.hIcon);
+            return QIcon();
+        }
+
         QPixmap pixmap = getPixmapFromIndex(sfi.iIcon);
         if (pixmap.isNull())
             pixmap = qt_pixmapFromWinHICON(sfi.hIcon);
