@@ -6,6 +6,7 @@
 #include "once.h"
 #include "customtreeview.h"
 #include "Model/filesystemmodel.h"
+#include "Base/baseitemdelegate.h"
 
 CustomTreeView::CustomTreeView(QWidget *parent) : BaseTreeView(parent)
 {

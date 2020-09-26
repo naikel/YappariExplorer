@@ -67,10 +67,15 @@ void MainWindow::changeTitle(const QItemSelection &selected, const QItemSelectio
     Q_UNUSED(deselected)
 
     QString title = APPLICATION_TITLE;
-    QModelIndex index = selected.indexes().at(0);
-    if (index.isValid()) {
-        FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
-        title = fileSystemItem->getDisplayName() + " - " + title;
+    QModelIndexList list = selected.indexes();
+    if (list.size() > 0) {
+        QModelIndex index = list.at(0);
+        if (index.isValid()) {
+            FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
+            title = fileSystemItem->getDisplayName() + " - " + title;
+        }
+    } else {
+        qDebug() << "MainWindow::changeTitle couldn't get selected index";
     }
     setWindowTitle(title);
 }

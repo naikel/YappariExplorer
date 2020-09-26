@@ -40,6 +40,15 @@
  * \brief Base QTreeView class.
  *
  * This is the base QTreeView class for all the tree views of this project.
+ *
+ * This TreeView has the following features:
+ *
+ *  - Smooth scrolling: dataChanged signals sent form the model are queued and processed on intervals bundling
+ *    them as few as possible, making the processing of several thousand dataChanged signals ar once very efficient.
+ *
+ *  - Custom selection: To select an item in the first columnthe user has to click exactly above the characters
+ *    and not anywhere on the row like the QTreeView implementation. This is done by reimplementing visualRect(),
+ *    indexAt() and visualRegionForSelection().
  */
 class BaseTreeView : public QTreeView
 {
@@ -58,6 +67,7 @@ public:
 
     void dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles = QVector<int>()) override;
     QModelIndex indexAt(const QPoint &point) const override;
+    QRect visualRect(const QModelIndex &index) const override;
 
 signals:
     void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
@@ -78,6 +88,7 @@ protected:
     void dragEnterEvent(QDragEnterEvent *event) override;
     void dragMoveEvent(QDragMoveEvent *event) override;
     void dropEvent(QDropEvent *event) override;
+    QRegion visualRegionForSelection(const QItemSelection &selection) const override;
 
     virtual void selectEvent();
     virtual void backEvent();

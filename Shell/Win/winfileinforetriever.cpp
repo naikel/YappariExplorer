@@ -37,10 +37,18 @@ bool WinFileInfoRetriever::getParentInfo(FileSystemItem *parent)
         hr = ::SHGetNameFromIDList(pidl, SIGDN_NORMALDISPLAY, &pwstrName);
         QString rootName = QString::fromWCharArray(pwstrName);
         qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " Root name is " << rootName;
+
+        QTime start;
+        start.start();
         parent->setDisplayName(rootName);
+        qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " setDisplayName" << start.elapsed();
         QIcon icon = getIconFromPIDL(pidl, false, true);
+        qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " getIconFromPIDL" << start.elapsed();
         parent->setIcon(icon);
+        qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " setIcon" << start.elapsed();
         ::CoTaskMemFree(pwstrName);
+
+        qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " CoTaskFreeMem" << start.elapsed();
 
         return true;
     } else {

@@ -71,7 +71,7 @@ FileSystemModel::~FileSystemModel()
 
 QModelIndex FileSystemModel::index(int row, int column, const QModelIndex &parent) const
 {
-    // qDebug() << "index " << row << " " << column;
+    // qDebug() << "index " << fileInfoRetriever->getScope() << row << " " << column;
     if (row < 0 || column < 0 || row >= rowCount(parent) || column >= columnCount(parent))
         return QModelIndex();
 
@@ -135,8 +135,10 @@ int FileSystemModel::columnCount(const QModelIndex &parent) const
 
 QVariant FileSystemModel::data(const QModelIndex &index, int role) const
 {
+    // qDebug() << "data" << fileInfoRetriever->getScope() << index.row() << " " << index.column();
     if (index.isValid()  && index.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
+        Q_ASSERT(fileSystemItem);
         switch (role) {
             case Qt::EditRole:
             case Qt::DisplayRole:
@@ -572,21 +574,30 @@ bool FileSystemModel::setRoot(const QString path)
     FileSystemItem *deleteLater = root;
 
     root = new FileSystemItem(path);
+    root->setParent(nullptr);
     bool result = fileInfoRetriever->getInfo(root);
+    qDebug() << "FileSystemModel::setRoot root is ready" << path;
+
+    // Tell the views to invalidate everything before we delete the old data
+    endResetModel();
 
     // Process all dataChanged events that could still modify the old root structure
     QApplication::processEvents();
 
+    // Now let's tell the views brand new data is coming
+    beginResetModel();
+
+    // Stop the previous directory watcher if valid
+    if (watcher != nullptr) {
+        disconnect(watcher, &WinDirectoryWatcher::fileRename, this, &FileSystemModel::renameItem);
+        watcher->stop();
+        watcher->deleteLater();
+        watcher = nullptr;
+    }
+
     // Now we can delete the old root structure safely
     if (deleteLater != nullptr) {
         qDebug() << "FileSystemModel::setRoot" << fileInfoRetriever->getScope() << "freeing older root";
-
-        if (watcher != nullptr) {
-            disconnect(watcher, &WinDirectoryWatcher::fileRename, this, &FileSystemModel::renameItem);
-            watcher->stop();
-            watcher->deleteLater();
-            watcher = nullptr;
-        }
         delete deleteLater;
     }
 

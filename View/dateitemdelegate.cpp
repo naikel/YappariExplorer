@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QDateTime>
+#include <QPainter>
 #include <QDebug>
 #include <algorithm>
 

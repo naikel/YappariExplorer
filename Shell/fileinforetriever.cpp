@@ -76,6 +76,7 @@ void FileInfoRetriever::getChildren(FileSystemItem *parent)
     // This function might get called several times for the same parent
     // So let's try to serialize it
     if (running.load()) {
+        qDebug() << "FileInfoRetriever::getChildren waiting for previous threads to finish";
         pool.waitForDone();
     }
 

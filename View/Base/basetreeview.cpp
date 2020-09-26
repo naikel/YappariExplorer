@@ -1,3 +1,4 @@
+#include <QHeaderView>
 #include <QApplication>
 #include <QMessageBox>
 #include <QMimeData>
@@ -5,9 +6,6 @@
 #include <QTimer>
 #include <QDebug>
 #include <QDrag>
-
-#include <QPaintEngine>
-#include <QPainter>
 
 #include "basetreeview.h"
 
@@ -51,6 +49,16 @@ BaseTreeView::BaseTreeView(QWidget *parent) : QTreeView(parent)
  */
 void BaseTreeView::setModel(QAbstractItemModel *model)
 {
+    FileSystemModel *oldModel = getFileSystemModel();
+    if (oldModel == model)
+        return;
+
+    if (oldModel != nullptr) {
+        disconnect(oldModel, &FileSystemModel::fetchStarted, this, &BaseTreeView::setBusyCursor);
+        disconnect(oldModel, &FileSystemModel::fetchFinished, this, &BaseTreeView::setNormalCursor);
+        disconnect(oldModel, &FileSystemModel::fetchFailed, this, &BaseTreeView::showError);
+    }
+
     FileSystemModel *fileSystemModel = reinterpret_cast<FileSystemModel *>(model);
     Once::connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &BaseTreeView::initialize);
 
@@ -187,6 +195,80 @@ void BaseTreeView::dropEvent(QDropEvent *event)
 }
 
 /*!
+ * \brief Returns the rectangle from the viewport of the items in the given selection.
+ * \param selection the selected items.
+ *
+ * This is almost a copy of the QTreeView implementation except for one added line.
+ *
+ * Since we do not want highlighting of the selected items to be of column width the visualRect()
+ * function will return the exact rectangle of the item and not the column width.
+ *
+ * This function only calls visualRect() on the first and last element of the range.  If a bigger
+ * element is in between, the region will ignore that width and the selection range would look
+ * like a total disaster.
+ *
+ * To avoid the problem we force the last element of the range to be of the width of the column.
+ *
+ * \see visualRect()
+ */
+QRegion BaseTreeView::visualRegionForSelection(const QItemSelection &selection) const
+{
+    if (selection.isEmpty())
+        return QRegion();
+    QRegion selectionRegion;
+    const QRect &viewportRect = viewport()->rect();
+    for (const auto &range : selection) {
+        if (!range.isValid())
+            continue;
+        QModelIndex parent = range.parent();
+        QModelIndex leftIndex = range.topLeft();
+        int columnCount = model()->columnCount(parent);
+        while (leftIndex.isValid() && isIndexHidden(leftIndex)) {
+            if (leftIndex.column() + 1 < columnCount)
+                leftIndex = model()->index(leftIndex.row(), leftIndex.column() + 1, parent);
+            else
+                leftIndex = QModelIndex();
+        }
+        if (!leftIndex.isValid())
+            continue;
+        const QRect leftRect = visualRect(leftIndex);
+        int top = leftRect.top();
+        QModelIndex rightIndex = range.bottomRight();
+        while (rightIndex.isValid() && isIndexHidden(rightIndex)) {
+            if (rightIndex.column() - 1 >= 0)
+                rightIndex = model()->index(rightIndex.row(), rightIndex.column() - 1, parent);
+            else
+                rightIndex = QModelIndex();
+        }
+        if (!rightIndex.isValid())
+            continue;
+        QRect rightRect = visualRect(rightIndex);
+
+        // Increase the rectangle to the whole column
+        // This is the only line different to the original implementation
+        rightRect.setWidth(columnWidth(rightIndex.column()));
+
+        int bottom = rightRect.bottom();
+        if (top > bottom)
+            qSwap<int>(top, bottom);
+        int height = bottom - top + 1;
+        if (header()->sectionsMoved()) {
+            for (int c = range.left(); c <= range.right(); ++c) {
+                const QRect rangeRect(columnViewportPosition(c), top, columnWidth(c), height);
+                if (viewportRect.intersects(rangeRect))
+                    selectionRegion += rangeRect;
+            }
+        } else {
+            QRect combined = leftRect|rightRect;
+            combined.setX(columnViewportPosition(isRightToLeft() ? range.right() : range.left()));
+            if (viewportRect.intersects(combined))
+                selectionRegion += combined;
+        }
+    }
+    return selectionRegion;
+}
+
+/*!
  * \brief Handles a Select/Enter/Return event.
  *
  * This function does nothing. Subclasses must implement this function.
@@ -220,7 +302,7 @@ bool BaseTreeView::isDragging() const
  * This function will queue signals with role Qt:DecorationRole (icons) for delayed processing as a bundle.
  * For all other signals, they are sent to the QTreeView base implementation.
  *
- * \see BaseTreeView::processQueuedSignals
+ * \see processQueuedSignals()
  */
 void BaseTreeView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
 {
@@ -243,17 +325,53 @@ void BaseTreeView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bo
         QTreeView::dataChanged(topLeft, bottomRight, roles);
 }
 
+
+/*!
+ * \brief Returns the model index of the item at the viewport coordinates point.
+ * \param point a QPoint object
+ * \return a valid QModelIndex object if there's a valid index at the point or an invalid one if not.
+ *
+ * If the point is inside the first column this function will return a valid index only if the point
+ * is above the exact space occupied by the index, and not from the empty space in the row.
+ *
+ * \see visualRect()
+ */
 QModelIndex BaseTreeView::indexAt(const QPoint &point) const
 {
     QModelIndex index = QTreeView::indexAt(point);
 
     if (index.isValid() && index.column() == 0) {
+
+        QRect rect = visualRect(index);
+        if (rect.x() > point.x() || (rect.width() + rect.x()) < point.x())
+            return QModelIndex();
+    }
+
+    return index;
+}
+
+/*!
+ * \brief Returns the rectangle on the viewport occupied by the item at index.
+ * \param index a QModelIndex.
+ * \return a QRect object with the rectangle occupied by the item.
+ *
+ * The base implementation always return rectangles of the column width.
+ * This implementation will return the exact rectangle the item occupies if the item
+ * is in the first column.
+ */
+QRect BaseTreeView::visualRect(const QModelIndex &index) const
+{
+    QRect rect = QTreeView::visualRect(index);
+
+    if (index.isValid() && index.column() == 0) {
+
+        // Fix visual rectangle
         QFontMetrics fm = QFontMetrics(font());
         int x1 = 1;
         int x2 = fm.size(0, index.data().toString()).width();
         int iconSize = QApplication::style()->pixelMetric(QStyle::PM_SmallIconSize);
 
-        // TODO Where is this magic number from
+        // TODO Where is this magic number from??
         x2 += iconSize + 11;
 
         FileSystemItem *parent = getFileSystemModel()->getFileSystemItem(index)->getParent();
@@ -267,16 +385,16 @@ QModelIndex BaseTreeView::indexAt(const QPoint &point) const
         x2 += padding;
 
         if (rootIsDecorated()) {
+            x1 += iconSize + 7;
             x2 += indentation();
         }
 
-        if (x1 > point.x() || x2 < point.x()) {
-            // Invalid index
-            return QModelIndex();
-        }
-    }
+        int width = qMin(x2 - x1 + 1, columnWidth(0) - 1);
 
-    return index;
+        return QRect(x1, rect.y(), width, rect.height());
+
+    }
+    return rect;
 }
 
 /*!
@@ -309,7 +427,10 @@ void BaseTreeView::contextMenuRequested(const QPoint &pos)
         qDebug() << "BaseTreeView::contextMenuRequested selected for the background on " << fileSystemItem->getPath();
     }
 
-    emit contextMenuRequestedForItems(mapToGlobal(pos), fileSystemItems, viewAspect);
+    // If there's a header in this view, position would include it. We have to skip it.
+    QPoint destination = pos;
+    destination.setY(destination.y() + header()->height());
+    emit contextMenuRequestedForItems(mapToGlobal(destination), fileSystemItems, viewAspect);
 }
 
 void BaseTreeView::showError(qint32 err, QString errMessage)

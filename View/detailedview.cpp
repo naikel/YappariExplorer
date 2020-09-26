@@ -23,8 +23,6 @@ DetailedView::DetailedView(QWidget *parent) : BaseTreeView(parent)
     setItemDelegateForColumn(FileSystemModel::Columns::Extension, baseDelegate);
     setItemDelegateForColumn(FileSystemModel::Columns::Size, baseDelegate);
     setItemDelegateForColumn(FileSystemModel::Columns::Type, baseDelegate);
-
-
 }
 
 void DetailedView::initialize()
@@ -79,5 +77,53 @@ void DetailedView::mouseDoubleClickEvent(QMouseEvent *event)
     const QPersistentModelIndex persistent = indexAt(event->pos());
     if (persistent.isValid())
         emit doubleClicked(persistent);
+}
+
+void DetailedView::mousePressEvent(QMouseEvent *event)
+{
+    QModelIndex index = indexAt(event->pos());
+    if (event->button() == Qt::LeftButton && (!index.isValid() || index.column() > 0)) {
+
+        // Clear current selection
+        clearSelection();
+
+        // Position includes the header we have to skip it
+        origin = event->pos();
+        origin.setY(origin.y() + header()->height());
+
+        if (!rubberBand)
+            rubberBand = new QRubberBand(QRubberBand::Rectangle, this);
+        rubberBand->setGeometry(QRect(origin, QSize()));
+        rubberBand->show();
+        event->accept();
+    } else
+        BaseTreeView::mousePressEvent(event);
+}
+
+void DetailedView::mouseMoveEvent(QMouseEvent *event)
+{
+    if (rubberBand != nullptr) {
+        // Position includes the header we have to skip it
+        QPoint destination = event->pos();
+        destination.setY(destination.y() + header()->height());
+
+        rubberBand->setGeometry(QRect(origin, destination).normalized());
+        event->accept();
+    } else
+        BaseTreeView::mouseMoveEvent(event);
+}
+
+void DetailedView::mouseReleaseEvent(QMouseEvent *event)
+{
+    if (rubberBand != nullptr) {
+        rubberBand->hide();
+        // determine selection, for example using QRect::intersects()
+        // and QRect::contains().
+        rubberBand->deleteLater();
+        rubberBand = nullptr;
+        event->accept();
+    } else
+        BaseTreeView::mouseReleaseEvent(event);
+
 }
 
