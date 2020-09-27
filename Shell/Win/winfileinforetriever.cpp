@@ -107,10 +107,6 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                     // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << QTime::currentTime() << "Before getting attributes";
                     SFGAOF attributes { SFGAO_STREAM | SFGAO_FOLDER | SFGAO_HIDDEN };
 
-                    // Only look for subfolders in the tree view.  Makes no sense in the list view and it's really slow on stream (ZIP) files
-                    if (getScope() == FileInfoRetriever::Tree)
-                        attributes |= SFGAO_HASSUBFOLDER;
-
                     psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChildren), &attributes);
                     // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << QTime::currentTime() << "Got attributes";
 
@@ -132,11 +128,19 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                         // Get the display name
                         psf->GetDisplayNameOf(pidlChildren, SHGDN_NORMAL, &strRet);
                         child->setDisplayName(QString::fromWCharArray(strRet.pOleStr));
-                        // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << child->getPath() << "isDrive" << child->isDrive();
+                        qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << child->getPath() << "isDrive" << child->isDrive();
 
                         // Set basic attributes
                         child->setFolder((attributes & SFGAO_FOLDER) && !(attributes & SFGAO_STREAM) && !child->isDrive());
-                        child->setHasSubFolders((getScope() == FileInfoRetriever::Tree) ? (attributes & SFGAO_HASSUBFOLDER) : false);
+
+                        // Check if it has subfolders onlly if it's a folder
+                        if (child->isFolder()) {
+                            SFGAOF subfolders { SFGAO_HASSUBFOLDER };
+                            psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChildren), &subfolders);
+                            child->setHasSubFolders((getScope() == FileInfoRetriever::Tree) ? (subfolders & SFGAO_HASSUBFOLDER) : false);
+                        } else
+                            child->setHasSubFolders(child->isDrive() ? true : false);
+
                         child->setHidden(attributes & SFGAO_HIDDEN);
                         if (child->isFolder()) {
 

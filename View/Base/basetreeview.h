@@ -69,6 +69,11 @@ public:
     QModelIndex indexAt(const QPoint &point) const override;
     QRect visualRect(const QModelIndex &index) const override;
 
+    QPoint mapToViewport(QPoint pos);
+    QPoint mapFromViewport(QPoint pos);
+
+    int getDefaultRowHeight() const;
+
 signals:
     void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
 
@@ -95,6 +100,7 @@ protected:
 
 private:
 
+    int defaultRowHeight;
     QMutex mutex;
 
     // Signals queue for delayed processing
@@ -102,6 +108,8 @@ private:
     // Each children is indexed by its row:
     // QMap<parent, QMap<row, child>>
     QMap<QModelIndex, QMap<int, QModelIndex>*> signalsQueue;
+
+
 };
 
 #endif // BASETREEVIEW_H

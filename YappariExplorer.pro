@@ -88,6 +88,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 DISTFILES += \
     UML/filesystem.qmodel \
+    YappariExplorer.rc \
     qt.conf
 
 RESOURCES += \

@@ -1,6 +1,7 @@
 #include <QHeaderView>
 #include <QMouseEvent>
 #include <QDebug>
+#include <QScrollBar>
 
 #include "detailedview.h"
 #include "dateitemdelegate.h"
@@ -33,6 +34,7 @@ void DetailedView::initialize()
     this->header()->resizeSection(FileSystemModel::Columns::LastChangeTime, 230);
     this->header()->setStretchLastSection(false);
     this->header()->setSortIndicator(FileSystemModel::Columns::Extension, Qt::SortOrder::AscendingOrder);
+    BaseTreeView::initialize();
 }
 
 bool DetailedView::setRoot(QString root)
@@ -68,15 +70,19 @@ void DetailedView::selectEvent()
 void DetailedView::mouseDoubleClickEvent(QMouseEvent *event)
 {
     // QTreeView implementation of this function calls QAbstractViewItem::edit on an index which the internal pointer,
-    // a FileSystemItem pointer, might be no longer valid since the model changed and all the FileSystemItem pointers
-    // will be freed.
+    // a FileSystemItem pointer, might be no longer valid since after a double click the model is changed
+    // (double-clicking on a folder to open it for example) and all the FileSystemItem pointers will be freed.
 
-    // So basically this is the minimum reimplementation that does what we need it to do
+    // So basically this is the minimum reimplementation that does what we need it to do (not editing on double-click)
 
-    qDebug() << "DetailedView::mouseDoubleClickEvent";
-    const QPersistentModelIndex persistent = indexAt(event->pos());
-    if (persistent.isValid())
-        emit doubleClicked(persistent);
+    if (event->button() == Qt::LeftButton) {
+        qDebug() << "DetailedView::mouseDoubleClickEvent";
+        const QPersistentModelIndex persistent = indexAt(event->pos());
+        if (persistent.isValid()) {
+            event->accept();
+            emit doubleClicked(persistent);
+        }
+    }
 }
 
 void DetailedView::mousePressEvent(QMouseEvent *event)
@@ -84,16 +90,19 @@ void DetailedView::mousePressEvent(QMouseEvent *event)
     QModelIndex index = indexAt(event->pos());
     if (event->button() == Qt::LeftButton && (!index.isValid() || index.column() > 0)) {
 
+        // TODO: Not if user is pressing Ctrl!!
         // Clear current selection
         clearSelection();
 
         // Position includes the header we have to skip it
-        origin = event->pos();
-        origin.setY(origin.y() + header()->height());
+        QPoint originPos = event->pos();
+        origin = mapToViewport(originPos);
+
+        originPos.setY(origin.y() + header()->height());
 
         if (!rubberBand)
             rubberBand = new QRubberBand(QRubberBand::Rectangle, this);
-        rubberBand->setGeometry(QRect(origin, QSize()));
+        rubberBand->setGeometry(QRect(originPos, QSize()));
         rubberBand->show();
         event->accept();
     } else
@@ -105,9 +114,54 @@ void DetailedView::mouseMoveEvent(QMouseEvent *event)
     if (rubberBand != nullptr) {
         // Position includes the header we have to skip it
         QPoint destination = event->pos();
-        destination.setY(destination.y() + header()->height());
 
-        rubberBand->setGeometry(QRect(origin, destination).normalized());
+        int headerHeight = header()->height();
+        destination.setY(destination.y() + headerHeight);
+
+        if (destination.x() < 0) {
+            // TODO: Left scroll
+            destination.setX(0);
+        }
+
+        if (destination.y() < headerHeight) {
+            destination.setY(headerHeight);
+            QScrollBar *verticalBar = verticalScrollBar();
+            verticalBar->setValue(verticalBar->value() - 1);
+        }
+
+        QRect viewPortRect = geometry();
+
+        if (destination.y() > viewPortRect.height()) {
+            destination.setY(viewPortRect.height());
+
+            QScrollBar *verticalBar = verticalScrollBar();
+            verticalBar->setValue(verticalBar->value() + 1);
+        }
+
+        if (destination.x() > viewPortRect.width()) {
+            // TODO: Left scroll
+            destination.setX(viewPortRect.width());
+        }
+
+        QPoint originPos = mapFromViewport(origin);
+
+        if (originPos.y() < 0)
+            originPos.setY(0);
+
+        if (originPos.x() < 0)
+            originPos.setX(0);
+
+        if (originPos.y() > viewPortRect.height()) {
+            originPos.setY(viewPortRect.height());
+        }
+
+        if (originPos.x() > viewPortRect.width()) {
+            originPos.setX(viewPortRect.width());
+        }
+        originPos.setY(originPos.y() + header()->height());
+
+        rubberBand->setGeometry(QRect(originPos, destination).normalized());
+        setSelectionFromViewportRect(QRect(origin, mapToViewport(event->pos())).normalized(), QItemSelectionModel::Select);
         event->accept();
     } else
         BaseTreeView::mouseMoveEvent(event);
@@ -117,8 +171,6 @@ void DetailedView::mouseReleaseEvent(QMouseEvent *event)
 {
     if (rubberBand != nullptr) {
         rubberBand->hide();
-        // determine selection, for example using QRect::intersects()
-        // and QRect::contains().
         rubberBand->deleteLater();
         rubberBand = nullptr;
         event->accept();
@@ -127,3 +179,40 @@ void DetailedView::mouseReleaseEvent(QMouseEvent *event)
 
 }
 
+void DetailedView::setSelectionFromViewportRect(const QRect &rect, QItemSelectionModel::SelectionFlags command)
+{
+    // The following lines are from the QTreeView implementation
+    if (!selectionModel() || rect.isNull())
+           return;
+
+    QPoint tl(isRightToLeft() ? qMax(rect.left(), rect.right())
+              : qMin(rect.left(), rect.right()), qMin(rect.top(), rect.bottom()));
+    QPoint br(isRightToLeft() ? qMin(rect.left(), rect.right()) :
+              qMax(rect.left(), rect.right()), qMax(rect.top(), rect.bottom()));
+
+    int topRow = tl.y() / getDefaultRowHeight();
+    int bottomRow =  br.y() / getDefaultRowHeight();
+
+    if (topRow < 0)
+        topRow = 0;
+
+    int maxRow = model()->rowCount(QModelIndex()) - 1;
+    if (bottomRow > maxRow)
+        bottomRow = maxRow;
+
+    QModelIndexList selectedIndexes;
+    for (int row = topRow; row <= bottomRow; row++) {
+        QModelIndex index = model()->index(row, 0, QModelIndex());
+        QRect indexRect = visualRect(index);
+        QPoint topLeft = (isRightToLeft()) ? indexRect.topRight() : indexRect.topLeft();
+        QPoint pos = mapToViewport(topLeft);
+        QRect newRect = QRect(pos, QSize(indexRect.width(), indexRect.height()));
+        if (newRect.intersects(rect)) {
+            selectedIndexes.append(index);
+        }
+    }
+
+    selectionModel()->clear();
+    for (QModelIndex index : selectedIndexes)
+        selectionModel()->select(index, command);
+}

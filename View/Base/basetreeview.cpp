@@ -1,3 +1,4 @@
+#include <QScrollBar>
 #include <QHeaderView>
 #include <QApplication>
 #include <QMessageBox>
@@ -26,6 +27,7 @@ BaseTreeView::BaseTreeView(QWidget *parent) : QTreeView(parent)
     setDropIndicatorShown(false);
     setEditTriggers(QAbstractItemView::SelectedClicked | QAbstractItemView::EditKeyPressed);
     setContextMenuPolicy(Qt::CustomContextMenu);
+    setUniformRowHeights(true);
     connect(this, &QTreeView::customContextMenuRequested, this, &BaseTreeView::contextMenuRequested);
 
     // This is the timer to process queued dataChanged signals (of icons updates only) and send them as a few signals as possible
@@ -80,6 +82,9 @@ void BaseTreeView::setModel(QAbstractItemModel *model)
 void BaseTreeView::initialize()
 {
     qDebug() << "BaseTreeView::initialize";
+
+    QModelIndex root = model()->index(0 , 0, QModelIndex());
+    defaultRowHeight = (root.isValid()) ? rowHeight(root) : 0;
 }
 
 /*!
@@ -114,8 +119,9 @@ void BaseTreeView::keyPressEvent(QKeyEvent *event)
             if (state() != QAbstractItemView::EditingState) {
                 selectEvent();
                 event->accept();
-            } else
+            } else {
                 QTreeView::keyPressEvent(event);
+            }
             break;
 
         case Qt::Key_Back:
@@ -288,6 +294,11 @@ void BaseTreeView::backEvent()
     qDebug() << "BaseTreeView::backEvent";
 }
 
+int BaseTreeView::getDefaultRowHeight() const
+{
+    return defaultRowHeight;
+}
+
 bool BaseTreeView::isDragging() const
 {
     return state() == DraggingState;
@@ -395,6 +406,41 @@ QRect BaseTreeView::visualRect(const QModelIndex &index) const
 
     }
     return rect;
+}
+
+QPoint BaseTreeView::mapToViewport(QPoint pos)
+{
+    QPoint viewportPos;
+
+    // Y
+    if (verticalScrollMode() == QAbstractItemView::ScrollPerPixel) {
+        viewportPos.setY(pos.y() + verticalScrollBar()->value());
+    } else {
+        viewportPos.setY(pos.y() + (verticalScrollBar()->value() * defaultRowHeight));
+    }
+
+    // Horizontal bar is always scroll per pixel
+    viewportPos.setX(pos.x() + horizontalScrollBar()->value());
+
+    return viewportPos;
+
+}
+
+QPoint BaseTreeView::mapFromViewport(QPoint pos)
+{
+    QPoint treeViewPos;
+
+    // Y
+    if (verticalScrollMode() == QAbstractItemView::ScrollPerPixel) {
+        treeViewPos.setY(pos.y() - verticalScrollBar()->value());
+    } else {
+        treeViewPos.setY(pos.y() - (verticalScrollBar()->value() * defaultRowHeight));
+    }
+
+    // Horizontal bar is always scroll per pixel
+    treeViewPos.setX(pos.x() - horizontalScrollBar()->value());
+
+    return treeViewPos;
 }
 
 /*!

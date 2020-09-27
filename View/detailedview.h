@@ -22,6 +22,8 @@ protected:
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
 
+    void setSelectionFromViewportRect(const QRect &rect, QItemSelectionModel::SelectionFlags command);
+
 private:
     QRubberBand *rubberBand     {};
     QPoint origin               {};
