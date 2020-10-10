@@ -97,7 +97,10 @@ private:
     QString humanReadableSize(quint64 size) const;
 
 private slots:
-    void renameItem(QString oldFileName, QString newFileName);
+    void renamePath(QString oldFileName, QString newFileName);
+    void refreshPath(QString fileName);
+    void addPath(QString fileName);
+    void removePath(QString fileName);
 };
 
 #endif // FILESYSTEMMODEL_H

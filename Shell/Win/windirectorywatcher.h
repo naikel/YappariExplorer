@@ -18,6 +18,9 @@ public:
 
 signals:
     void fileRename(QString oldFileName, QString newFileName);
+    void fileModified(QString fileName);
+    void fileAdded(QString fileName);
+    void fileRemoved(QString fileName);
 
 private:
     QString path        {};

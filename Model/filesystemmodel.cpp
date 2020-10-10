@@ -572,9 +572,9 @@ bool FileSystemModel::setRoot(const QString path)
     qDebug() << "FileSystemModel::setRoot" << fileInfoRetriever->getScope() << "All threads finished";
 
     FileSystemItem *deleteLater = root;
-
     root = new FileSystemItem(path);
     root->setParent(nullptr);
+
     bool result = fileInfoRetriever->getInfo(root);
     qDebug() << "FileSystemModel::setRoot root is ready" << path;
 
@@ -589,7 +589,10 @@ bool FileSystemModel::setRoot(const QString path)
 
     // Stop the previous directory watcher if valid
     if (watcher != nullptr) {
-        disconnect(watcher, &WinDirectoryWatcher::fileRename, this, &FileSystemModel::renameItem);
+        disconnect(watcher, &WinDirectoryWatcher::fileRename, this, &FileSystemModel::renamePath);
+        disconnect(watcher, &WinDirectoryWatcher::fileModified, this, &FileSystemModel::refreshPath);
+        disconnect(watcher, &WinDirectoryWatcher::fileAdded, this, &FileSystemModel::addPath);
+        disconnect(watcher, &WinDirectoryWatcher::fileRemoved, this, &FileSystemModel::removePath);
         watcher->stop();
         watcher->deleteLater();
         watcher = nullptr;
@@ -604,7 +607,10 @@ bool FileSystemModel::setRoot(const QString path)
     if (result) {
         // Start new directory watcher to monitor this directory
         watcher = new WinDirectoryWatcher(path, this);
-        connect(watcher, &WinDirectoryWatcher::fileRename, this, &FileSystemModel::renameItem);
+        connect(watcher, &WinDirectoryWatcher::fileRename, this, &FileSystemModel::renamePath);
+        connect(watcher, &WinDirectoryWatcher::fileModified, this, &FileSystemModel::refreshPath);
+        connect(watcher, &WinDirectoryWatcher::fileAdded, this, &FileSystemModel::addPath);
+        connect(watcher, &WinDirectoryWatcher::fileRemoved, this, &FileSystemModel::removePath);
         watcher->start();
     }
 
@@ -679,13 +685,15 @@ void FileSystemModel::itemUpdated(FileSystemItem *item)
         FileSystemItem *parent = item->getParent();
 
         // This could be an old signal (different path)
-        if (item->getParent()->getPath() == root->getPath()) {
+        if (parent != nullptr && item->getParent()->getPath() == root->getPath()) {
             int row = parent->childRow(item);
-            QModelIndex fromIndex = createIndex(row, Columns::Size, item);
-            QModelIndex lastIndex = createIndex(row, Columns::MaxColumns, item);
-            QVector<int> roles;
-            roles.append(Qt::DisplayRole);
-            emit dataChanged(fromIndex, lastIndex, roles);
+            if (row >= 0) {
+                QModelIndex fromIndex = createIndex(row, Columns::Size, item);
+                QModelIndex lastIndex = createIndex(row, Columns::MaxColumns, item);
+                QVector<int> roles;
+                roles.append(Qt::DisplayRole);
+                emit dataChanged(fromIndex, lastIndex, roles);
+            }
         }
     }
 }
@@ -737,9 +745,9 @@ QString FileSystemModel::humanReadableSize(quint64 size) const
     return QString("%1 %2%3 ").arg(strSize).arg(sizeUnits.at(i)).arg((i == 0 && size != 1) ? "s" : QString());
 }
 
-void FileSystemModel::renameItem(QString oldFileName, QString newFileName)
+void FileSystemModel::renamePath(QString oldFileName, QString newFileName)
 {
-    qDebug() << "FileSystemModel::renameItem" << oldFileName << newFileName;
+    qDebug() << "FileSystemModel::renamePath" << oldFileName << newFileName;
     FileSystemItem *fileSystemItem = root->getChild(oldFileName);
     if (fileSystemItem) {
 
@@ -760,5 +768,42 @@ void FileSystemModel::renameItem(QString oldFileName, QString newFileName)
 
     } else
         qDebug() << "FileSystemModel::renameItem couldn't find index for" << oldFileName;
+}
+
+void FileSystemModel::refreshPath(QString fileName)
+{
+    qDebug() << "FileSystemModel::refreshPath" << fileName;
+    FileSystemItem *fileSystemItem = root->getChild(fileName);
+    if (fileSystemItem) {
+        fileInfoRetriever->refreshItem(fileSystemItem);
+    }
+}
+
+void FileSystemModel::addPath(QString fileName)
+{
+    qDebug() << "FileSystemModel::addPath" << fileName;
+    QModelIndex rootIndex = QModelIndex();
+    FileSystemItem *fileSystemItem = new FileSystemItem(fileName);
+    fileInfoRetriever->setDisplayNameOf(fileSystemItem);
+    fileInfoRetriever->refreshItem(fileSystemItem);
+    root->addChild(fileSystemItem);
+    root->sortChildren(currentSortColumn, currentSortOrder);
+    int row = root->childRow(fileSystemItem);
+    beginInsertRows(rootIndex, row, row);
+    endInsertRows();
+}
+
+void FileSystemModel::removePath(QString fileName)
+{
+    qDebug() << "FileSystemModel::removePath" << fileName;
+    FileSystemItem *fileSystemItem = root->getChild(fileName);
+    if (fileSystemItem) {
+        QModelIndex rootIndex = QModelIndex();
+        int row = root->childRow(fileSystemItem);
+        beginRemoveRows(rootIndex, row, row);
+        root->removeChild(fileName);
+        delete fileSystemItem;
+        endRemoveRows();
+    }
 }
 

@@ -20,6 +20,7 @@ public:
     WinFileInfoRetriever(QObject *parent = nullptr);
     QIcon getIcon(FileSystemItem *item) const override;
     void setDisplayNameOf(FileSystemItem *fileSystemItem) override;
+    void refreshItem(FileSystemItem *fileSystemItem) override;
 
 protected:
     void getChildrenBackground(FileSystemItem *parent) override;

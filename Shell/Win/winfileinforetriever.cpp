@@ -289,6 +289,36 @@ void WinFileInfoRetriever::setDisplayNameOf(FileSystemItem *fileSystemItem)
     }
 }
 
+void WinFileInfoRetriever::refreshItem(FileSystemItem *fileSystemItem)
+{
+    WIN32_FIND_DATAW fileAttributeData;
+    HANDLE h = FindFirstFileW(fileSystemItem->getPath().toStdWString().c_str(), &fileAttributeData);
+    if (h != INVALID_HANDLE_VALUE) {
+        FindClose(h);
+        quint64 size = fileAttributeData.nFileSizeHigh;
+        size = (size << 32) + fileAttributeData.nFileSizeLow;
+        fileSystemItem->setSize(size);
+        fileSystemItem->setCreationTime(fileTimeToQDateTime(&(fileAttributeData.ftCreationTime)));
+        fileSystemItem->setLastChangeTime(fileTimeToQDateTime(&(fileAttributeData.ftLastWriteTime)));
+        fileSystemItem->setLastAccessTime(fileTimeToQDateTime(&(fileAttributeData.ftLastAccessTime)));
+
+        if (fileAttributeData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            fileSystemItem->setFolder(true);
+
+            SFGAOF attributes {};
+            ULONG flags = SFGAO_HASSUBFOLDER;
+            LPITEMIDLIST ppidl;
+            if (SUCCEEDED(SHParseDisplayName(fileSystemItem->getPath().toStdWString().c_str(), nullptr, &ppidl, flags, &attributes))) {
+                fileSystemItem->setHasSubFolders(attributes & SFGAO_HASSUBFOLDER);
+            }
+        }
+
+        fileSystemItem->setHidden(fileAttributeData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN);
+
+        emit itemUpdated(fileSystemItem);
+    }
+}
+
 QIcon WinFileInfoRetriever::getIconFromPath(QString path, bool isHidden, bool ignoreDefault) const
 {
     SHFILEINFOW sfi = getSystemImageListIndexFromPath(path);

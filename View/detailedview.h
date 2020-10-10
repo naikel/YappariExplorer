@@ -22,11 +22,13 @@ protected:
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
 
-    void setSelectionFromViewportRect(const QRect &rect, QItemSelectionModel::SelectionFlags command);
+    void setSelectionFromViewportRect(const QRect &rect, QItemSelection &currentSelection, QItemSelectionModel::SelectionFlags command);
 
 private:
-    QRubberBand *rubberBand     {};
-    QPoint origin               {};
+    QRubberBand *rubberBand                         {};
+    QPoint origin                                   {};
+    QItemSelection currentSelection                 {};
+    QItemSelectionModel::SelectionFlags command     {};
 
 };
 

@@ -90,9 +90,13 @@ void DetailedView::mousePressEvent(QMouseEvent *event)
     QModelIndex index = indexAt(event->pos());
     if (event->button() == Qt::LeftButton && (!index.isValid() || index.column() > 0)) {
 
-        // TODO: Not if user is pressing Ctrl!!
-        // Clear current selection
-        clearSelection();
+        if (event->modifiers() & Qt::ControlModifier) {
+            command = QItemSelectionModel::Toggle;
+        } else {
+            command = QItemSelectionModel::Select;
+            clearSelection();
+        }
+        currentSelection = selectionModel()->selection();
 
         // Position includes the header we have to skip it
         QPoint originPos = event->pos();
@@ -161,7 +165,7 @@ void DetailedView::mouseMoveEvent(QMouseEvent *event)
         originPos.setY(originPos.y() + header()->height());
 
         rubberBand->setGeometry(QRect(originPos, destination).normalized());
-        setSelectionFromViewportRect(QRect(origin, mapToViewport(event->pos())).normalized(), QItemSelectionModel::Select);
+        setSelectionFromViewportRect(QRect(origin, mapToViewport(event->pos())).normalized(), currentSelection, command);
         event->accept();
     } else
         BaseTreeView::mouseMoveEvent(event);
@@ -179,7 +183,7 @@ void DetailedView::mouseReleaseEvent(QMouseEvent *event)
 
 }
 
-void DetailedView::setSelectionFromViewportRect(const QRect &rect, QItemSelectionModel::SelectionFlags command)
+void DetailedView::setSelectionFromViewportRect(const QRect &rect, QItemSelection &currentSelection, QItemSelectionModel::SelectionFlags command)
 {
     // The following lines are from the QTreeView implementation
     if (!selectionModel() || rect.isNull())
@@ -213,6 +217,8 @@ void DetailedView::setSelectionFromViewportRect(const QRect &rect, QItemSelectio
     }
 
     selectionModel()->clear();
+    selectionModel()->select(currentSelection, command);
     for (QModelIndex index : selectedIndexes)
         selectionModel()->select(index, command);
+
 }

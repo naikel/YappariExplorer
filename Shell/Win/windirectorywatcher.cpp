@@ -88,9 +88,28 @@ void WinDirectoryWatcher::run()
                 n = nullptr;
         };
 
-        // If this is a rename action we should have two filenames in the string list, old and new.
-        if (info->Action == FILE_ACTION_RENAMED_OLD_NAME && strList.count() == 2)
+        if (info->Action == FILE_ACTION_RENAMED_OLD_NAME && strList.count() == 2) {
+
+            // If this is a rename action we should have two filenames in the string list, old and new.
             emit fileRename(strList[0], strList[1]);
+
+        } else if (strList.count() == 1) {
+
+            // For everything else we should have only one filename in the string list
+            switch (info->Action) {
+                case FILE_ACTION_MODIFIED:
+                    emit fileModified(strList[0]);
+                    break;
+                case FILE_ACTION_ADDED:
+                    emit fileAdded(strList[0]);
+                    break;
+            case FILE_ACTION_REMOVED:
+                    emit fileRemoved(strList[0]);
+                    break;
+                default:
+                    break;
+            }
+        }
 
         if (event)
             ResetEvent(event);

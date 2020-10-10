@@ -63,6 +63,11 @@ void FileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
     Q_UNUSED(parent)
 }
 
+void FileInfoRetriever::refreshItem(FileSystemItem *fileSystemItem)
+{
+    Q_UNUSED(fileSystemItem)
+}
+
 /*!
  * \brief Gets all the children of a FileSystemItem parent.
  * \param parent a FileSystemItem
