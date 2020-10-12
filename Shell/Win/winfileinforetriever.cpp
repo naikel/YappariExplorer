@@ -46,7 +46,9 @@ bool WinFileInfoRetriever::getParentInfo(FileSystemItem *parent)
         qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " getIconFromPIDL" << start.elapsed();
         parent->setIcon(icon);
         qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " setIcon" << start.elapsed();
+
         ::CoTaskMemFree(pwstrName);
+        ::ILFree(pidl);
 
         qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " CoTaskFreeMem" << start.elapsed();
 
@@ -305,11 +307,14 @@ void WinFileInfoRetriever::refreshItem(FileSystemItem *fileSystemItem)
         if (fileAttributeData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
             fileSystemItem->setFolder(true);
 
-            SFGAOF attributes {};
-            ULONG flags = SFGAO_HASSUBFOLDER;
-            LPITEMIDLIST ppidl;
-            if (SUCCEEDED(SHParseDisplayName(fileSystemItem->getPath().toStdWString().c_str(), nullptr, &ppidl, flags, &attributes))) {
-                fileSystemItem->setHasSubFolders(attributes & SFGAO_HASSUBFOLDER);
+            if (getScope() == FileInfoRetriever::Tree) {
+                SFGAOF attributes {};
+                ULONG flags = SFGAO_HASSUBFOLDER;
+                LPITEMIDLIST pidl;
+                if (SUCCEEDED(SHParseDisplayName(fileSystemItem->getPath().toStdWString().c_str(), nullptr, &pidl, flags, &attributes))) {
+                    fileSystemItem->setHasSubFolders(attributes & SFGAO_HASSUBFOLDER);
+                    ::ILFree(pidl);
+                }
             }
         }
 

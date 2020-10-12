@@ -33,7 +33,7 @@ BaseTreeView::BaseTreeView(QWidget *parent) : QTreeView(parent)
     // This is the timer to process queued dataChanged signals (of icons updates only) and send them as a few signals as possible
     QTimer *timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &BaseTreeView::processQueuedSignals);
-    timer->start(100);
+    timer->start(50);
 }
 
 /*!

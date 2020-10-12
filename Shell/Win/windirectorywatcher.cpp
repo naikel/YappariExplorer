@@ -103,7 +103,7 @@ void WinDirectoryWatcher::run()
                 case FILE_ACTION_ADDED:
                     emit fileAdded(strList[0]);
                     break;
-            case FILE_ACTION_REMOVED:
+                case FILE_ACTION_REMOVED:
                     emit fileRemoved(strList[0]);
                     break;
                 default:

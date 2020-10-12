@@ -238,7 +238,7 @@ QVariant FileSystemModel::headerData(int section, Qt::Orientation orientation, i
 bool FileSystemModel::hasChildren(const QModelIndex &parent) const
 {
     if (parent.isValid() && parent.internalPointer() != nullptr) {
-        FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(parent.internalPointer());
+        FileSystemItem *fileSystemItem = getFileSystemItem(parent);
         return fileSystemItem->getHasSubFolders();
     }
     return true;
@@ -247,8 +247,7 @@ bool FileSystemModel::hasChildren(const QModelIndex &parent) const
 bool FileSystemModel::canFetchMore(const QModelIndex &parent) const
 {
     if (parent.isValid() && parent.internalPointer() != nullptr) {
-        FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(parent.internalPointer());
-
+       FileSystemItem *fileSystemItem = getFileSystemItem(parent);
         if (fileSystemItem->getHasSubFolders() && !fileSystemItem->areAllChildrenFetched())
             return true;
     }
@@ -259,8 +258,7 @@ bool FileSystemModel::canFetchMore(const QModelIndex &parent) const
 void FileSystemModel::fetchMore(const QModelIndex &parent)
 {
     if (parent.isValid() && parent.internalPointer() != nullptr) {
-        FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(parent.internalPointer());
-
+        FileSystemItem *fileSystemItem = getFileSystemItem(parent);
         if (fileSystemItem->getHasSubFolders() && !fileSystemItem->areAllChildrenFetched()) {
 
             fetchingMore.store(true);
