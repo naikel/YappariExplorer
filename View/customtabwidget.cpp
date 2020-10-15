@@ -112,12 +112,18 @@ void CustomTabWidget::updateTab()
     qDebug() << "CustomTabWidget::updateTab";
     DetailedView *detailedView = static_cast<DetailedView *>(currentWidget());
     FileSystemModel *fileSystemModel = static_cast<FileSystemModel *>(detailedView->model());
-    setTabText(currentIndex(), fileSystemModel->getRoot()->getDisplayName());
-    setTabIcon(currentIndex(), fileSystemModel->getRoot()->getIcon());
+    nameTab(currentIndex(), fileSystemModel->getRoot());
     detailedView->scrollToTop();
     qDebug() << "CustomTabWidget::updateTab tab updated. " << fileSystemModel->getRoot()->childrenCount() << " items";
     qDebug() << "---------------------------------------------------------------------------------------------------";
 }
+
+void CustomTabWidget::nameTab(int index, FileSystemItem *item)
+{
+    setTabText(index, item->getDisplayName());
+    setTabIcon(index, item->getIcon());
+}
+
 
 void CustomTabWidget::tabFailed(qint32 err, QString errMessage)
 {
@@ -147,6 +153,27 @@ void CustomTabWidget::closeTab(int index)
         // Eventually this should be changed to the last one active, when history is implemented
         if (tabBar()->currentIndex() == count() - 1)
             tabBar()->setCurrentIndex(count() - 2);
+    }
+}
+
+void CustomTabWidget::displayNameChanged(QString oldPath, FileSystemItem *item)
+{
+    if (item != nullptr) {
+        for (int tab = 0; tab < count() - 1; tab++) {
+            DetailedView *detailedView = static_cast<DetailedView *>(widget(tab));
+            if (detailedView != nullptr) {
+                FileSystemModel *fileSystemModel = static_cast<FileSystemModel *>(detailedView->model());
+                FileSystemItem *root = fileSystemModel->getRoot();
+                if (root->getPath() == oldPath) {
+
+                    root->setPath(item->getPath());
+                    root->setDisplayName(item->getDisplayName());
+                    root->setIcon(item->getIcon());
+
+                    nameTab(tab, item);
+                }
+            }
+        }
     }
 }
 

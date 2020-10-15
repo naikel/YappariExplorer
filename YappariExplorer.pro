@@ -18,6 +18,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
     Model/filesystemmodel.cpp \
     Shell/contextmenu.cpp \
+    Shell/directorywatcher.cpp \
     Shell/fileinforetriever.cpp \
     Shell/filesystemitem.cpp \
     Shell/shellactions.cpp \
@@ -36,6 +37,7 @@ SOURCES += \
 HEADERS += \
     Model/filesystemmodel.h \
     Shell/contextmenu.h \
+    Shell/directorywatcher.h \
     Shell/fileinforetriever.h \
     Shell/filesystemitem.h \
     Shell/shellactions.h \
@@ -66,7 +68,7 @@ unix {
 
 win32 {
     CONFIG(debug, debug|release) {
-        DEFINES += _WIN32_IE=0x700
+        DEFINES += _WIN32_IE=0x700 _WIN32_WINNT=0x0A00
         SOURCES += \
             Shell/Win/wincontextmenu.cpp \
             Shell/Win/winfileinforetriever.cpp \

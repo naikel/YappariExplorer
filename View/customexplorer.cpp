@@ -58,6 +58,7 @@ void CustomExplorer::initialize(MainWindow *mainWindow, CustomTreeView *treeView
     // Tab handling
     connect(tabWidget, &CustomTabWidget::newTabRequested, this, &CustomExplorer::newTabRequested);
     connect(tabWidget, &CustomTabWidget::currentChanged, this, &CustomExplorer::tabChanged);
+    connect(fileSystemModel, &FileSystemModel::displayNameChanged, tabWidget, &CustomTabWidget::displayNameChanged);
 
     // Context Menu
     connect(tabWidget, &CustomTabWidget::contextMenuRequestedForItems, mainWindow, &MainWindow::showContextMenu);
@@ -229,8 +230,11 @@ void CustomExplorer::collapseAndSelect(QModelIndex index)
                 tabWidget->changeRootPath(fileSystemItem->getPath());
                 treeView->selectIndex(index);
 
-                // ToDo: Probably we would have to tell the TreeView's FileSystemModel here to forget all the index's children
+                // TODO: Probably we would have to tell the TreeView's FileSystemModel here to forget all the index's children
                 // That way they will get reloaded from disk next time the user selects it
+
+                // FileSystemModel *treeViewModel = reinterpret_cast<FileSystemModel *>(treeView->model());
+                // treeViewModel->freeChildren(index);
             }
         }
     }

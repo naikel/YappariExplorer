@@ -19,9 +19,11 @@ public slots:
     void changeRootPath(const QString path);
     void doubleClicked(const QModelIndex &index);
     void updateTab();
+    void nameTab(int index, FileSystemItem *item);
     void tabFailed(qint32 err, QString errMessage);
     void newTabClicked();
     void closeTab(int index);
+    void displayNameChanged(QString oldPath, FileSystemItem *item);
 
 signals:
     void rootChanged(const QString path);
@@ -29,6 +31,7 @@ signals:
     void newTabRequested();
     void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
     void defaultActionRequestedForItem(FileSystemItem *fileSystemItem);
+
 
 protected:
     void mouseDoubleClickEvent(QMouseEvent *event) override;

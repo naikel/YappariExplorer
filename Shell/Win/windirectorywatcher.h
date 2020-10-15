@@ -4,29 +4,36 @@
 #include <qt_windows.h>
 #include <fileapi.h>
 
-#include <QThread>
+#include <QMap>
 
-class WinDirectoryWatcher : public QThread
+#include "Shell/directorywatcher.h"
+
+class WinDirectoryWatcher : public DirectoryWatcher
 {
     Q_OBJECT
 
 public:
-    WinDirectoryWatcher(QString path, QObject *parent = nullptr);
+    WinDirectoryWatcher(QObject *parent = nullptr);
     ~WinDirectoryWatcher();
-    void run() override;
-    void stop();
 
-signals:
-    void fileRename(QString oldFileName, QString newFileName);
-    void fileModified(QString fileName);
-    void fileAdded(QString fileName);
-    void fileRemoved(QString fileName);
+    void addPath(QString path) override;
+    void removePath(QString path) override;
+    void directoryChanged(LPOVERLAPPED lpOverLapped);
+
 
 private:
-    QString path        {};
-    HANDLE handle       {};
-    HANDLE event        {};
-    bool stopRequested  {};
+
+    typedef struct _DirectoryWatch {
+        QString path;
+        HANDLE handle                       {};
+        OVERLAPPED overlapped               {};
+        FILE_NOTIFY_INFORMATION info[32]    {};
+        DWORD dwBytesReturned               {};
+    } DirectoryWatch;
+
+    QMap<QString, DirectoryWatch *> watchedPaths;
+
+    bool readDirectory(DirectoryWatch *watch);
 };
 
 #endif // WINDIRECTORYWATCHER_H

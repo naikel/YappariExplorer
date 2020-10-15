@@ -6,11 +6,7 @@
 #include "Shell/filesystemitem.h"
 #include "Shell/fileinforetriever.h"
 #include "Shell/shellactions.h"
-
-#ifdef Q_OS_WIN
-#   include "Shell/Win/windirectorywatcher.h"
-#   define PlatformFileSystemWatcher() WinFileSystemWatcher()
-#endif
+#include "Shell/directorywatcher.h"
 
 class FileSystemModel : public QAbstractItemModel
 {
@@ -58,6 +54,8 @@ public:
     FileSystemItem *getRoot() const;
     bool removeAllRows(QModelIndex &parent);
     QChar separator() const;
+    QModelIndex parent(QString path) const;
+    void sort(int column, Qt::SortOrder order, QModelIndex parentIndex);
 
     // Inline functions
     inline FileSystemItem *getFileSystemItem(QModelIndex index) const {
@@ -73,10 +71,11 @@ signals:
     void fetchStarted();
     void fetchFinished();
     void fetchFailed(qint32 err, QString errMessage);
+    void displayNameChanged(QString oldPath, FileSystemItem *item);
 
 private:
 
-    WinDirectoryWatcher *watcher            {};
+    DirectoryWatcher *watcher               {};
 
     QAtomicInt fetchingMore;
     QAtomicInt settingRoot;

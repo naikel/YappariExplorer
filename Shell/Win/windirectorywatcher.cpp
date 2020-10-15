@@ -1,126 +1,150 @@
 #include <QDebug>
 
 #include <wchar.h>
+#include <ioapiset.h>
 
 #include "windirectorywatcher.h"
 
-WinDirectoryWatcher::WinDirectoryWatcher(QString path, QObject *parent) : QThread(parent)
+WinDirectoryWatcher::WinDirectoryWatcher(QObject *parent) : DirectoryWatcher(parent)
 {
-    this->path = path;
 }
 
 WinDirectoryWatcher::~WinDirectoryWatcher()
 {
     qDebug() << "WinDirectoryWatcher::~WinDirectoryWatcher About to destroy";
-    stop();
-    wait();
+
+    QStringList paths = watchedPaths.keys();
+    for (QString path : paths)
+        removePath(path);
+
     qDebug() << "WinDirectoryWatcher::~WinDirectoryWatcher Destroyed";
 }
 
-void WinDirectoryWatcher::run()
+void WinDirectoryWatcher::addPath(QString path)
 {
-    // Create the handle
+    qDebug() << "WinDirectoryWatcher::run addPath " << path;
 
-    std::wstring wstrPath = path.toStdWString();
-    handle = CreateFileW(wstrPath.c_str(), GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ | FILE_SHARE_DELETE,
-                         nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, nullptr);
+    if (!path.isNull() && path.length() >= 3 && path.at(0).isLetter() && path.at(1) == ':' && path.at(2) == '\\' && !watchedPaths.contains(path)) {
 
-    if (handle == INVALID_HANDLE_VALUE) {
-        qDebug() << "WinDirectoryWatcher::run couldn't watch the path " << path;
-        return;
-    }
+        DirectoryWatch *watch = new DirectoryWatch;
 
-    event = CreateEventW(nullptr, true, false, nullptr);
+        watch->path = path;
 
-    forever {
+        // When using a completion routine the hEvent member of the OVERLAPPED structure is not
+        // used by the system, so we can use it ourselves.
+        watch->overlapped.hEvent = reinterpret_cast<HANDLE>(this);
 
-        qDebug() << "WinDirectoryWatcher::run watching" << path;
+        // Create file
 
-        FILE_NOTIFY_INFORMATION info[32];
-        DWORD dwBytesReturned = 0;
-        OVERLAPPED overlapped;
-        overlapped.hEvent = event;
+        std::wstring wstrPath = path.toStdWString();
+        watch->handle = CreateFileW(wstrPath.c_str(), GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ | FILE_SHARE_DELETE,
+                                    nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, nullptr);
 
-        if (!ReadDirectoryChangesW(handle, static_cast<LPVOID>(&info), sizeof(info),
-                                   false,
-                                   FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
-                                   FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE,
-                                   &dwBytesReturned, &overlapped, nullptr)) {
-
-            qDebug() << "WinDirectoryWatcher::run couldn't read directory changes";
-            if (handle) {
-                CloseHandle(handle);
-                handle = 0;
-            }
-            if (event) {
-                CloseHandle(event);
-                event = 0;
-            }
+        if (watch->handle == INVALID_HANDLE_VALUE) {
+            qDebug() << "WinDirectoryWatcher::run couldn't watch the path " << path;
+            delete watch;
             return;
         }
 
-        WaitForSingleObject(event, INFINITE);
-
-        if (stopRequested) {
-            qDebug() << "WinDirectoryWatcher::run this thread is stopping";
-            if (handle) {
-                CloseHandle(handle);
-                handle = 0;
-            }
-            if (event) {
-                CloseHandle(event);
-                event = 0;
-            }
+        // Read Directory contents
+        if (readDirectory(watch) == false) {
+            qDebug() << "WinDirectoryWatcher::run couldn't watch the path " << path;
+            delete watch;
             return;
         }
 
-        FILE_NOTIFY_INFORMATION *n = info;
-        QList<QString> strList;
-        while (n) {
+        qDebug() << "WinDirectoryWatcher::run watching path " << path;
+        watchedPaths.insert(path, watch);
 
-            QString fileName = QString::fromWCharArray(n->FileName, (n->FileNameLength / sizeof(WCHAR)));
-            strList.append(path + (path.right(1) != "\\" ? "\\" : "") + fileName);
-            qDebug() << "WinDirectoryWatcher::run change detected from" << fileName << "action" << n->Action;
-
-            if (n->NextEntryOffset)
-                n = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(reinterpret_cast<BYTE*>(n) + n->NextEntryOffset);
-            else
-                n = nullptr;
-        };
-
-        if (info->Action == FILE_ACTION_RENAMED_OLD_NAME && strList.count() == 2) {
-
-            // If this is a rename action we should have two filenames in the string list, old and new.
-            emit fileRename(strList[0], strList[1]);
-
-        } else if (strList.count() == 1) {
-
-            // For everything else we should have only one filename in the string list
-            switch (info->Action) {
-                case FILE_ACTION_MODIFIED:
-                    emit fileModified(strList[0]);
-                    break;
-                case FILE_ACTION_ADDED:
-                    emit fileAdded(strList[0]);
-                    break;
-                case FILE_ACTION_REMOVED:
-                    emit fileRemoved(strList[0]);
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        if (event)
-            ResetEvent(event);
     }
 }
 
-void WinDirectoryWatcher::stop()
+void WinDirectoryWatcher::removePath(QString path)
 {
-    qDebug() << "WinDirectoryWatcher::stop";
-    stopRequested = true;
+    qDebug() << "WinDirectoryWatcher::removePath" << path;
+    if (watchedPaths.contains(path)) {
+        DirectoryWatch *watch = watchedPaths.value(path);
+        CancelIoEx(watch->handle, &(watch->overlapped));
+        CloseHandle(watch->handle);
 
-    if (event)
-        SetEvent(event);
+        watchedPaths.remove(path);
+        delete watch;
+
+        qDebug() << "WinDirectoryWatcher::removePath removed successfully" << path;
+
+    }
 }
+
+void WinDirectoryWatcher::directoryChanged(LPOVERLAPPED lpOverLapped)
+{
+    qDebug() << "WinDirectoryWatcher::directoryChanged";
+
+    // Find the object
+    for (DirectoryWatch *watch : watchedPaths.values()) {
+        if (&(watch->overlapped) == lpOverLapped && watch->info->Action > 0) {
+
+            FILE_NOTIFY_INFORMATION *n = watch->info;
+            QList<QString> strList;
+            while (n) {
+
+                QString fileName = QString::fromWCharArray(n->FileName, (n->FileNameLength / sizeof(WCHAR)));
+                strList.append(watch->path + (watch->path.right(1) != "\\" ? "\\" : "") + fileName);
+                qDebug() << "WinDirectoryWatcher::run change detected from" << fileName << "action" << n->Action;
+
+                if (n->NextEntryOffset)
+                    n = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(reinterpret_cast<BYTE*>(n) + n->NextEntryOffset);
+                else
+                    n = nullptr;
+            };
+
+            if (watch->info->Action == FILE_ACTION_RENAMED_OLD_NAME && strList.count() == 2) {
+
+                // If this is a rename action we should have two filenames in the string list, old and new.
+                emit fileRename(strList[0], strList[1]);
+
+            } else if (strList.count() == 1) {
+
+                // For everything else we should have only one filename in the string list
+                switch (watch->info->Action) {
+                    case FILE_ACTION_MODIFIED:
+                        emit fileModified(strList[0]);
+                        break;
+                    case FILE_ACTION_ADDED:
+                        emit fileAdded(strList[0]);
+                        break;
+                    case FILE_ACTION_REMOVED:
+                        emit fileRemoved(strList[0]);
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            // Read contents again
+            readDirectory(watch);
+
+            return;
+        }
+    }
+}
+
+void completionRoutine(DWORD dwErrorCode, DWORD dwBytesTransferred, LPOVERLAPPED lpOverLapped)
+{
+    Q_UNUSED(dwBytesTransferred)
+
+    if (SUCCEEDED(dwErrorCode)) {
+        WinDirectoryWatcher *watcher = reinterpret_cast<WinDirectoryWatcher *>(lpOverLapped->hEvent);
+        watcher->directoryChanged(lpOverLapped);
+    }
+}
+
+bool WinDirectoryWatcher::readDirectory(DirectoryWatch *watch)
+{
+
+    return ReadDirectoryChangesW(watch->handle, static_cast<LPVOID>(&(watch->info)), sizeof(watch->info),
+                                 false,
+                                 FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
+                                 FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE,
+                                 &(watch->dwBytesReturned), &(watch->overlapped), &completionRoutine);
+}
+

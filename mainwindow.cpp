@@ -20,8 +20,6 @@
 
 #define APPLICATION_TITLE   "YappariExplorer"
 
-#define TOP_TREEVIEW        0
-
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
