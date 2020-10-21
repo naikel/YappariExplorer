@@ -4,18 +4,16 @@
 #include <QApplication>
 #include <QTabWidget>
 #include <QWindow>
-#include <QTabBar>
 #include <QDebug>
 
-#include "once.h"
 #include "View/customtabbar.h"
 
 #ifdef Q_OS_WIN
-#include "Shell/Win/wincontextmenu.h"
-#define PlatformContextMenu(PARENT)     WinContextMenu(PARENT)
+#   include "Shell/Win/wincontextmenu.h"
+#   define PlatformContextMenu(PARENT)     WinContextMenu(PARENT)
 #else
-#include "Shell/Unix/unixcontextmenu.h"
-#define PlatformContextMenu(PARENT)     UnixContextMenu(PARENT)
+#   include "Shell/Unix/unixcontextmenu.h"
+#   define PlatformContextMenu(PARENT)     UnixContextMenu(PARENT)
 #endif
 
 #define APPLICATION_TITLE   "YappariExplorer"
@@ -62,21 +60,11 @@ void MainWindow::resizeTopTreeView()
         ui->topSplitter->setSizes(currentSizes);
 }
 
-void MainWindow::changeTitle(const QItemSelection &selected, const QItemSelection &deselected)
+void MainWindow::updateTitle(FileSystemItem *item)
 {
-    Q_UNUSED(selected)
-    Q_UNUSED(deselected)
-
     QString title = APPLICATION_TITLE;
-    QModelIndexList list = selected.indexes();
-    if (list.size() > 0) {
-        QModelIndex index = list.at(0);
-        if (index.isValid()) {
-            FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
-            title = fileSystemItem->getDisplayName() + " - " + title;
-        }
-    } else {
-        qDebug() << "MainWindow::changeTitle couldn't get selected index";
+    if (item != nullptr) {
+        title = item->getDisplayName() + " - " + title;
     }
     setWindowTitle(title);
 }

@@ -56,6 +56,23 @@ void CustomTreeView::selectIndex(QModelIndex index)
     scrollTo(index);
 }
 
+void CustomTreeView::selectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
+{
+    viewFocusChanged();
+    BaseTreeView::selectionChanged(selected, deselected);
+}
+
+void CustomTreeView::viewFocusChanged()
+{
+    QModelIndex index = selectedItem();
+    if (index.isValid() && index.internalPointer() != nullptr) {
+
+        FileSystemItem *item = static_cast<FileSystemItem *>(index.internalPointer());
+        emit viewFocus(item);
+    }
+}
+
+
 QModelIndex CustomTreeView::moveCursor(QAbstractItemView::CursorAction cursorAction, Qt::KeyboardModifiers modifiers)
 {
     qDebug() << "CustomTreeView::moveCursor" << cursorAction;
@@ -108,8 +125,13 @@ void CustomTreeView::mousePressEvent(QMouseEvent *event)
                     // Restore previous selection
                     selectIndex(lastSelection);
                     event->accept();
+                    return;
                 }
             }
+            break;
+        case Qt::LeftButton:
+            viewFocusChanged();
+            BaseTreeView::mousePressEvent(event);
             break;
         default:
             BaseTreeView::mousePressEvent(event);

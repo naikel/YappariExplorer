@@ -76,6 +76,7 @@ public:
 
 signals:
     void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
+    void viewFocus(FileSystemItem *item);
 
 public slots:
     virtual void initialize();

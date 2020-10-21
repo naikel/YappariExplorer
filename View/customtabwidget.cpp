@@ -54,6 +54,7 @@ void CustomTabWidget::addNewTab(const QString path)
     fileSystemModel->setRoot(path);
     detailedView->setModel(fileSystemModel);
 
+    connect(detailedView, &DetailedView::viewFocus, this, &CustomTabWidget::tabFocus);
     connect(detailedView, &DetailedView::doubleClicked, this, &CustomTabWidget::doubleClicked);
     connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &CustomTabWidget::updateTab);
     connect(fileSystemModel, &FileSystemModel::fetchFailed, this, &CustomTabWidget::tabFailed);
@@ -175,6 +176,11 @@ void CustomTabWidget::displayNameChanged(QString oldPath, FileSystemItem *item)
             }
         }
     }
+}
+
+void CustomTabWidget::tabFocus(FileSystemItem *item)
+{
+    emit folderFocus(item);
 }
 
 void CustomTabWidget::mouseDoubleClickEvent(QMouseEvent *event)

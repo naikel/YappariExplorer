@@ -28,9 +28,12 @@ protected:
     void resizeEvent(QResizeEvent *event) override;
     bool viewportEvent(QEvent *event) override;
     void selectEvent() override;
+    void selectionChanged(const QItemSelection &selected, const QItemSelection &deselected) override;
 
 private:
     QModelIndex hoverIndex;
+
+    void viewFocusChanged();
 };
 
 #endif // CUSTOMTREEVIEW_H

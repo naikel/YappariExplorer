@@ -88,29 +88,39 @@ void DetailedView::mouseDoubleClickEvent(QMouseEvent *event)
 void DetailedView::mousePressEvent(QMouseEvent *event)
 {
     QModelIndex index = indexAt(event->pos());
-    if (event->button() == Qt::LeftButton && (!index.isValid() || index.column() > 0)) {
 
-        if (event->modifiers() & Qt::ControlModifier) {
-            command = QItemSelectionModel::Toggle;
-        } else {
-            command = QItemSelectionModel::Select;
-            clearSelection();
+    if (event->button() == Qt::LeftButton) {
+
+        FileSystemModel *fileSystemModel = getFileSystemModel();
+        if (fileSystemModel != nullptr && fileSystemModel->getRoot() != nullptr)
+            emit viewFocus(fileSystemModel->getRoot());
+
+        if(!index.isValid() || index.column() > 0) {
+
+            if (event->modifiers() & Qt::ControlModifier) {
+                command = QItemSelectionModel::Toggle;
+            } else {
+                command = QItemSelectionModel::Select;
+                clearSelection();
+            }
+            currentSelection = selectionModel()->selection();
+
+            // Position includes the header we have to skip it
+            QPoint originPos = event->pos();
+            origin = mapToViewport(originPos);
+
+            originPos.setY(origin.y() + header()->height());
+
+            if (!rubberBand)
+                rubberBand = new QRubberBand(QRubberBand::Rectangle, this);
+            rubberBand->setGeometry(QRect(originPos, QSize()));
+            rubberBand->show();
+            event->accept();
+            return;
         }
-        currentSelection = selectionModel()->selection();
+    }
 
-        // Position includes the header we have to skip it
-        QPoint originPos = event->pos();
-        origin = mapToViewport(originPos);
-
-        originPos.setY(origin.y() + header()->height());
-
-        if (!rubberBand)
-            rubberBand = new QRubberBand(QRubberBand::Rectangle, this);
-        rubberBand->setGeometry(QRect(originPos, QSize()));
-        rubberBand->show();
-        event->accept();
-    } else
-        BaseTreeView::mousePressEvent(event);
+    BaseTreeView::mousePressEvent(event);
 }
 
 void DetailedView::mouseMoveEvent(QMouseEvent *event)

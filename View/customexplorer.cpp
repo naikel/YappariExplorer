@@ -48,8 +48,11 @@ void CustomExplorer::initialize(MainWindow *mainWindow, CustomTreeView *treeView
     treeView->setModel(fileSystemModel);
 
     // Handling of single selections
-    connect(treeView->selectionModel(), &QItemSelectionModel::selectionChanged, mainWindow, &MainWindow::changeTitle);
     connect(treeView, &CustomTreeView::clicked, tabWidget, &CustomTabWidget::setViewIndex);
+
+    // Focus change (application title update)
+    connect(tabWidget, &CustomTabWidget::folderFocus, mainWindow, &MainWindow::updateTitle);
+    connect(treeView, &CustomTreeView::viewFocus, mainWindow, &MainWindow::updateTitle);
 
     // Auto expand & select on view select / Auto tree select and view change on collapse
     connect(tabWidget, &CustomTabWidget::rootChanged, this, &CustomExplorer::expandAndSelectRelative);

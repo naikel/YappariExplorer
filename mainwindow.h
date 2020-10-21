@@ -21,13 +21,13 @@ public:
     ~MainWindow() override;
 
 public slots:
-    void changeTitle(const QItemSelection &selected, const QItemSelection &deselected);
-
     void showContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
     void defaultAction(const FileSystemItem *fileSystemItem);
 
     void resizeBottomTreeView();
     void resizeTopTreeView();
+
+    void updateTitle(FileSystemItem *item);
 
 
 protected:
