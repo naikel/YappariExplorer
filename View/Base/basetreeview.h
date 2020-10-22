@@ -74,6 +74,8 @@ public:
 
     int getDefaultRowHeight() const;
 
+    bool isEditingIndex(const QModelIndex &index) const;
+
 signals:
     void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
     void viewFocus(FileSystemItem *item);
@@ -95,6 +97,8 @@ protected:
     void dragMoveEvent(QDragMoveEvent *event) override;
     void dropEvent(QDropEvent *event) override;
     QRegion visualRegionForSelection(const QItemSelection &selection) const override;
+    bool edit(const QModelIndex &index, EditTrigger trigger, QEvent *event) override;
+    void editorDestroyed(QObject *editor) override;
 
     virtual void selectEvent();
     virtual void backEvent();
@@ -110,6 +114,8 @@ private:
     // QMap<parent, QMap<row, child>>
     QMap<QModelIndex, QMap<int, QModelIndex>*> signalsQueue;
 
+    QModelIndex editIndex   {};
+    bool isEditing          {};
 
 };
 

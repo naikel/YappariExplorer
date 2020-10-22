@@ -31,6 +31,7 @@ SOURCES += \
     View/customtreeview.cpp \
     View/dateitemdelegate.cpp \
     View/detailedview.cpp \
+    View/expandinglineedit.cpp \
     main.cpp \
     mainwindow.cpp
 
@@ -50,6 +51,7 @@ HEADERS += \
     View/customtreeview.h \
     View/dateitemdelegate.h \
     View/detailedview.h \
+    View/expandinglineedit.h \
     mainwindow.h \
     once.h
 

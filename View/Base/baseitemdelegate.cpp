@@ -2,9 +2,12 @@
 #include <QPainter>
 #include <QDebug>
 
+#include <QLineEdit>
 
 #include "baseitemdelegate.h"
 #include "basetreeview.h"
+
+#include "View/expandinglineedit.h"
 
 BaseItemDelegate::BaseItemDelegate(QObject *parent) : QStyledItemDelegate(parent)
 {
@@ -25,6 +28,7 @@ void BaseItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
 
     QStyledItemDelegate::paint(painter, opt, index);
 
+
     // Draw our custom focus rectangle
     if (origOpt.state & QStyle::State_HasFocus && !(origOpt.state & (QStyle::State_Selected|QStyle::State_MouseOver))) {
         BaseTreeView *treeView = static_cast<BaseTreeView *>(parent());
@@ -36,6 +40,11 @@ void BaseItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
         painter->setPen(pen);
         painter->drawRect(rect);
     }
+}
+
+void BaseItemDelegate::editingFinished()
+{
+    sender()->deleteLater();
 }
 
 void BaseItemDelegate::initStyleOption(QStyleOptionViewItem *option, const QModelIndex &index) const
@@ -50,10 +59,26 @@ void BaseItemDelegate::initStyleOption(QStyleOptionViewItem *option, const QMode
     if (index.column() > 0 && (option->state & QStyle::State_MouseOver))
         option->state &= ~QStyle::State_MouseOver;
 
-    // No mouse over when dragging over items that are not droppable
     // Funny that widget is an undocumented member of the class QStyleOptionViewTime
     const BaseTreeView *treeView = static_cast<const BaseTreeView *>(option->widget);
+
+    // No mouse over when dragging over items that are not droppable
     if (treeView->isDragging() && index.column() == 0 && !(index.flags() & Qt::ItemIsDropEnabled))
         option->state &= ~QStyle::State_MouseOver;
+
+    // If we are editing this item don't draw the text underneath
+    if (treeView->isEditingIndex(index))
+        option->text = "";
 }
+
+QWidget *BaseItemDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+    Q_UNUSED(index)
+    qDebug() << option.state;
+    ExpandingLineEdit *le = new ExpandingLineEdit(index, parent);
+    connect(le, &ExpandingLineEdit::editingFinished, this, &BaseItemDelegate::editingFinished);
+    return le;
+}
+
+
 

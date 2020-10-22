@@ -458,8 +458,6 @@ QStringList FileSystemModel::mimeTypes() const
 
 bool FileSystemModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
-    // TODO: Do nothing if there's no change
-
     // TODO: Not everything is a file
 
     if (role == Qt::EditRole && index.isValid() && index.column() == 0 && index.internalPointer() != nullptr) {

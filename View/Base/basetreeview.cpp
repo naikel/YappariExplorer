@@ -8,6 +8,7 @@
 #include <QDebug>
 #include <QDrag>
 
+#include "baseitemdelegate.h"
 #include "basetreeview.h"
 
 #include "once.h"
@@ -274,6 +275,25 @@ QRegion BaseTreeView::visualRegionForSelection(const QItemSelection &selection) 
     return selectionRegion;
 }
 
+bool BaseTreeView::edit(const QModelIndex &index, QAbstractItemView::EditTrigger trigger, QEvent *event)
+{
+    bool result = QTreeView::edit(index, trigger, event);
+
+    if (result) {
+        isEditing = true;
+        editIndex = index;
+    }
+
+    return result;
+}
+
+void BaseTreeView::editorDestroyed(QObject *editor)
+{
+    Q_UNUSED(editor)
+    isEditing = false;
+    editIndex = QModelIndex();
+}
+
 /*!
  * \brief Handles a Select/Enter/Return event.
  *
@@ -297,6 +317,11 @@ void BaseTreeView::backEvent()
 int BaseTreeView::getDefaultRowHeight() const
 {
     return defaultRowHeight;
+}
+
+bool BaseTreeView::isEditingIndex(const QModelIndex &index) const
+{
+    return (isEditing && index == editIndex);
 }
 
 bool BaseTreeView::isDragging() const
