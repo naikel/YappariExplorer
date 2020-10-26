@@ -28,7 +28,6 @@ void BaseItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
 
     QStyledItemDelegate::paint(painter, opt, index);
 
-
     // Draw our custom focus rectangle
     if (origOpt.state & QStyle::State_HasFocus && !(origOpt.state & (QStyle::State_Selected|QStyle::State_MouseOver))) {
         BaseTreeView *treeView = static_cast<BaseTreeView *>(parent());
@@ -44,7 +43,9 @@ void BaseItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
 
 void BaseItemDelegate::editingFinished()
 {
+    qDebug() << "BaseItemDelegate::editingFinished";
     sender()->deleteLater();
+
 }
 
 void BaseItemDelegate::initStyleOption(QStyleOptionViewItem *option, const QModelIndex &index) const
@@ -76,7 +77,6 @@ QWidget *BaseItemDelegate::createEditor(QWidget *parent, const QStyleOptionViewI
     Q_UNUSED(index)
     qDebug() << option.state;
     ExpandingLineEdit *le = new ExpandingLineEdit(index, parent);
-    connect(le, &ExpandingLineEdit::editingFinished, this, &BaseItemDelegate::editingFinished);
     return le;
 }
 

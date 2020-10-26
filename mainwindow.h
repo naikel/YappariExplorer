@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <QAbstractItemView>
 #include <QItemSelection>
 #include <QMainWindow>
 #include <QModelIndex>
@@ -21,7 +22,8 @@ public:
     ~MainWindow() override;
 
 public slots:
-    void showContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
+    void showContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
+                         const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view);
     void defaultAction(const FileSystemItem *fileSystemItem);
 
     void resizeBottomTreeView();

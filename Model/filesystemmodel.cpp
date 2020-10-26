@@ -342,6 +342,7 @@ void FileSystemModel::sort(int column, Qt::SortOrder order, QModelIndex parentIn
     emit layoutChanged();
 }
 
+
 /*!
  * \brief Returns the item flags for the given index.
  * \param index the QModelIndex index.
@@ -475,6 +476,14 @@ bool FileSystemModel::setData(const QModelIndex &index, const QVariant &value, i
 
     return false;
 }
+
+QModelIndex FileSystemModel::index(FileSystemItem *item) const
+{
+    FileSystemItem *parent = item->getParent();
+
+    return createIndex(parent->childRow(item), 0, item);
+}
+
 
 /*!
  * \brief Returns the path of a drop in an index item

@@ -18,7 +18,8 @@ WinContextMenu::WinContextMenu(QObject *parent) : ContextMenu(parent)
 
 }
 
-void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect)
+void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
+                          const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view)
 {
     qDebug() << "WinContextMenu::show";
 
@@ -115,7 +116,19 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
                         if (parent)
                             workingDirectory = parent->getPath();
 
-                        invokeCommand(hwnd, iCmd, imenu, pos, workingDirectory);
+                        CHAR cBuffer[256] {};
+
+                        // Get language-independent verb
+                        imenu->GetCommandString(iCmd - SCRATCH_QCM_FIRST, GCS_VERBW, nullptr, cBuffer, 255);
+
+                        QString strVerb = QString::fromWCharArray(reinterpret_cast<wchar_t *>(cBuffer));
+
+                        if (strVerb == "rename" && view != nullptr && fileSystemItems.size() == 1) {
+
+                            FileSystemModel *model = static_cast<FileSystemModel *>(view->model());
+                            view->edit(model->index(fileSystemItems[0]));
+                        } else
+                            invokeCommand(hwnd, iCmd, imenu, pos, workingDirectory, view);
                     }
                 }
                 ::DestroyMenu(hmenu);
@@ -160,7 +173,8 @@ void WinContextMenu::defaultAction(const WId wId, const FileSystemItem *fileSyst
                     QString workingDirectory;
                     if (fileSystemItem->getParent())
                         workingDirectory = fileSystemItem->getParent()->getPath();
-                    invokeCommand(hwnd, iCmd, imenu, QPoint(), workingDirectory);
+
+                    invokeCommand(hwnd, iCmd, imenu, QPoint(), workingDirectory, nullptr);
                 }
             }
             ::DestroyMenu(hmenu);
@@ -172,9 +186,19 @@ void WinContextMenu::defaultAction(const WId wId, const FileSystemItem *fileSyst
     }
 }
 
-void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QPoint pos, QString workingDirectory)
+void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QPoint pos, QString workingDirectory, QAbstractItemView *view)
 {
-    qDebug() << "WinContextMenu::invokeCommand command selected " << iCmd;
+    UINT command = iCmd - SCRATCH_QCM_FIRST;
+
+    CHAR cBuffer[256] {};
+
+    // Get language-independent verb
+    imenu->GetCommandString(command, GCS_VERBW, nullptr, cBuffer, 255);
+
+    QString strVerb = QString::fromWCharArray(reinterpret_cast<wchar_t *>(cBuffer));
+
+    qDebug() << "WinContextMenu::invokeCommand command selected " << command << strVerb;
+
     CMINVOKECOMMANDINFOEX info = {};
     info.cbSize = sizeof(info);
     info.fMask = CMIC_MASK_ASYNCOK | CMIC_MASK_UNICODE; // | CMIC_MASK_FLAG_NO_UI;
@@ -184,8 +208,8 @@ void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QP
         info.ptInvoke.y = pos.y();
     }
     info.hwnd = hwnd;
-    info.lpVerb  = MAKEINTRESOURCEA(iCmd - SCRATCH_QCM_FIRST);
-    info.lpVerbW  = MAKEINTRESOURCEW(iCmd - SCRATCH_QCM_FIRST);
+    info.lpVerb  = MAKEINTRESOURCEA(command);
+    info.lpVerbW  = MAKEINTRESOURCEW(command);
     info.nShow = SW_SHOWNORMAL;
 
     if (workingDirectory != nullptr && !workingDirectory.isEmpty()) {

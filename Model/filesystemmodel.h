@@ -46,6 +46,7 @@ public:
     bool setData(const QModelIndex &index, const QVariant &value, int role) override;
 
     // Custom functions
+    QModelIndex index (FileSystemItem *item) const;
     QString getDropPath(QModelIndex index) const;
     Qt::DropActions supportedDragActionsForIndexes(QModelIndexList indexes);
     Qt::DropAction defaultDropActionForIndex(QModelIndex index, const QMimeData *data, Qt::DropActions possibleActions);
@@ -72,6 +73,7 @@ signals:
     void fetchFinished();
     void fetchFailed(qint32 err, QString errMessage);
     void displayNameChanged(QString oldPath, FileSystemItem *item);
+    void renameIndex(QModelIndex index);
 
 private:
 

@@ -191,7 +191,8 @@ void CustomTabWidget::mouseDoubleClickEvent(QMouseEvent *event)
     emit newTabRequested();
 }
 
-void CustomTabWidget::emitContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect)
+void CustomTabWidget::emitContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
+                                      const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view)
 {
-    emit contextMenuRequestedForItems(pos, fileSystemItems, viewAspect);
+    emit contextMenuRequestedForItems(pos, fileSystemItems, viewAspect, view);
 }

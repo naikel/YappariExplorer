@@ -69,11 +69,12 @@ void MainWindow::updateTitle(FileSystemItem *item)
     setWindowTitle(title);
 }
 
-void MainWindow::showContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect)
+void MainWindow::showContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
+                                 const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view)
 {
     qDebug() << "MainWindow::showContextMenu";
 
-    contextMenu->show(winId(), pos, fileSystemItems, viewAspect);
+    contextMenu->show(winId(), pos, fileSystemItems, viewAspect, view);
 }
 
 void MainWindow::defaultAction(const FileSystemItem *fileSystemItem)

@@ -30,7 +30,8 @@ signals:
     void rootChanged(const QString path);
     void rootChangeFailed(const QString path);
     void newTabRequested();
-    void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
+    void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
+                                      const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view);
     void defaultActionRequestedForItem(FileSystemItem *fileSystemItem);
     void folderFocus(FileSystemItem *fileSystemItem);
 
@@ -39,7 +40,8 @@ protected:
     void mouseDoubleClickEvent(QMouseEvent *event) override;
 
 private slots:
-    void emitContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
+    void emitContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
+                         const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view);
 };
 
 #endif // CUSTOMTABWIDGET_H

@@ -75,9 +75,11 @@ public:
     int getDefaultRowHeight() const;
 
     bool isEditingIndex(const QModelIndex &index) const;
+    void edit(FileSystemItem *item);
 
 signals:
-    void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect);
+    void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
+                                      const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view);
     void viewFocus(FileSystemItem *item);
 
 public slots:
@@ -88,6 +90,7 @@ public slots:
     void showError(qint32 err, QString errMessage);
     virtual bool setRoot(QString path);
     void processQueuedSignals();
+    void editorClosed();
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -98,7 +101,6 @@ protected:
     void dropEvent(QDropEvent *event) override;
     QRegion visualRegionForSelection(const QItemSelection &selection) const override;
     bool edit(const QModelIndex &index, EditTrigger trigger, QEvent *event) override;
-    void editorDestroyed(QObject *editor) override;
 
     virtual void selectEvent();
     virtual void backEvent();

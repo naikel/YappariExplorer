@@ -5,12 +5,14 @@ ContextMenu::ContextMenu(QObject *parent) : QObject(parent)
 
 }
 
-void ContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect)
+void ContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
+                       const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view)
 {
     Q_UNUSED(wId)
     Q_UNUSED(pos)
     Q_UNUSED(fileSystemItems)
     Q_UNUSED(viewAspect)
+    Q_UNUSED(view)
 }
 
 void ContextMenu::defaultAction(const WId wId, const FileSystemItem *fileSystemItem)

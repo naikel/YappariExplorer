@@ -62,7 +62,7 @@ void BaseTreeView::setModel(QAbstractItemModel *model)
         disconnect(oldModel, &FileSystemModel::fetchFailed, this, &BaseTreeView::showError);
     }
 
-    FileSystemModel *fileSystemModel = reinterpret_cast<FileSystemModel *>(model);
+    FileSystemModel *fileSystemModel = static_cast<FileSystemModel *>(model);
     Once::connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &BaseTreeView::initialize);
 
     connect(fileSystemModel, &FileSystemModel::fetchStarted, this, &BaseTreeView::setBusyCursor);
@@ -207,7 +207,7 @@ void BaseTreeView::dropEvent(QDropEvent *event)
  *
  * This is almost a copy of the QTreeView implementation except for one added line.
  *
- * Since we do not want highlighting of the selected items to be of column width the visualRect()
+ * Since we do not want highlighting of the selected items to be of column width, the visualRect()
  * function will return the exact rectangle of the item and not the column width.
  *
  * This function only calls visualRect() on the first and last element of the range.  If a bigger
@@ -280,6 +280,10 @@ bool BaseTreeView::edit(const QModelIndex &index, QAbstractItemView::EditTrigger
     bool result = QTreeView::edit(index, trigger, event);
 
     if (result) {
+
+        QAbstractItemDelegate *del = itemDelegate(index);
+        connect(del, &BaseItemDelegate::closeEditor, this, &BaseTreeView::editorClosed);
+
         isEditing = true;
         editIndex = index;
     }
@@ -287,9 +291,11 @@ bool BaseTreeView::edit(const QModelIndex &index, QAbstractItemView::EditTrigger
     return result;
 }
 
-void BaseTreeView::editorDestroyed(QObject *editor)
+void BaseTreeView::editorClosed()
 {
-    Q_UNUSED(editor)
+    QAbstractItemDelegate *del = itemDelegate(editIndex);
+    disconnect(del, &BaseItemDelegate::closeEditor, this, &BaseTreeView::editorClosed);
+
     isEditing = false;
     editIndex = QModelIndex();
 }
@@ -501,7 +507,7 @@ void BaseTreeView::contextMenuRequested(const QPoint &pos)
     // If there's a header in this view, position would include it. We have to skip it.
     QPoint destination = pos;
     destination.setY(destination.y() + header()->height());
-    emit contextMenuRequestedForItems(mapToGlobal(destination), fileSystemItems, viewAspect);
+    emit contextMenuRequestedForItems(mapToGlobal(destination), fileSystemItems, viewAspect, this);
 }
 
 void BaseTreeView::showError(qint32 err, QString errMessage)
@@ -578,3 +584,4 @@ void BaseTreeView::processQueuedSignals()
     signalsQueue.clear();
     mutex.unlock();
 }
+
