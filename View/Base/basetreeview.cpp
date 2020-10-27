@@ -60,6 +60,7 @@ void BaseTreeView::setModel(QAbstractItemModel *model)
         disconnect(oldModel, &FileSystemModel::fetchStarted, this, &BaseTreeView::setBusyCursor);
         disconnect(oldModel, &FileSystemModel::fetchFinished, this, &BaseTreeView::setNormalCursor);
         disconnect(oldModel, &FileSystemModel::fetchFailed, this, &BaseTreeView::showError);
+        disconnect(oldModel, &FileSystemModel::shouldEdit, this, &BaseTreeView::shouldEdit);
     }
 
     FileSystemModel *fileSystemModel = static_cast<FileSystemModel *>(model);
@@ -68,6 +69,7 @@ void BaseTreeView::setModel(QAbstractItemModel *model)
     connect(fileSystemModel, &FileSystemModel::fetchStarted, this, &BaseTreeView::setBusyCursor);
     connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &BaseTreeView::setNormalCursor);
     connect(fileSystemModel, &FileSystemModel::fetchFailed, this, &BaseTreeView::showError);
+    connect(fileSystemModel, &FileSystemModel::shouldEdit, this, &BaseTreeView::shouldEdit);
 
     QTreeView::setModel(fileSystemModel);
 }
@@ -129,6 +131,10 @@ void BaseTreeView::keyPressEvent(QKeyEvent *event)
         case Qt::Key_Backspace:
             backEvent();
             event->accept();
+            break;
+
+        case Qt::Key_Delete:
+            deleteSelectedItems();
             break;
 
         default:
@@ -277,14 +283,13 @@ QRegion BaseTreeView::visualRegionForSelection(const QItemSelection &selection) 
 
 bool BaseTreeView::edit(const QModelIndex &index, QAbstractItemView::EditTrigger trigger, QEvent *event)
 {
+    qDebug() << "BaseTreeView::edit";
     bool result = QTreeView::edit(index, trigger, event);
 
     if (result) {
 
         QAbstractItemDelegate *del = itemDelegate(index);
         connect(del, &BaseItemDelegate::closeEditor, this, &BaseTreeView::editorClosed);
-
-        isEditing = true;
         editIndex = index;
     }
 
@@ -293,11 +298,16 @@ bool BaseTreeView::edit(const QModelIndex &index, QAbstractItemView::EditTrigger
 
 void BaseTreeView::editorClosed()
 {
+    qDebug() << "BaseTreeView::editClosed";
     QAbstractItemDelegate *del = itemDelegate(editIndex);
     disconnect(del, &BaseItemDelegate::closeEditor, this, &BaseTreeView::editorClosed);
 
-    isEditing = false;
     editIndex = QModelIndex();
+}
+
+void BaseTreeView::shouldEdit(QModelIndex index)
+{
+    QAbstractItemView::edit(index);
 }
 
 /*!
@@ -327,7 +337,34 @@ int BaseTreeView::getDefaultRowHeight() const
 
 bool BaseTreeView::isEditingIndex(const QModelIndex &index) const
 {
-    return (isEditing && index == editIndex);
+    return ((state() & QAbstractItemView::EditingState) && index == editIndex);
+}
+
+void BaseTreeView::deleteSelectedItems()
+{
+    QModelIndexList list = selectedIndexes();
+
+    QString dest;
+    if (list.size() == 1) {
+        QModelIndex selectedIndex = list.at(0);
+        if (selectedIndex.isValid()) {
+            FileSystemItem *item = getFileSystemModel()->getFileSystemItem(selectedIndex);
+            dest = "\"" + item->getDisplayName() + "\"";
+        }
+    } else {
+        dest = QString::number(list.size()) + " "+ tr("files");
+    }
+
+    // TODO: Recycle bin might be disabled
+    // TODO: It's called Trash in Unix and it' s in $XDG_DATA_HOME/Trash or .local/share/Trash
+
+    QString action = tr("send") + " " + dest + " "  + tr("to the Recycle bin");
+    QString text = tr("Do you really want to") + " " + action + "?";
+
+    // TODO: Better icon for this
+    if (QMessageBox::question(this, tr("Confirm File Delete"), text) == QMessageBox::Yes) {
+        getFileSystemModel()->removeIndexes(list);
+    }
 }
 
 bool BaseTreeView::isDragging() const

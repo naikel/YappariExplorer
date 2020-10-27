@@ -21,7 +21,7 @@ private:
     IContextMenu3 *imenu3;
 
     void customizeMenu(IContextMenu *imenu, const HMENU hmenu, const ContextMenu::ContextViewAspect viewAspect);
-    void invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QPoint pos, QString workingDirectory, QAbstractItemView *view);
+    void invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QPoint pos, FileSystemItem *fileSystemItem, QAbstractItemView *view);
 };
 
 #endif // WINCONTEXTMENU_H

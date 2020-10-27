@@ -22,6 +22,7 @@ protected:
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
 
+    void setSelection(const QRect &rect, QItemSelectionModel::SelectionFlags command) override;
     void setSelectionFromViewportRect(const QRect &rect, QItemSelection &currentSelection, QItemSelectionModel::SelectionFlags command);
 
 private:

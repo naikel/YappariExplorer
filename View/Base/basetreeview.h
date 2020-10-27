@@ -77,6 +77,8 @@ public:
     bool isEditingIndex(const QModelIndex &index) const;
     void edit(FileSystemItem *item);
 
+    void deleteSelectedItems();
+
 signals:
     void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
                                       const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view);
@@ -91,6 +93,7 @@ public slots:
     virtual bool setRoot(QString path);
     void processQueuedSignals();
     void editorClosed();
+    void shouldEdit(QModelIndex index);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -117,7 +120,6 @@ private:
     QMap<QModelIndex, QMap<int, QModelIndex>*> signalsQueue;
 
     QModelIndex editIndex   {};
-    bool isEditing          {};
 
 };
 

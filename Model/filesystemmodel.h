@@ -57,6 +57,8 @@ public:
     QChar separator() const;
     QModelIndex parent(QString path) const;
     void sort(int column, Qt::SortOrder order, QModelIndex parentIndex);
+    void removeIndexes(QModelIndexList indexList);
+    void startWatch(FileSystemItem *parent, QString verb);
 
     // Inline functions
     inline FileSystemItem *getFileSystemItem(QModelIndex index) const {
@@ -74,10 +76,14 @@ signals:
     void fetchFailed(qint32 err, QString errMessage);
     void displayNameChanged(QString oldPath, FileSystemItem *item);
     void renameIndex(QModelIndex index);
+    void shouldEdit(QModelIndex index);
 
 private:
 
     DirectoryWatcher *watcher               {};
+    bool watch                              {};
+    FileSystemItem *parentBeingWatched      {};
+    QString extensionBeingWatched           {};
 
     QAtomicInt fetchingMore;
     QAtomicInt settingRoot;

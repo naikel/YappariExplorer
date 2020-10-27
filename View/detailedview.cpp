@@ -193,6 +193,24 @@ void DetailedView::mouseReleaseEvent(QMouseEvent *event)
 
 }
 
+// Fix negative width/height rects bug in QTreeView
+void DetailedView::setSelection(const QRect &rect, QItemSelectionModel::SelectionFlags command)
+{
+    QRect newRect = rect;
+
+    if (newRect.width() < 0) {
+        int width = newRect.width() * -1;
+        newRect.setLeft(rect.x() - width);
+    }
+
+    if (newRect.height() < 0) {
+        int height = newRect.height() * -1;
+        newRect.setLeft(rect.y() - height);
+    }
+
+    BaseTreeView::setSelection(newRect, command);
+}
+
 void DetailedView::setSelectionFromViewportRect(const QRect &rect, QItemSelection &currentSelection, QItemSelectionModel::SelectionFlags command)
 {
     // The following lines are from the QTreeView implementation

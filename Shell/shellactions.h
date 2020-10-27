@@ -17,6 +17,7 @@ public:
     void copyItems(QList<QUrl> srcPaths, QString dstPath);
     void moveItems(QList<QUrl> srcPaths, QString dstPath);
     void linkItems(QList<QUrl> srcPaths, QString dstPath);
+    void removeItems(QList<QUrl> srcPaths);
 
 protected:
     QAtomicInt running;
@@ -25,6 +26,7 @@ protected:
     virtual void copyItemsBackground(QList<QUrl> srcPaths, QString dstPath);
     virtual void moveItemsBackground(QList<QUrl> srcUrls, QString dstPath);
     virtual void linkItemsBackground(QList<QUrl> srcPaths, QString dstPath);
+    virtual void removeItemsBackground(QList<QUrl> srcPaths);
 
 private:
     QThreadPool pool;

@@ -15,10 +15,18 @@ protected:
     void copyItemsBackground(QList<QUrl> srcUrls, QString dstPath) override;
     void moveItemsBackground(QList<QUrl> srcUrls, QString dstPath) override;
     void linkItemsBackground(QList<QUrl> srcUrls, QString dstPath) override;
+    void removeItemsBackground(QList<QUrl> srcUrls) override;
 
 private:
+
+    enum Operation {
+        Copy,
+        Move,
+        Delete
+    };
+
     QString getUniqueLinkName(QString linkTo, QString destDir);
-    void performFileOperations(QList<QUrl> srcUrls, QString dstPath, bool copy);
+    void performFileOperations(QList<QUrl> srcUrls, QString dstPath, Operation op);
 };
 
 #endif // WINSHELLACTIONS_H

@@ -342,6 +342,25 @@ void FileSystemModel::sort(int column, Qt::SortOrder order, QModelIndex parentIn
     emit layoutChanged();
 }
 
+void FileSystemModel::removeIndexes(QModelIndexList indexList)
+{
+    qDebug() << "FileSystemModel::removeIndexes";
+    QList<QUrl> urls;
+    for (QModelIndex index : indexList) {
+        if (index.isValid())
+            urls.append(QUrl::fromLocalFile(getFileSystemItem(index)->getPath()));
+    }
+
+    shellActions->removeItems(urls);
+}
+
+void FileSystemModel::startWatch(FileSystemItem *parent, QString verb)
+{
+    watch = true;
+    parentBeingWatched = parent;
+    extensionBeingWatched = verb;
+}
+
 
 /*!
  * \brief Returns the item flags for the given index.
@@ -895,6 +914,15 @@ void FileSystemModel::addPath(QString fileName)
     int row = parentItem->childRow(fileSystemItem);
     beginInsertRows(parentIndex, row, row);
     endInsertRows();
+
+    // If we were waiting for an item like this, tell the view the user has to set a new name for it
+    if (watch && ((extensionBeingWatched == "NewFolder" && fileSystemItem->isFolder()) ||
+                   extensionBeingWatched.right(extensionBeingWatched.size() - 1) == fileSystemItem->getExtension())) {
+
+        QModelIndex itemIndex = createIndex(row, 0, fileSystemItem);
+        emit shouldEdit(itemIndex);
+        watch = false;
+    }
 }
 
 void FileSystemModel::removePath(QString fileName)

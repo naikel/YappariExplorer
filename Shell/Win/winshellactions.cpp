@@ -47,15 +47,20 @@ void WinShellActions::renameItemBackground(QUrl srcPath, QString newName)
 
 void WinShellActions::copyItemsBackground(QList<QUrl> srcUrls, QString dstPath)
 {
-    performFileOperations(srcUrls, dstPath, true);
+    performFileOperations(srcUrls, dstPath, Operation::Copy);
 }
 
 void WinShellActions::moveItemsBackground(QList<QUrl> srcUrls, QString dstPath)
 {
-    performFileOperations(srcUrls, dstPath, false);
+    performFileOperations(srcUrls, dstPath, Operation::Move);
 }
 
-void WinShellActions::performFileOperations(QList<QUrl> srcUrls, QString dstPath, bool copy)
+void WinShellActions::removeItemsBackground(QList<QUrl> srcUrls)
+{
+    performFileOperations(srcUrls, QString(), Operation::Delete);
+}
+
+void WinShellActions::performFileOperations(QList<QUrl> srcUrls, QString dstPath, Operation op)
 {
     qDebug() << "WinShellActions::copyItemsBackground";
     // Initialize COM as STA.
@@ -77,13 +82,20 @@ void WinShellActions::performFileOperations(QList<QUrl> srcUrls, QString dstPath
                     IShellItem *psiTo {nullptr};
 
                     // Create an IShellItem from the supplied destination path.
-                    if (SUCCEEDED(SHCreateItemFromParsingName(dstPath.toStdWString().c_str(), nullptr, IID_PPV_ARGS(&psiTo)))) {
+                    if (op == Delete || SUCCEEDED(SHCreateItemFromParsingName(dstPath.toStdWString().c_str(), nullptr, IID_PPV_ARGS(&psiTo)))) {
 
                         // Add the operation
-                        if (copy)
-                            pfo->CopyItem(psiFrom, psiTo, nullptr, nullptr);
-                        else
-                            pfo->MoveItem(psiFrom, psiTo, nullptr, nullptr);
+                        switch (op) {
+                            case Copy:
+                                pfo->CopyItem(psiFrom, psiTo, nullptr, nullptr);
+                                break;
+                            case Move:
+                                pfo->MoveItem(psiFrom, psiTo, nullptr, nullptr);
+                                break;
+                            case Delete:
+                                pfo->DeleteItem(psiFrom,  nullptr);
+                                break;
+                        }
 
                         if (psiTo != nullptr)
                             psiTo->Release();
