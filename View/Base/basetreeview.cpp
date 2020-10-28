@@ -307,6 +307,7 @@ void BaseTreeView::editorClosed()
 
 void BaseTreeView::shouldEdit(QModelIndex index)
 {
+    selectionModel()->select(index, QItemSelectionModel::ClearAndSelect);
     QAbstractItemView::edit(index);
 }
 

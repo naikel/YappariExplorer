@@ -224,22 +224,23 @@ void CustomExplorer::collapseAndSelect(QModelIndex index)
     qDebug() << "CustomExplorer::collapseAndSelect";
 
     // Only change the selection if we're hiding an item
-    if (index.isValid() && treeView->selectedItem().isValid())
-    {
-        for (QModelIndex i = treeView->selectedItem().parent(); i.isValid() ; i = i.parent())
+    if (index.isValid()) {
+        if (treeView->selectedItem().isValid())
         {
-            if (i.internalPointer() == index.internalPointer()) {
-                FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
-                tabWidget->changeRootPath(fileSystemItem->getPath());
-                treeView->selectIndex(index);
-
-                // TODO: Probably we would have to tell the TreeView's FileSystemModel here to forget all the index's children
-                // That way they will get reloaded from disk next time the user selects it
-
-                // FileSystemModel *treeViewModel = reinterpret_cast<FileSystemModel *>(treeView->model());
-                // treeViewModel->freeChildren(index);
+            for (QModelIndex i = treeView->selectedItem().parent(); i.isValid() ; i = i.parent())
+            {
+                if (i.internalPointer() == index.internalPointer()) {
+                    FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
+                    tabWidget->changeRootPath(fileSystemItem->getPath());
+                    treeView->selectIndex(index);
+                }
             }
         }
+        // TODO: Probably we would have to tell the TreeView's FileSystemModel here to forget all the index's children
+        // That way they will get reloaded from disk next time the user selects it
+
+        FileSystemModel *treeViewModel = reinterpret_cast<FileSystemModel *>(treeView->model());
+        treeViewModel->freeChildren(index);
     }
 }
 

@@ -89,7 +89,7 @@ void WinDirectoryWatcher::directoryChanged(LPOVERLAPPED lpOverLapped)
 
                 QString fileName = QString::fromWCharArray(n->FileName, (n->FileNameLength / sizeof(WCHAR)));
                 strList.append(watch->path + (watch->path.right(1) != "\\" ? "\\" : "") + fileName);
-                qDebug() << "WinDirectoryWatcher::run change detected from" << fileName << "action" << n->Action;
+                qDebug() << "WinDirectoryWatcher::directoryChaged change detected from" << fileName << "action" << n->Action;
 
                 if (n->NextEntryOffset)
                     n = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(reinterpret_cast<BYTE*>(n) + n->NextEntryOffset);

@@ -62,7 +62,7 @@ void WinShellActions::removeItemsBackground(QList<QUrl> srcUrls)
 
 void WinShellActions::performFileOperations(QList<QUrl> srcUrls, QString dstPath, Operation op)
 {
-    qDebug() << "WinShellActions::copyItemsBackground";
+    qDebug() << "WinShellActions::performFileOperations" << srcUrls << dstPath << op;
     // Initialize COM as STA.
     if (SUCCEEDED(::CoInitializeEx(nullptr, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE))) {
 
@@ -93,6 +93,8 @@ void WinShellActions::performFileOperations(QList<QUrl> srcUrls, QString dstPath
                                 pfo->MoveItem(psiFrom, psiTo, nullptr, nullptr);
                                 break;
                             case Delete:
+                                // TODO: A permanent delete needs this line:
+                                // pfo->SetOperationFlags(FOF_NOCONFIRMATION);
                                 pfo->DeleteItem(psiFrom,  nullptr);
                                 break;
                         }

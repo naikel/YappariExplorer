@@ -1,3 +1,32 @@
+/*
+ * Copyright (C) 2019, 2020 Naikel Aparicio. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ''AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+ * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * The views and conclusions contained in the software and documentation
+ * are those of the author and should not be interpreted as representing
+ * official policies, either expressed or implied, of the copyright holder.
+ */
+
 #include <QApplication>
 #include <QFileIconProvider>
 #include <QtConcurrent/QtConcurrentRun>
@@ -27,6 +56,31 @@
 #   define PlatformShellActions()      UnixShellActions()
 #endif
 
+/*!
+ * \brief The constructor.
+ * \param parent The QObject parent.
+ *
+ * Constructs a new FileSystemModel object.
+ *
+ * The constructor creates the following objects:
+ *
+ * - A FileInfoRetriever object to get access to the local filesystem.
+ * - A ShellActions object to execute actions like copy, move, delete, rename.
+ * - A DirectoryWatcher object that notifies the model when the filesystem changes.
+ *
+ * This model can be of one of two scopes: a Tree model, or a List model.
+ *
+ * In the Tree model, the root of the model is the root of the tree.  This means the root is visible in the model
+ * and the whole tree starts there.
+ *
+ * In the List model, the root is a virtual entity and it's not really visible. All indexes have an invalid parent.
+ * The reason for this is to use any kind of view with this model like a QTreeView and it will still show the element
+ * as a list.
+ *
+ * \sa FileInfoRetriever
+ * \sa ShellActions
+ * \sa DirectoryWatcher
+ */
 FileSystemModel::FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent) : QAbstractItemModel(parent)
 {
     // This is mandatory if you want the dataChanged signal to work when emitting it in a different thread.
@@ -58,6 +112,12 @@ FileSystemModel::FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent
     connect(watcher, &DirectoryWatcher::fileRemoved, this, &FileSystemModel::removePath);
 }
 
+/*!
+ * \brief The destructor.
+ *
+ * This function will wait for any pending tasks from the FileInfoRetriever object, and then destroy it, along with
+ * the DirectoryWatcher and the ShellActions object.
+ */
 FileSystemModel::~FileSystemModel()
 {
     // Abort all the pending threads
@@ -86,8 +146,23 @@ FileSystemModel::~FileSystemModel()
 
     if (fileInfoRetriever != nullptr)
         delete fileInfoRetriever;
+
+    if (shellActions != nullptr)
+        delete shellActions;
 }
 
+/*!
+ * \brief Returns the index in the model specified by the given \a row, \a column and \a parent index.
+ * \param row row of the index.
+ * \param column column of the index.
+ * \param parent parent of the index.
+ * \return a QModelIndex object with the \a row, \a column and \a parent index specified.
+ *
+ * If the scope of the model is a Tree, the parent is valid. Only the root item will have an invalid parent.
+ *
+ * If the scope of the model is a List, the parent must be not valid.
+ *
+ */
 QModelIndex FileSystemModel::index(int row, int column, const QModelIndex &parent) const
 {
     // qDebug() << "index " << fileInfoRetriever->getScope() << row << " " << column;
@@ -108,16 +183,21 @@ QModelIndex FileSystemModel::index(int row, int column, const QModelIndex &paren
     return QModelIndex();
 }
 
-
+/*!
+ * \brief Returns the parent of the specicied \a index.
+ * \param index a QModelIndex object.
+ * \return the parent of the \a index specified as a QModelIndex object.
+ *
+ * If the scope of the model is a List, this function will always return an invalid index.
+ */
 QModelIndex FileSystemModel::parent(const QModelIndex &index) const
 {
-    // ListView: The parent of a top level index should be invalid
+    // List: The parent of a top level index should be invalid
     if (fileInfoRetriever->getScope() == FileInfoRetriever::List)
         return QModelIndex();
 
     if (index.isValid() && index.internalPointer() != nullptr) {
-        FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
-        FileSystemItem *parent = fileSystemItem->getParent();
+        FileSystemItem *parent = getFileSystemItem(index)->getParent();
         if (parent != nullptr) {
             FileSystemItem *grandParent = parent->getParent();
             int row = (grandParent != nullptr) ? grandParent->childRow(parent) : 0;
@@ -127,6 +207,14 @@ QModelIndex FileSystemModel::parent(const QModelIndex &index) const
     return QModelIndex();
 }
 
+/*!
+ * \brief Returns the number of rows under the given \a parent.
+ * \param parent a QModelIndex.
+ * \return Number of children of the \a parent.
+ *
+ * If the scope of the model is a List, the parent is ignored. It will always return the
+ * number of elements of the list.
+ */
 int FileSystemModel::rowCount(const QModelIndex &parent) const
 {
     if (parent.column() > 0)
@@ -135,14 +223,23 @@ int FileSystemModel::rowCount(const QModelIndex &parent) const
     if (fileInfoRetriever->getScope() == FileInfoRetriever::List)
         return root->childrenCount();
 
-    if (parent.isValid() && parent.internalPointer() != nullptr) {
-        FileSystemItem *parentItem = static_cast<FileSystemItem*>(parent.internalPointer());
-        return parentItem->childrenCount();
-    }
+    if (parent.isValid() && parent.internalPointer() != nullptr)
+        return getFileSystemItem(parent)->childrenCount();
 
     return 1;
 }
 
+/*!
+ * \brief Returns the number of columns for the model.
+ * \param parent a QModelIndex. It is ignorex.
+ * \return Number of columns for the model, depending on the scope.
+ *
+ * If the scope of the model is a Tree, only one column is returned, since the Tree model
+ * only have names and nothing else.
+ *
+ * If the scope of the model is a List, then this function returns the number of columns
+ * implemented.
+ */
 int FileSystemModel::columnCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent)
@@ -152,6 +249,32 @@ int FileSystemModel::columnCount(const QModelIndex &parent) const
     return 1;
 }
 
+/*!
+ * \brief Returns the data under the given \a role ffor the item specified by \a index
+ * \param index a QModelIndex
+ * \param role a Qt::ItemDataRole
+ * \return data for \a index of the specified \a role
+ *
+ * If the role is Qt::DecorationRole this function will do the following:
+ *
+ * 1. The first time it is requested it will assign a "fake icon" to the index which is basically a default icon for it.
+ * 2. The second time it will run the function FileSystemModel::getIcon in the background to request the real icon.
+ *
+ * This is because the views will ask for the icon of all items while constructing the view to measure each row size.  Then
+ * the view will request the icon a second time to actually show it in the view, only if its index is visible.
+ *
+ * This way we will only request icons from the filesystem for indexes that are actually visible in the viewport.
+ * We get better performance in very long file listings like C:\Windows\System32.
+ *
+ * If the role is Qt::DisplayRole, this function will customize the output for the Size column. The LastChangeSince column
+ * is millisecs since epoch, so the model can sort by it easily.  A delegate for the LastChangeSince column is needed to
+ * show actual human readable dates.
+ *
+ * If the role is Qt::ForegroundRole, it will show a different color for folders.
+ *
+ * If the role is Qt::TextAlignmentRole, it will align to the right the Size and Date columns.
+ *
+ */
 QVariant FileSystemModel::data(const QModelIndex &index, int role) const
 {
     // qDebug() << "data" << fileInfoRetriever->getScope() << index.row() << " " << index.column();
@@ -223,6 +346,14 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
     return QVariant();
 }
 
+/*!
+ * \brief Returns the data for the given \a role and \a section in the header with the specified \a orientation
+ * \param section column number for horizontal headers or row number for vertical headers
+ * \param orientation vertical or horizontal orientation as a Qt::Orientation
+ * \param role a Qt::ItemDataRole
+ *
+ * This function just returns the name of the headers depending on what column is requested and its alignment.
+ */
 QVariant FileSystemModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
     Q_UNUSED(orientation)
@@ -359,6 +490,23 @@ void FileSystemModel::startWatch(FileSystemItem *parent, QString verb)
     watch = true;
     parentBeingWatched = parent;
     extensionBeingWatched = verb;
+}
+
+void FileSystemModel::freeChildren(QModelIndex &parent)
+{
+    qDebug() << "FileSystemModel::freeChildren";
+
+    // TODO: This should use a cache
+
+    if (parent.isValid()) {
+        FileSystemItem *item = getFileSystemItem(parent);
+        watcher->removePath(item->getPath());
+
+        removeAllRows(parent);
+
+        // Set back the hasSubFolders flag so they can be retrieved again later
+        item->setHasSubFolders(true);
+    }
 }
 
 
