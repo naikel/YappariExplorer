@@ -44,7 +44,7 @@ void CustomExplorer::initialize(MainWindow *mainWindow, CustomTreeView *treeView
     this->tabWidget = tabWidget;
 
     FileSystemModel *fileSystemModel = new FileSystemModel(FileInfoRetriever::Tree, this);
-    fileSystemModel->setRoot("/");
+    fileSystemModel->setDefaultRoot();
     treeView->setModel(fileSystemModel);
 
     // Handling of single selections
@@ -119,7 +119,9 @@ void CustomExplorer::expandAndSelectRelative(QString path)
             else {
                 qDebug() << "CustomExplorer::expandAndSelectRelative can't find the index: the Tree View is not synchronized";
 
-                // TODO: Refresh parent in the Tree View
+                /*
+
+                // TODO: What can we do here?
 
                 // Remove all children from the Tree View
                 treeViewModel->removeAllRows(parent);
@@ -131,6 +133,7 @@ void CustomExplorer::expandAndSelectRelative(QString path)
                 // Call this function again when finished
                 // TODO This might create an infinite cycle
                 Once::connect(treeViewModel, &FileSystemModel::fetchFinished, this, [this, path]() { this->expandAndSelectRelative(path); });
+                */
             }
         }
     }
@@ -165,14 +168,23 @@ void CustomExplorer::expandAndSelectAbsolute(QString path)
     QModelIndex parentIndex = treeViewModel->index(0, 0, QModelIndex());
     QModelIndex childIndex {};
 
-    if (path == "/") {
+    if (path == treeViewModel->getRoot()->getPath()) {
         treeView->selectIndex(parentIndex);
         return;
     }
 
-    QStringList pathList = path.split(treeViewModel->separator());
     QString absolutePath = QString();
 
+#ifdef Q_OS_WIN
+    if (path.left(3) == "::{") {
+        absolutePath = treeViewModel->getRoot()->getPath();
+
+        if (path.size() > absolutePath.size() && path.left(absolutePath.size()) == absolutePath)
+            path = path.mid(path.indexOf(treeViewModel->separator()) + 1);
+    }
+#endif
+
+    QStringList pathList = path.split(treeViewModel->separator());
     for (auto folder : pathList) {
         if (!folder.isEmpty()) {
 
@@ -201,6 +213,15 @@ void CustomExplorer::expandAndSelectAbsolute(QString path)
                     absolutePath += folder;
 
                 child = parent->getChild(absolutePath);
+
+                // This can happen if the item is in the List view but not yet in the Tree view *shrugs*
+                if (child == nullptr) {
+                    qDebug() <<  "CustomExplorer::expandAndSelectAbsolute couldn't find the path" << absolutePath << "in the following list of children:";
+                    for (FileSystemItem *f : parent->getChildren())
+                        qDebug() << f->getPath();
+                    return;
+                }
+
                 childIndex = treeViewModel->index(parent->childRow(child), 0, parentIndex);
 
                 // Prepare for next iteration
@@ -223,6 +244,8 @@ void CustomExplorer::collapseAndSelect(QModelIndex index)
 {
     qDebug() << "CustomExplorer::collapseAndSelect";
 
+    // TODO: freeChildren called from here (instead of the view) AFTER? selecting the collapsed index is better
+
     // Only change the selection if we're hiding an item
     if (index.isValid()) {
         if (treeView->selectedItem().isValid())
@@ -236,11 +259,9 @@ void CustomExplorer::collapseAndSelect(QModelIndex index)
                 }
             }
         }
-        // TODO: Probably we would have to tell the TreeView's FileSystemModel here to forget all the index's children
-        // That way they will get reloaded from disk next time the user selects it
 
-        FileSystemModel *treeViewModel = reinterpret_cast<FileSystemModel *>(treeView->model());
-        treeViewModel->freeChildren(index);
+        treeView->getFileSystemModel()->freeChildren(index);
+
     }
 }
 

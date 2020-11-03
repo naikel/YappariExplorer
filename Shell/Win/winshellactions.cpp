@@ -40,7 +40,7 @@ void WinShellActions::renameItemBackground(QUrl srcPath, QString newName)
             // Release the IFileOperation interface.
             pfo->Release();
         }
-        CoUninitialize();
+        ::CoUninitialize();
     }
     running.store(false);
 }
@@ -113,7 +113,7 @@ void WinShellActions::performFileOperations(QList<QUrl> srcUrls, QString dstPath
             pfo->Release();
         }
 
-        CoUninitialize();
+        ::CoUninitialize();
     }
     running.store(false);
 }

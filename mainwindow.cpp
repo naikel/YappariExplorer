@@ -11,20 +11,27 @@
 #ifdef Q_OS_WIN
 #   include "Shell/Win/wincontextmenu.h"
 #   define PlatformContextMenu(PARENT)     WinContextMenu(PARENT)
+
+quint32 MainWindow::nextId { WM_USER + 200 };
+
 #else
 #   include "Shell/Unix/unixcontextmenu.h"
 #   define PlatformContextMenu(PARENT)     UnixContextMenu(PARENT)
+
+quint32 MainWindow::nextId {};
+
 #endif
 
 #define APPLICATION_TITLE   "YappariExplorer"
+
+WId MainWindow::windowId                                {};
+QMutex MainWindow::regMutex                             {};
+QMap<quint32, DirectoryWatcher*> MainWindow::watchers   {};
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
-    QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-    QGuiApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-
     ui->setupUi(this);
 
     setWindowIcon(QIcon(":/icons/app2.png"));
@@ -39,11 +46,28 @@ MainWindow::MainWindow(QWidget *parent)
     ui->bottomExplorer->initialize(this, ui->bottomTreeView, ui->bottomTabWidget);
     ui->topExplorer->initialize(this, ui->topTreeView, ui->topTabWidget);
 
+    windowId = winId();
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+WId MainWindow::getWinId()
+{
+    return windowId;
+}
+
+quint32 MainWindow::registerWatcher(DirectoryWatcher *watcher)
+{
+    regMutex.lock();
+
+    quint32 id = nextId++;
+    watchers.insert(id, watcher);
+
+    regMutex.unlock();
+    return id;
 }
 
 void MainWindow::resizeBottomTreeView()
@@ -79,11 +103,25 @@ void MainWindow::showContextMenu(const QPoint &pos, const QList<FileSystemItem *
 
 void MainWindow::defaultAction(const FileSystemItem *fileSystemItem)
 {
+    qDebug() << "MainWindow::defaultAction";
+
     contextMenu->defaultAction(winId(), fileSystemItem);
 }
 
 bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *result)
 {
+    quint32 id;
+
+#ifdef Q_OS_WIN
+    MSG *msg = static_cast< MSG * >(message);
+    id = msg->message;
+#endif
+
+    if (watchers.keys().contains(id)) {
+        DirectoryWatcher *watcher = watchers.value(id);
+        return watcher->handleNativeEvent(eventType, message, result);
+    }
+
     if (contextMenu && contextMenu->handleNativeEvent(eventType, message, result))
         return true;
 

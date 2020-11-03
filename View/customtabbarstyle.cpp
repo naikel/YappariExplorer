@@ -1,7 +1,9 @@
 #include <QStyleOption>
+#include <QPainter>
 #include <QDebug>
 #include <QRect>
 
+#include "customtabbar.h"
 #include "customtabbarstyle.h"
 
 CustomTabBarStyle::CustomTabBarStyle()
@@ -15,6 +17,17 @@ void CustomTabBarStyle::drawControl(QStyle::ControlElement element, const QStyle
 
     if (element == CE_TabBarTabLabel) {
         if (const QStyleOptionTab *tab = qstyleoption_cast<const QStyleOptionTab *>(option)) {
+
+            QWidget *w = const_cast<QWidget *>(widget);
+            CustomTabBar *tabBar = static_cast<CustomTabBar *>(w);
+
+            // This is a hack.
+            // When dragging a tab QTabBar creates a new widget from a private class called QMovableTabWidget.
+            // This widget will have a rect equal to tabRect(pressedIndex)
+            // Somehow this rect is too big.
+            // So we change the size of this rect with the size it should have by calling tabSizeHint()
+            if (tabBar->isDragging() && option->state & QStyle::State_Sunken)
+                opt->rect.setSize(tabBar->hintSizeOfTab(tabBar->getDragIndex()));
 
             // Get rid of the padding (couldn't find another way to do this without losing the platform style)
             QFontMetrics fm = option->fontMetrics;
@@ -33,5 +46,7 @@ void CustomTabBarStyle::drawControl(QStyle::ControlElement element, const QStyle
         }
     }
 
+    // Set the same font we set for the CustomTabBar
+    painter->setFont(widget->font());
     QProxyStyle::drawControl(element, opt, painter, widget);
 }

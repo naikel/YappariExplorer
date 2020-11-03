@@ -18,7 +18,9 @@ public:
     };
 
     FileInfoRetriever(QObject *parent = nullptr);
-    ~FileInfoRetriever() override;
+    ~FileInfoRetriever();
+
+    virtual QString getRootPath() const;
 
     bool getInfo(FileSystemItem *root);
 

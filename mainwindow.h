@@ -5,6 +5,7 @@
 #include <QItemSelection>
 #include <QMainWindow>
 #include <QModelIndex>
+#include <QMutex>
 
 #include "Model/filesystemmodel.h"
 #include "Shell/contextmenu.h"
@@ -20,6 +21,9 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
+
+    static WId getWinId();
+    static quint32 registerWatcher(DirectoryWatcher *watcher);
 
 public slots:
     void showContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
@@ -39,5 +43,10 @@ private:
     Ui::MainWindow *ui;
 
     ContextMenu *contextMenu {};
+
+    static WId windowId;
+    static quint32 nextId;
+    static QMutex regMutex;
+    static QMap<quint32, DirectoryWatcher *> watchers;
 };
 #endif // MAINWINDOW_H

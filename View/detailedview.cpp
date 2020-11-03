@@ -39,6 +39,9 @@ void DetailedView::initialize()
 
 bool DetailedView::setRoot(QString root)
 {
+    // First ensure all processed signals have been processed
+    BaseTreeView::setRoot(root);
+
     if (!root.isEmpty()) {
 
         // This item is from the tree view model, not from the model of this view

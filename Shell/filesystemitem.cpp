@@ -31,13 +31,15 @@ void FileSystemItem::setDisplayName(const QString &value)
 
     displayName = value;
 
-    QMimeDatabase mimeDatabase;
-    QString suffix = mimeDatabase.suffixForFileName(value);
-    if (suffix.isEmpty()) {
-        int index = getDisplayName().lastIndexOf('.');
-        suffix = (index > MIN_INDEX) ? getDisplayName().mid(++index) : QString();
+    if (!isFolder()) {
+        QMimeDatabase mimeDatabase;
+        QString suffix = mimeDatabase.suffixForFileName(value);
+        if (suffix.isEmpty()) {
+            int index = getDisplayName().lastIndexOf('.');
+            suffix = (index > MIN_INDEX) ? getDisplayName().mid(++index) : QString();
+        }
+        extension = suffix;
     }
-    extension = suffix;
 }
 
 void FileSystemItem::addChild(FileSystemItem *child)
@@ -134,8 +136,9 @@ bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j, int column, Qt:
 
     // If both items are files or both are folders then direct comparison is allowed
     if ((!i->isFolder() && !j->isFolder()) || (i->isFolder() && j->isFolder())) {
-        if (left == right)
+        if (left == right) {
             comparison = (collator.compare(i->getDisplayName(), j->getDisplayName()) < 0);
+        }
 
         return (order == Qt::AscendingOrder  && comparison) ||
                (order == Qt::DescendingOrder && !comparison);
@@ -283,6 +286,29 @@ QDateTime FileSystemItem::getLastChangeTime() const
 void FileSystemItem::setLastChangeTime(const QDateTime &value)
 {
     lastChangeTime = value;
+}
+
+FileSystemItem *FileSystemItem::clone()
+{
+    FileSystemItem *item = new FileSystemItem(path);
+
+    item->setDisplayName(displayName);
+    item->setIcon(icon);
+    item->setSize(size);
+    item->setType(type);
+    item->setCreationTime(creationTime);
+    item->setLastAccessTime(lastAccessTime);
+    item->setLastChangeTime(lastChangeTime);
+
+    item->setFolder(folder);
+    item->setHidden(hidden);
+    item->setHasSubFolders(hasSubFolders);
+    item->setAllChildrenFetched(allChildrenFetched);
+    item->setFakeIcon(fakeIcon);
+
+    item->setParent(parent);
+
+    return item;
 }
 
 QVariant FileSystemItem::getData(int column)

@@ -1,7 +1,7 @@
 #ifndef DIRECTORYWATCHER_H
 #define DIRECTORYWATCHER_H
 
-#include <QThread>
+#include <QObject>
 
 class DirectoryWatcher : public QObject
 {
@@ -11,6 +11,7 @@ public:
 
     virtual void addPath(QString path);
     virtual void removePath(QString path);
+    virtual bool handleNativeEvent(const QByteArray &eventType, void *message, long *result);
 
 signals:
     void fileRename(QString oldFileName, QString newFileName);

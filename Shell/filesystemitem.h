@@ -85,6 +85,8 @@ public:
     QDateTime getLastChangeTime() const;
     void setLastChangeTime(const QDateTime &value);
 
+    FileSystemItem *clone();
+
 private:
 
     QString     path                {};

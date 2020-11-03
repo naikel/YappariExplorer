@@ -17,8 +17,8 @@ public:
     void defaultAction(const WId wId, const FileSystemItem *fileSystemItem) override;
 
 private:
-    IContextMenu2 *imenu2;
-    IContextMenu3 *imenu3;
+    IContextMenu2 *imenu2   {};
+    IContextMenu3 *imenu3   {};
 
     void customizeMenu(IContextMenu *imenu, const HMENU hmenu, const ContextMenu::ContextViewAspect viewAspect);
     void invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QPoint pos, FileSystemItem *fileSystemItem, QAbstractItemView *view);

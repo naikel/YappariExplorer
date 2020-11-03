@@ -25,6 +25,11 @@ FileInfoRetriever::~FileInfoRetriever()
     qDebug() << "FileInfoRetriever::~FileInfoRetriever Destroyed";
 }
 
+QString FileInfoRetriever::getRootPath() const
+{
+    return "/";
+}
+
 bool FileInfoRetriever::getInfo(FileSystemItem *root)
 {
     if (root != nullptr && !root->getPath().isEmpty()) {

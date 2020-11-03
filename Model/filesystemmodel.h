@@ -31,6 +31,7 @@
 #define FILESYSTEMMODEL_H
 
 #include <QAbstractItemModel>
+#include <QMutex>
 
 #include "Shell/filesystemitem.h"
 #include "Shell/fileinforetriever.h"
@@ -96,6 +97,7 @@ public:
     bool setData(const QModelIndex &index, const QVariant &value, int role) override;
 
     // Custom functions
+    void setDefaultRoot();
     QModelIndex index (FileSystemItem *item) const;
     QString getDropPath(QModelIndex index) const;
     Qt::DropActions supportedDragActionsForIndexes(QModelIndexList indexes);
@@ -103,13 +105,12 @@ public:
     QModelIndex relativeIndex(QString path, QModelIndex parent);
     bool setRoot(const QString path);
     FileSystemItem *getRoot() const;
-    bool removeAllRows(QModelIndex &parent);
+    bool removeAllRows(const QModelIndex &parent);
     QChar separator() const;
     QModelIndex parent(QString path) const;
     void sort(int column, Qt::SortOrder order, QModelIndex parentIndex);
     void removeIndexes(QModelIndexList indexList);
     void startWatch(FileSystemItem *parent, QString verb);
-    void freeChildren(QModelIndex &parent);
 
     // Inline functions
     inline FileSystemItem *getFileSystemItem(QModelIndex index) const {
@@ -120,6 +121,7 @@ public slots:
     void parentUpdated(FileSystemItem *parent, qint32 err, QString errMessage);
     void itemUpdated(FileSystemItem *item);
     void extendedInfoUpdated(FileSystemItem *parent);
+    void freeChildren(const QModelIndex &parent);
 
 signals:
     void fetchStarted();
@@ -144,7 +146,7 @@ private:
     Qt::SortOrder currentSortOrder          {Qt::AscendingOrder};
     FileInfoRetriever *fileInfoRetriever    {nullptr};
     ShellActions *shellActions              {nullptr};
-    QList<QString> sizeUnits                {"byte", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
+    QVector<QString> sizeUnits              {"byte", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
 
     // Default icons
     QIcon driveIcon, fileIcon, folderIcon;

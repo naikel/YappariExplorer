@@ -9,11 +9,12 @@
 #define SCRATCH_QCM_LAST  0x7FFF
 
 // Menu verbs
-#define VERB_VIEW           "view"
-#define VERB_SORTBY         "arrange"
-#define VERB_GROUPBY        "groupby"
-#define VERB_SHARE          "Windows.Share"
-#define VERB_MODERNSHARE    "Windows.ModernShare"
+#define VERB_VIEW               "view"
+#define VERB_SORTBY             "arrange"
+#define VERB_GROUPBY            "groupby"
+#define VERB_SHARE              "Windows.Share"
+#define VERB_MODERNSHARE        "Windows.ModernShare"
+#define VERB_VIEWCUSTOMWIZARD   "viewcustomwizard"
 
 WinContextMenu::WinContextMenu(QObject *parent) : ContextMenu(parent)
 {
@@ -25,6 +26,7 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
 {
     qDebug() << "WinContextMenu::show";
 
+    ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     if (!fileSystemItems.size())
         return;
 
@@ -50,11 +52,13 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
             if (viewAspect == ContextMenu::Background) {
                 // Context menu was requested on the background of the view
 
+                psf->Release();
                 hr = ::SHBindToObject(nullptr, pidl, nullptr, IID_IShellFolder, reinterpret_cast<void**>(&psf));
                 IShellView* pShellView = nullptr;
                 psf->CreateViewObject(hwnd, IID_PPV_ARGS(&pShellView));
 
                 hr = pShellView->GetItemObject(SVGIO_BACKGROUND, IID_IContextMenu, reinterpret_cast<void**>(&imenu));
+
 
             } else {
                 // Context menu was requested on one or more selected items
@@ -100,8 +104,11 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
                     qDebug() << "WinContextMenu::show " << QTime::currentTime() << "Before customizing the menu";
                     customizeMenu(imenu, hmenu, viewAspect);
 
-                    imenu->QueryInterface(IID_IContextMenu2, reinterpret_cast<void**>(&imenu2));
-                    imenu->QueryInterface(IID_IContextMenu3, reinterpret_cast<void**>(&imenu3));
+                    if (FAILED(imenu->QueryInterface(IID_IContextMenu2, reinterpret_cast<void**>(&imenu2))))
+                        qDebug() << "imenu2 failed";
+
+                    if (FAILED(imenu->QueryInterface(IID_IContextMenu3, reinterpret_cast<void**>(&imenu3))))
+                        qDebug() << "imenu3 failed";
 
                     qDebug() << "WinContextMenu::show " << QTime::currentTime() << "Before calling the menu";
                     UINT iCmd = static_cast<UINT>(::TrackPopupMenuEx(hmenu, TPM_RETURNCMD, pos.x(), pos.y(), hwnd, nullptr));
@@ -156,12 +163,16 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
         }
 
         ::CoTaskMemFree(pidl);
+
+        ::CoUninitialize();
     }
 }
 
 void WinContextMenu::defaultAction(const WId wId, const FileSystemItem *fileSystemItem)
 {
     qDebug() << "WinContextMenu::defaultAction";
+
+    ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
     HRESULT hr;
     LPITEMIDLIST pidl;
@@ -192,6 +203,8 @@ void WinContextMenu::defaultAction(const WId wId, const FileSystemItem *fileSyst
       }
       ::CoTaskMemFree(pidl);
     }
+
+    ::CoUninitialize();
 }
 
 void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QPoint pos, FileSystemItem *parent, QAbstractItemView *view)
@@ -199,6 +212,9 @@ void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QP
     UINT command = iCmd - SCRATCH_QCM_FIRST;
 
     CHAR cBuffer[256] {};
+
+    // This holds the working directory data it has to be valid until the InvokeCommand call
+    std::wstring wrkDir;
 
     CMINVOKECOMMANDINFOEX info = {};
     info.cbSize = sizeof(info);
@@ -214,10 +230,10 @@ void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QP
     info.nShow = SW_SHOWNORMAL;
 
     if (parent != nullptr) {
-        QString workingDirectory = parent->getPath();
-        std::wstring wrkDir = workingDirectory.toStdWString();
+        wrkDir = parent->getPath().toStdWString();
+
+        // Pointer to wrkDir (std::wstring), and it has to be valid until the InvokeCommand call
         info.lpDirectoryW = wrkDir.c_str();
-        qDebug() << workingDirectory;
     }
 
     // Get language-independent verb
@@ -231,7 +247,7 @@ void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QP
         model->startWatch(parent, strVerb);
     }
 
-    qDebug() << "WinContextMenu::invokeCommand command selected " << command << strVerb;
+    qDebug() << "WinContextMenu::invokeCommand command selected " << command << strVerb << "working directory" << wrkDir;
 
     HRESULT hr = imenu->InvokeCommand(reinterpret_cast<LPCMINVOKECOMMANDINFO>(&info));
     qDebug() << "WinContextMenu::invokeCommand result code " << QString("%1").arg(hr, 0, 16) << "HWND" << hwnd;
@@ -243,13 +259,19 @@ bool WinContextMenu::handleNativeEvent(const QByteArray &eventType, void *messag
     Q_UNUSED(result)
 
     MSG *msg = static_cast< MSG * >( message );
-    if (msg->message == WM_INITMENUPOPUP) {
+    if (msg->message == WM_INITMENUPOPUP || msg->message == WM_DRAWITEM || msg->message == WM_MENUCHAR || msg->message == WM_MEASUREITEM) {
+
         if (imenu3) {
+            qDebug() << "imenu3";
             LRESULT lres;
-            if (SUCCEEDED(imenu3->HandleMenuMsg2(msg->message, msg->wParam, msg->lParam, &lres))) {
-              return true;
-            }
+            HRESULT hr;
+            if (SUCCEEDED(hr = imenu3->HandleMenuMsg2(msg->message, msg->wParam, msg->lParam, &lres))) {
+                return true;
+            } else
+                qDebug() << "imenu3 failed" << QString::number(hr, 16);
+
         } else if (imenu2) {
+            qDebug() << "imenu2";
             if (SUCCEEDED(imenu2->HandleMenuMsg(msg->message, msg->wParam, msg->lParam))) {
               return true;
             }
@@ -266,6 +288,7 @@ void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const
     wchar_t buffer[1024];
     QString verb;
     QList<UINT> verbsToDelete;
+    bool lastSeparator {};
     for (int i = 0 ; i < count; i++) {
         MENUITEMINFO info {};
         info.fMask = MIIM_ID | MIIM_FTYPE | MIIM_STRING;
@@ -277,36 +300,52 @@ void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const
             qDebug() << "failed";
         CHAR cBuffer[256] {};
 
-        if (!(info.fType & MFT_SEPARATOR) && info.wID > SCRATCH_QCM_FIRST) {
+        if (!(info.fType & MFT_SEPARATOR)) {
 
-            // Get language-independent verb
-            imenu->GetCommandString(info.wID - SCRATCH_QCM_FIRST, GCS_VERBW, nullptr, cBuffer, 255);
-            verb = QString::fromWCharArray(reinterpret_cast<wchar_t *>(cBuffer));
-            if (viewAspect == ContextMenu::Background) {
+            if (info.wID > SCRATCH_QCM_FIRST) {
 
-                // Delete default explorer entries for the background view
-                // We will add our own implementation later
-                if (verb == VERB_VIEW || verb == VERB_SORTBY || verb == VERB_GROUPBY || verb == VERB_SHARE)
-                    verbsToDelete.append(info.wID);
+                // Get language-independent verb
+                imenu->GetCommandString(info.wID - SCRATCH_QCM_FIRST, GCS_VERBW, nullptr, cBuffer, 255);
+                verb = QString::fromWCharArray(reinterpret_cast<wchar_t *>(cBuffer));
 
-            } else {
+                if (viewAspect == ContextMenu::Background) {
 
-                // Delete UWP calls. They will get an INVALID_WINDOW_HANDLE (0x80070578) error anyway
-                if (verb == VERB_MODERNSHARE)
-                    verbsToDelete.append(info.wID);
+                    // Delete default explorer entries for the background view
+                    // We will add our own implementation later
+                    if (verb == VERB_VIEW || verb == VERB_SORTBY || verb == VERB_GROUPBY || verb == VERB_VIEWCUSTOMWIZARD || verb == VERB_SHARE) {
+                        verbsToDelete.append(i);
+                        continue;
+                    }
+
+                } else {
+
+                    // Delete UWP calls. They will get an INVALID_WINDOW_HANDLE (0x80070578) error anyway
+                    if (verb == VERB_MODERNSHARE) {
+                        verbsToDelete.append(i);
+                        continue;
+                    }
+                }
             }
+
+            lastSeparator = false;
+
+        } else {
+
+            // Delete separators that are consecutive or at the end
+            if (i == (count - 1) || lastSeparator)
+                verbsToDelete.append(i);
+
+            lastSeparator = true;
         }
 
-        qDebug() << info.wID << QString::fromWCharArray(info.dwTypeData) << "VERB: " << verb;
-        verb.clear();
+        qDebug() << info.wID << QString::fromWCharArray(info.dwTypeData) << "VERB: " << verb << "Is Separator?" << (info.fType & MFT_SEPARATOR);
 
-        // Delete separators at the end
-        if (i == (count - 1) && (info.fType & MFT_SEPARATOR))
-            ::DeleteMenu(hmenu, static_cast<UINT>(i), MF_BYPOSITION);
+        verb.clear();
     }
 
     // Delete verbs we marked that we do not want
+    int offset = 0;
     for (UINT id : verbsToDelete)
-        ::DeleteMenu(hmenu, id, MF_BYCOMMAND);
+        DeleteMenu(hmenu, (id - offset++), MF_BYPOSITION);
 
 }

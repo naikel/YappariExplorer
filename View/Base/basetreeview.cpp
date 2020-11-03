@@ -283,7 +283,6 @@ QRegion BaseTreeView::visualRegionForSelection(const QItemSelection &selection) 
 
 bool BaseTreeView::edit(const QModelIndex &index, QAbstractItemView::EditTrigger trigger, QEvent *event)
 {
-    qDebug() << "BaseTreeView::edit";
     bool result = QTreeView::edit(index, trigger, event);
 
     if (result) {
@@ -386,7 +385,7 @@ bool BaseTreeView::isDragging() const
  */
 void BaseTreeView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
 {
-    if (topLeft == bottomRight && roles.contains(Qt::DecorationRole)) {
+    if (topLeft == bottomRight && topLeft.isValid() && roles.contains(Qt::DecorationRole)) {
 
         QModelIndex parent = topLeft.parent();
 
@@ -521,12 +520,14 @@ QPoint BaseTreeView::mapFromViewport(QPoint pos)
  */
 void BaseTreeView::contextMenuRequested(const QPoint &pos)
 {
+    qDebug() << "BaseTreeView::contextMenuRequested";
+
     QList<FileSystemItem *> fileSystemItems;
     ContextMenu::ContextViewAspect viewAspect;
 
     // Get current selected item if any
     QModelIndex index = indexAt(pos);
-    if (index.isValid() && index.internalPointer() != nullptr) {
+    if (index.isValid() && index.column() == 0 && index.internalPointer() != nullptr) {
         viewAspect = ContextMenu::Selection;
         for (QModelIndex selectedIndex : selectedIndexes()) {
             if (selectedIndex.column() == 0 && selectedIndex.internalPointer() != nullptr) {
@@ -548,6 +549,7 @@ void BaseTreeView::contextMenuRequested(const QPoint &pos)
     emit contextMenuRequestedForItems(mapToGlobal(destination), fileSystemItems, viewAspect, this);
 }
 
+
 void BaseTreeView::showError(qint32 err, QString errMessage)
 {
     Q_UNUSED(err)
@@ -562,6 +564,10 @@ void BaseTreeView::showError(qint32 err, QString errMessage)
 bool BaseTreeView::setRoot(QString path)
 {
     Q_UNUSED(path)
+
+    mutex.lock();
+    signalsQueue.clear();
+    mutex.unlock();
 
     return true;
 }

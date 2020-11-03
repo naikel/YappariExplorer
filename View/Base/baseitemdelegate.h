@@ -13,7 +13,6 @@ public slots:
 
     void editingFinished();
 
-
 protected:
     void initStyleOption(QStyleOptionViewItem *option, const QModelIndex &index) const override;
     QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &, const QModelIndex &index) const override;

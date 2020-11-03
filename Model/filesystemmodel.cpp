@@ -28,8 +28,10 @@
  */
 
 #include <QApplication>
+#include <QPalette>
 #include <QFileIconProvider>
 #include <QtConcurrent/QtConcurrentRun>
+#include <QTimer>
 #include <QMimeData>
 #include <QBrush>
 #include <QDebug>
@@ -46,9 +48,10 @@
 #   include "Shell/Win/winfileinforetriever.h"
 #   include "Shell/Win/winshellactions.h"
 #   include "Shell/Win/windirectorywatcher.h"
+#   include "Shell/Win/windirectorywatcherv2.h"
 #   define PlatformInfoRetriever()                 WinFileInfoRetriever()
 #   define PlatformShellActions()                  WinShellActions()
-#   define PlatformDirectoryWatcher(parent)        WinDirectoryWatcher(parent)
+#   define PlatformDirectoryWatcher(parent)        WinDirectoryWatcherv2(parent)
 #else
 #   include "Shell/Unix/unixfileinforetriever.h"
 #   include "Shell/Unix/unixshellactions.h"
@@ -136,13 +139,8 @@ FileSystemModel::~FileSystemModel()
         watcher = nullptr;
     }
 
-    if (root != nullptr) {
-        if (watcher != nullptr) {
-            delete watcher;
-            watcher = nullptr;
-        }
+    if (root != nullptr)
         delete root;
-    }
 
     if (fileInfoRetriever != nullptr)
         delete fileInfoRetriever;
@@ -279,7 +277,7 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
 {
     // qDebug() << "data" << fileInfoRetriever->getScope() << index.row() << " " << index.column();
     if (index.isValid()  && index.internalPointer() != nullptr) {
-        FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
+        FileSystemItem *fileSystemItem = getFileSystemItem(index);
         Q_ASSERT(fileSystemItem);
         switch (role) {
             case Qt::EditRole:
@@ -306,6 +304,7 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
                 if (index.column() == Columns::Name) {
                     // Fetch the real icon the second time it is requested
                     if (fileSystemItem->hasFakeIcon()) {
+
                         QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileSystemModel *>(this), &FileSystemModel::getIcon, index);
                         fileSystemItem->setFakeIcon(false);
                     }
@@ -339,6 +338,10 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
             case Qt::ForegroundRole:
                 if (fileInfoRetriever->getScope() == FileInfoRetriever::List && fileSystemItem->isFolder()) {
                     return QVariant(QBrush(Qt::darkBlue));
+                } else {
+                    // This will make disabled columns look normal
+                    QPalette palette = QGuiApplication::palette();
+                    return QVariant(palette.text());
                 }
                 break;
         }
@@ -492,16 +495,24 @@ void FileSystemModel::startWatch(FileSystemItem *parent, QString verb)
     extensionBeingWatched = verb;
 }
 
-void FileSystemModel::freeChildren(QModelIndex &parent)
+void FileSystemModel::freeChildren(const QModelIndex &parent)
 {
     qDebug() << "FileSystemModel::freeChildren";
 
-    // TODO: This should use a cache
+    // TODO: There should use a better "cache" than this
+
+    // Try again later if there are still some getIcon() calls pending
+    if (pool.activeThreadCount() > 0) {
+        QTimer::singleShot(5000, this, [this, parent]() { this->freeChildren(parent); });
+        return;
+    }
 
     if (parent.isValid()) {
+
         FileSystemItem *item = getFileSystemItem(parent);
         watcher->removePath(item->getPath());
 
+        // This will notify the view the rows are no longer valid
         removeAllRows(parent);
 
         // Set back the hasSubFolders flag so they can be retrieved again later
@@ -529,7 +540,7 @@ Qt::ItemFlags FileSystemModel::flags(const QModelIndex &index) const
 
         // We don't want items to be selectable if they are not in the first column
         if (index.column() > 0)
-            return Qt::ItemIsEnabled;
+            return Qt::NoItemFlags; //Qt::ItemIsEnabled;
 
         itemFlags |= Qt::ItemIsEditable | Qt::ItemIsDragEnabled;
 
@@ -642,6 +653,11 @@ bool FileSystemModel::setData(const QModelIndex &index, const QVariant &value, i
     }
 
     return false;
+}
+
+void FileSystemModel::setDefaultRoot()
+{
+    setRoot(fileInfoRetriever->getRootPath());
 }
 
 QModelIndex FileSystemModel::index(FileSystemItem *item) const
@@ -806,7 +822,7 @@ FileSystemItem *FileSystemModel::getRoot() const
     return root;
 }
 
-bool FileSystemModel::removeAllRows(QModelIndex &parent)
+bool FileSystemModel::removeAllRows(const QModelIndex &parent)
 {
     if (parent.isValid() && parent.internalPointer() != nullptr) {
         int count = rowCount(parent);
@@ -945,15 +961,20 @@ void FileSystemModel::extendedInfoUpdated(FileSystemItem *parent)
 
 void FileSystemModel::getIcon(const QModelIndex &index)
 {
+    // Index here is a clone.
+    // Why? Because this method can be executed after the index is no longer valid
+
     if (index.isValid() && index.internalPointer() != nullptr) {
-        FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
+
+        FileSystemItem *fileSystemItem = getFileSystemItem(index);
+
         QIcon icon = fileInfoRetriever->getIcon(fileSystemItem);
         if (!icon.isNull()) {
 
             fileSystemItem->setIcon(icon);
 
             // This signal has very bad performance
-            // The view queue these and bundle them as efficient as possible
+            // The view will queue these and bundle them as efficient as possible
             QVector<int> roles;
             roles.append(Qt::DecorationRole);
             emit dataChanged(index, index, roles);

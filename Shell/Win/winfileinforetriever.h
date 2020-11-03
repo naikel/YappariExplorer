@@ -18,6 +18,8 @@ class WinFileInfoRetriever : public FileInfoRetriever
 {
 public:
     WinFileInfoRetriever(QObject *parent = nullptr);
+
+    QString getRootPath() const override;
     QIcon getIcon(FileSystemItem *item) const override;
     void setDisplayNameOf(FileSystemItem *fileSystemItem) override;
     void refreshItem(FileSystemItem *fileSystemItem) override;
