@@ -33,7 +33,13 @@ void FileSystemItem::setDisplayName(const QString &value)
 
     if (!isFolder()) {
         QMimeDatabase mimeDatabase;
-        QString suffix = mimeDatabase.suffixForFileName(value);
+        QString suffix;
+        try {
+            suffix = mimeDatabase.suffixForFileName(value);
+        }  catch (const std::exception& e) {
+            qDebug() << "FileSystemItem::setDisplayName exception" << e.what();
+        }
+
         if (suffix.isEmpty()) {
             int index = getDisplayName().lastIndexOf('.');
             suffix = (index > MIN_INDEX) ? getDisplayName().mid(++index) : QString();

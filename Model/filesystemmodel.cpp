@@ -476,7 +476,7 @@ void FileSystemModel::sort(int column, Qt::SortOrder order, QModelIndex parentIn
     emit layoutChanged();
 }
 
-void FileSystemModel::removeIndexes(QModelIndexList indexList)
+void FileSystemModel::removeIndexes(QModelIndexList indexList, bool permanent)
 {
     qDebug() << "FileSystemModel::removeIndexes";
     QList<QUrl> urls;
@@ -485,7 +485,7 @@ void FileSystemModel::removeIndexes(QModelIndexList indexList)
             urls.append(QUrl::fromLocalFile(getFileSystemItem(index)->getPath()));
     }
 
-    shellActions->removeItems(urls);
+    shellActions->removeItems(urls, permanent);
 }
 
 void FileSystemModel::startWatch(FileSystemItem *parent, QString verb)
@@ -493,6 +493,11 @@ void FileSystemModel::startWatch(FileSystemItem *parent, QString verb)
     watch = true;
     parentBeingWatched = parent;
     extensionBeingWatched = verb;
+}
+
+bool FileSystemModel::willRecycle(FileSystemItem *item)
+{
+    return fileInfoRetriever->willRecycle(item);
 }
 
 void FileSystemModel::freeChildren(const QModelIndex &parent)

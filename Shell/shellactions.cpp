@@ -70,7 +70,7 @@ void ShellActions::linkItems(QList<QUrl> srcPaths, QString dstPath)
     QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<ShellActions *>(this), &ShellActions::linkItemsBackground, srcPaths, dstPath);
 }
 
-void ShellActions::removeItems(QList<QUrl> srcPaths)
+void ShellActions::removeItems(QList<QUrl> srcPaths, bool permanent)
 {
     qDebug() << "ShellActions::removeItems";
 
@@ -79,7 +79,7 @@ void ShellActions::removeItems(QList<QUrl> srcPaths)
     }
 
     running.store(true);
-    QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<ShellActions *>(this), &ShellActions::removeItemsBackground, srcPaths);
+    QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<ShellActions *>(this), &ShellActions::removeItemsBackground, srcPaths, permanent);
 }
 
 void ShellActions::renameItemBackground(QUrl srcUrl, QString newName)
@@ -110,9 +110,10 @@ void ShellActions::linkItemsBackground(QList<QUrl> srcPaths, QString dstPath)
     running.store(false);
 }
 
-void ShellActions::removeItemsBackground(QList<QUrl> srcPaths)
+void ShellActions::removeItemsBackground(QList<QUrl> srcPaths, bool permanent)
 {
     Q_UNUSED(srcPaths)
+    Q_UNUSED(permanent)
     running.store(false);
 }
 

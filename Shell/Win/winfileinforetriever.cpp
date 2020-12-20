@@ -337,6 +337,54 @@ void WinFileInfoRetriever::refreshItem(FileSystemItem *fileSystemItem)
     }
 }
 
+bool WinFileInfoRetriever::willRecycle(FileSystemItem *fileSystemItem)
+{
+    qDebug() << "WinFileInfoRetriever::willRecycle";
+
+    // Get the drive
+    if (fileSystemItem->getPath().length() < 3)
+        return false;
+
+    QString drive = fileSystemItem->getPath().left(3);
+    if (!drive.at(0).isLetter() || drive.at(1) != ':' || drive.at(2) != '\\')
+        return false;
+
+    // Get the volume GUID
+    WCHAR buffer[MAX_PATH];
+    GetVolumeNameForVolumeMountPointW(drive.toStdWString().c_str(), buffer, MAX_PATH);
+
+    QString volumeName = QString::fromWCharArray(buffer);
+    qDebug() << "WinFileInfoRetriever::willRecycle path" << fileSystemItem->getPath() << "volumeName" << volumeName;
+
+    // If volumeName is empty this means it is not a fixed drive
+    if (volumeName.isEmpty())
+        return false;
+
+    int index = volumeName.indexOf('{');
+    if (index  < 0)
+        return false;
+
+    QString guid = volumeName.mid(index, 38);
+
+    QString subKey = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\BitBucket\\Volume\\" + guid;
+    qDebug() << "WinFileInfoRetriever::willRecycle subkey" << subKey;
+
+    // Check if the Recycle Bin is enabled for this drive
+    HKEY phkResult;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, subKey.toStdWString().c_str(), 0, KEY_QUERY_VALUE, &phkResult) == ERROR_SUCCESS) {
+
+        DWORD nukeOnDelete {};
+        ULONG dwSize = sizeof(nukeOnDelete);
+        RegQueryValueExW(phkResult, TEXT("NukeOnDelete"), nullptr, nullptr, (LPBYTE)&nukeOnDelete, &dwSize);
+        RegCloseKey(phkResult);
+
+        if (!nukeOnDelete)
+            return true;
+    }
+
+    return false;
+}
+
 QIcon WinFileInfoRetriever::getIconFromPath(QString path, bool isHidden, bool ignoreDefault) const
 {
     SHFILEINFOW sfi = getSystemImageListIndexFromPath(path);

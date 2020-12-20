@@ -109,8 +109,9 @@ public:
     QChar separator() const;
     QModelIndex parent(QString path) const;
     void sort(int column, Qt::SortOrder order, QModelIndex parentIndex);
-    void removeIndexes(QModelIndexList indexList);
+    void removeIndexes(QModelIndexList indexList, bool permanent);
     void startWatch(FileSystemItem *parent, QString verb);
+    bool willRecycle(FileSystemItem *item);
 
     // Inline functions
     inline FileSystemItem *getFileSystemItem(QModelIndex index) const {

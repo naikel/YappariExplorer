@@ -137,6 +137,11 @@ void BaseTreeView::keyPressEvent(QKeyEvent *event)
             deleteSelectedItems();
             break;
 
+        case Qt::Key_F5:
+            getFileSystemModel()->setRoot(getFileSystemModel()->getRoot()->getPath());
+            break;
+
+
         default:
             QTreeView::keyPressEvent(event);
     }
@@ -345,25 +350,42 @@ void BaseTreeView::deleteSelectedItems()
     QModelIndexList list = selectedIndexes();
 
     QString dest;
-    if (list.size() == 1) {
+
+    if (list.size() > 0) {
+
+        FileSystemItem *item {};
         QModelIndex selectedIndex = list.at(0);
         if (selectedIndex.isValid()) {
-            FileSystemItem *item = getFileSystemModel()->getFileSystemItem(selectedIndex);
-            dest = "\"" + item->getDisplayName() + "\"";
+            item = getFileSystemModel()->getFileSystemItem(selectedIndex);
         }
-    } else {
-        dest = QString::number(list.size()) + " "+ tr("files");
-    }
 
-    // TODO: Recycle bin might be disabled
-    // TODO: It's called Trash in Unix and it' s in $XDG_DATA_HOME/Trash or .local/share/Trash
+        if (list.size() == 1) {
+            dest = "\"" + item->getDisplayName() + "\"";
+        } else {
+            dest = QString::number(list.size()) + " "+ tr("items");
+        }
 
-    QString action = tr("send") + " " + dest + " "  + tr("to the Recycle bin");
-    QString text = tr("Do you really want to") + " " + action + "?";
+        // TODO: It's called Trash in Unix and it's in $XDG_DATA_HOME/Trash or .local/share/Trash
 
-    // TODO: Better icon for this
-    if (QMessageBox::question(this, tr("Confirm File Delete"), text) == QMessageBox::Yes) {
-        getFileSystemModel()->removeIndexes(list);
+        // Recycle bin is at least per folder so we only need to check one item to see if the Recycle Bin is enabled
+        bool willRecycle = getFileSystemModel()->willRecycle(item);
+
+        QString action;
+        bool perm;
+        if (!willRecycle || QApplication::keyboardModifiers() & Qt::ShiftModifier) {
+            perm = true;
+            action = tr("permanently delete") + " " + dest;
+        } else {
+            perm = false;
+            action = tr("send") + " " + dest + " " + tr("to the Recycle bin");
+        }
+
+        QString text = tr("Do you really want to") + " " + action + "?";
+
+        // TODO: Better icon for this
+        if (QMessageBox::question(this, tr("Confirm File Delete"), text) == QMessageBox::Yes) {
+            getFileSystemModel()->removeIndexes(list, perm);
+        }
     }
 }
 
@@ -613,8 +635,11 @@ void BaseTreeView::processQueuedSignals()
                 qDebug() << "BaseTreeView::processQueuedSignals from" << topRow << "to" << bottomRow;
                 QTreeView::dataChanged(topIndex, bottomIndex, roles);
 
-                topRow = -1;
-                bottomRow = -1;
+                topRow = row;
+                topIndex = queue->value(row);
+
+                bottomRow = row;
+                bottomIndex = queue->value(row);
             }
         }
 

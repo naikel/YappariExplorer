@@ -27,9 +27,7 @@ void WinDirectoryWatcherv2::addPath(QString path)
     LPITEMIDLIST pidl;
     HRESULT hr;
 
-    hr = (path == "/")
-                ? ::SHGetKnownFolderIDList(FOLDERID_ComputerFolder /* FOLDERID_Desktop */, KF_FLAG_DEFAULT, nullptr, &pidl)
-                : ::SHParseDisplayName(path.toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
+    hr = ::SHParseDisplayName(path.toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
 
     if (SUCCEEDED(hr)) {
 
@@ -104,6 +102,9 @@ bool WinDirectoryWatcherv2::handleNativeEvent(const QByteArray &eventType, void 
                     break;
                 case SHCNE_UPDATEITEM:
                     emit fileModified(strPath1);
+                    break;
+                case SHCNE_UPDATEDIR:
+                    // TODO: Need to update the whole dir
                     break;
             }
 

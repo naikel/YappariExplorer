@@ -73,6 +73,13 @@ void FileInfoRetriever::refreshItem(FileSystemItem *fileSystemItem)
     Q_UNUSED(fileSystemItem)
 }
 
+bool FileInfoRetriever::willRecycle(FileSystemItem *fileSystemItem)
+{
+    Q_UNUSED(fileSystemItem)
+
+    return false;
+}
+
 /*!
  * \brief Gets all the children of a FileSystemItem parent.
  * \param parent a FileSystemItem

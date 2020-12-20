@@ -32,6 +32,8 @@ public:
     virtual void setDisplayNameOf(FileSystemItem *fileSystemItem);
     virtual void refreshItem(FileSystemItem *fileSystemItem);
 
+    virtual bool willRecycle(FileSystemItem *fileSystemItem);
+
 signals:
     void parentUpdated(FileSystemItem *parent, qint32 err, QString errMessage);
     void itemUpdated(FileSystemItem *item);

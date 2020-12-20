@@ -24,6 +24,8 @@ public:
     void setDisplayNameOf(FileSystemItem *fileSystemItem) override;
     void refreshItem(FileSystemItem *fileSystemItem) override;
 
+    bool willRecycle(FileSystemItem *fileSystemItem) override;
+
 protected:
     void getChildrenBackground(FileSystemItem *parent) override;
     bool getParentInfo(FileSystemItem *parent) override;

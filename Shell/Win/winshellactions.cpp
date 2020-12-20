@@ -3,7 +3,10 @@
 #include <shellapi.h>
 #include <shobjidl.h>
 #include <shlobj.h>
+
 #include <QDebug>
+
+#include <QMessageBox>
 
 #include "winshellactions.h"
 
@@ -13,7 +16,7 @@ WinShellActions::WinShellActions(QObject *parent) : ShellActions(parent)
 
 void WinShellActions::renameItemBackground(QUrl srcPath, QString newName)
 {
-    qDebug() << "WinShellActions::renameItem";
+    qDebug() << "WinShellActions::renameItemBackground";
     // Initialize COM as STA.
     if (SUCCEEDED(::CoInitializeEx(nullptr, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE))) {
 
@@ -35,7 +38,9 @@ void WinShellActions::renameItemBackground(QUrl srcPath, QString newName)
             }
 
             // Perform operations
-            pfo->PerformOperations();
+            qDebug() << "WinShellActions::renameItemBackground performing operations";
+            HRESULT hr = pfo->PerformOperations();
+            qDebug() << "WinShellActions::renameItemBackground HRESULT" << QString::number(hr, 16);
 
             // Release the IFileOperation interface.
             pfo->Release();
@@ -55,12 +60,12 @@ void WinShellActions::moveItemsBackground(QList<QUrl> srcUrls, QString dstPath)
     performFileOperations(srcUrls, dstPath, Operation::Move);
 }
 
-void WinShellActions::removeItemsBackground(QList<QUrl> srcUrls)
+void WinShellActions::removeItemsBackground(QList<QUrl> srcUrls, bool permanent)
 {
-    performFileOperations(srcUrls, QString(), Operation::Delete);
+    performFileOperations(srcUrls, QString(), Operation::Delete, permanent);
 }
 
-void WinShellActions::performFileOperations(QList<QUrl> srcUrls, QString dstPath, Operation op)
+void WinShellActions::performFileOperations(QList<QUrl> srcUrls, QString dstPath, Operation op, bool permanent)
 {
     qDebug() << "WinShellActions::performFileOperations" << srcUrls << dstPath << op;
     // Initialize COM as STA.
@@ -93,8 +98,8 @@ void WinShellActions::performFileOperations(QList<QUrl> srcUrls, QString dstPath
                                 pfo->MoveItem(psiFrom, psiTo, nullptr, nullptr);
                                 break;
                             case Delete:
-                                // TODO: A permanent delete needs this line:
-                                // pfo->SetOperationFlags(FOF_NOCONFIRMATION);
+                                if (permanent)
+                                    pfo->SetOperationFlags(FOF_NOCONFIRMATION);
                                 pfo->DeleteItem(psiFrom,  nullptr);
                                 break;
                         }

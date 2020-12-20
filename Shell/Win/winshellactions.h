@@ -15,7 +15,7 @@ protected:
     void copyItemsBackground(QList<QUrl> srcUrls, QString dstPath) override;
     void moveItemsBackground(QList<QUrl> srcUrls, QString dstPath) override;
     void linkItemsBackground(QList<QUrl> srcUrls, QString dstPath) override;
-    void removeItemsBackground(QList<QUrl> srcUrls) override;
+    void removeItemsBackground(QList<QUrl> srcUrls, bool permanent) override;
 
 private:
 
@@ -26,7 +26,7 @@ private:
     };
 
     QString getUniqueLinkName(QString linkTo, QString destDir);
-    void performFileOperations(QList<QUrl> srcUrls, QString dstPath, Operation op);
+    void performFileOperations(QList<QUrl> srcUrls, QString dstPath, Operation op, bool permament = false);
 };
 
 #endif // WINSHELLACTIONS_H
