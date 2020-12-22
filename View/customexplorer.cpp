@@ -48,14 +48,16 @@ void CustomExplorer::initialize(MainWindow *mainWindow, CustomTreeView *treeView
     treeView->setModel(fileSystemModel);
 
     // Handling of single selections
-    connect(treeView, &CustomTreeView::clicked, tabWidget, &CustomTabWidget::setViewIndex);
+    connect(treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CustomExplorer::treeViewSelectionChanged);
+    // connect(treeView, &CustomTreeView::clicked, tabWidget, &CustomTabWidget::setViewIndex);
 
     // Focus change (application title update)
     connect(tabWidget, &CustomTabWidget::folderFocus, mainWindow, &MainWindow::updateTitle);
     connect(treeView, &CustomTreeView::viewFocus, mainWindow, &MainWindow::updateTitle);
 
     // Auto expand & select on view select / Auto tree select and view change on collapse
-    connect(tabWidget, &CustomTabWidget::rootChanged, this, &CustomExplorer::expandAndSelectRelative);
+    connect(tabWidget, &CustomTabWidget::rootRelativeChange, this, &CustomExplorer::expandAndSelectRelative);
+    connect(tabWidget, &CustomTabWidget::rootAbsoluteChange, this, &CustomExplorer::expandAndSelectAbsolute);
     connect(treeView, &CustomTreeView::collapsed, this, &CustomExplorer::collapseAndSelect);
 
     // Tab handling
@@ -72,6 +74,30 @@ void CustomExplorer::initialize(MainWindow *mainWindow, CustomTreeView *treeView
 
     // Errors
     connect(tabWidget, &CustomTabWidget::rootChangeFailed, this, &CustomExplorer::rootChangeFailed);
+}
+
+bool CustomExplorer::treeViewSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
+{
+    Q_UNUSED(deselected)
+
+    qDebug() << "CustomExplorer::treeViewSelectionChanged";
+
+    QModelIndexList indexes = selected.indexes();
+    if (indexes.size() > 0)
+        return tabWidget->setViewIndex(indexes.at(0));
+    else {
+        // We need to select something, the parent
+
+        indexes = deselected.indexes();
+        if (indexes.size() > 0) {
+            treeView->selectIndex(indexes.at(0).parent());
+        } else {
+            // Last resort: root
+            treeView->selectIndex(treeView->getFileSystemModel()->index(0, 0, QModelIndex()));
+        }
+
+        return false;
+    }
 }
 
 /*!
@@ -95,7 +121,7 @@ void CustomExplorer::expandAndSelectRelative(QString path)
     QModelIndex parent = treeView->selectedItem();
     if (parent.isValid()) {
         FileSystemItem *parentItem = static_cast<FileSystemItem*>(parent.internalPointer());
-        qDebug() << "CustomExplorer::expandAndSelect parent" << parentItem->getPath();
+        qDebug() << "CustomExplorer::expandAndSelectRelative parent" << parentItem->getPath();
         if (!parentItem->areAllChildrenFetched()) {
 
             // Call this function again after all items are fetched

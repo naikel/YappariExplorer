@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Naikel Aparicio. All rights reserved.
+ * Copyright (C) 2019, 2020 Naikel Aparicio. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -33,6 +33,9 @@
 
 int main(int argc, char *argv[])
 {
+    // If you want to debug this application with timestamps set the environment variable
+    // QT_MESSAGE_PATTERN="[%{time hh:mm:ss.zzz}] %{message}"
+
     //QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QGuiApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 

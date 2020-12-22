@@ -107,6 +107,7 @@ protected:
 
     virtual void selectEvent();
     virtual void backEvent();
+    virtual void forwardEvent();
 
 private:
 

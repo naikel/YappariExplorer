@@ -27,7 +27,8 @@ public slots:
     void tabFocus(FileSystemItem *item);
 
 signals:
-    void rootChanged(const QString path);
+    void rootRelativeChange(const QString path);
+    void rootAbsoluteChange(const QString path);
     void rootChangeFailed(const QString path);
     void newTabRequested();
     void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
@@ -42,6 +43,7 @@ protected:
 private slots:
     void emitContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
                          const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view);
+    void rootChanged(QString path);
 };
 
 #endif // CUSTOMTABWIDGET_H

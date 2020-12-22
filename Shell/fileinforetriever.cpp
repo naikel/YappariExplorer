@@ -68,11 +68,6 @@ void FileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
     Q_UNUSED(parent)
 }
 
-void FileInfoRetriever::refreshItem(FileSystemItem *fileSystemItem)
-{
-    Q_UNUSED(fileSystemItem)
-}
-
 bool FileInfoRetriever::willRecycle(FileSystemItem *fileSystemItem)
 {
     Q_UNUSED(fileSystemItem)

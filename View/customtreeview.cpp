@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <QHeaderView>
 #include <QKeyEvent>
+#include <QMimeData>
 #include <QDebug>
 
 #include "once.h"
@@ -82,6 +83,54 @@ QModelIndex CustomTreeView::moveCursor(QAbstractItemView::CursorAction cursorAct
         emit clicked(newIndex);
 
     return newIndex;
+}
+
+void CustomTreeView::setDropAction(QDropEvent *event)
+{
+    QModelIndex index = indexAt(event->pos());
+
+    // If the index is invalid don't allow a background drop, it makes no sense in the TreeView
+    if (!index.isValid()) {
+        event->setDropAction(Qt::IgnoreAction);
+        return;
+    }
+
+    // Ignore the action if the drop is coming from another view and is moving objects to the same folder
+    if (event->possibleActions() & Qt::CopyAction && event->mimeData()->urls().size() > 0) {
+        QString drive;
+        QUrl url = event->mimeData()->urls().at(0);
+        QString srcPath = url.toLocalFile();
+
+#ifdef Q_OS_WIN
+        srcPath = srcPath.replace('/', getFileSystemModel()->separator());
+#endif
+
+        QString dstPath = getFileSystemModel()->getFileSystemItem(index)->getPath();
+
+        int i = srcPath.lastIndexOf(getFileSystemModel()->separator());
+        if (i > 0 && srcPath.left(i) == dstPath)
+            event->setDropAction(Qt::CopyAction);
+    }
+}
+
+void CustomTreeView::dragMoveEvent(QDragMoveEvent *event)
+{
+    BaseTreeView::dragMoveEvent(event);
+
+    if (event->isAccepted())
+        setDropAction(event);
+}
+
+void CustomTreeView::dropEvent(QDropEvent *event)
+{
+    // If no keyboard modifiers are being pressed, select the default action for the drop target
+    if (!event->keyboardModifiers()) {
+        event->setDropAction(getFileSystemModel()->defaultDropActionForIndex(indexAt(event->pos()), event->mimeData(), event->possibleActions()));
+    }
+
+    setDropAction(event);
+
+    QTreeView::dropEvent(event);
 }
 
 void CustomTreeView::resizeEvent(QResizeEvent *event)

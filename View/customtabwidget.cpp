@@ -32,6 +32,7 @@ void CustomTabWidget::addNewTab(const QString path)
 
     connect(detailedView, &DetailedView::viewFocus, this, &CustomTabWidget::tabFocus);
     connect(detailedView, &DetailedView::doubleClicked, this, &CustomTabWidget::doubleClicked);
+    connect(detailedView, &DetailedView::rootChanged, this, &CustomTabWidget::rootChanged);
     connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &CustomTabWidget::updateTab);
     connect(fileSystemModel, &FileSystemModel::fetchFailed, this, &CustomTabWidget::tabFailed);
 
@@ -77,7 +78,7 @@ void CustomTabWidget::doubleClicked(const QModelIndex &index)
 
             // This will delete (free) the fileSystemItem of index and will be no longer valid
             if (setViewIndex(index))
-                emit rootChanged(path);
+                emit rootRelativeChange(path);
         } else {
             emit defaultActionRequestedForItem(fileSystemItem);
         }
@@ -171,4 +172,12 @@ void CustomTabWidget::emitContextMenu(const QPoint &pos, const QList<FileSystemI
                                       const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view)
 {
     emit contextMenuRequestedForItems(pos, fileSystemItems, viewAspect, view);
+}
+
+void CustomTabWidget::rootChanged(QString path)
+{
+    // This is a root change through history navigation so it is not relative to the parent
+    // it can be anywhere in the file system
+    // so we call the absolute change instead of the relative one
+    emit rootAbsoluteChange(path);
 }

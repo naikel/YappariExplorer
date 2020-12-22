@@ -139,7 +139,7 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                         psf->GetDisplayNameOf(pidlChildren, flags, &strRet);
                         child->setDisplayName(QString::fromWCharArray(strRet.pOleStr));
 
-                        qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << child->getPath() << "isDrive" << child->isDrive();
+                        // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << child->getPath() << "isDrive" << child->isDrive();
 
                         // Check if it has subfolders only if it's a folder
                         if (child->isFolder()) {
@@ -270,7 +270,7 @@ void WinFileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
 QIcon WinFileInfoRetriever::getIcon(FileSystemItem *item) const
 {
     ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-    qDebug() << "WinFileInfoRetriever::getIcon " << getScope() << item->getPath();
+    // qDebug() << "WinFileInfoRetriever::getIcon " << getScope() << item->getPath();
     LPITEMIDLIST pidl;
     HRESULT hr;
     if (SUCCEEDED(hr = ::SHParseDisplayName(item->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr))) {
@@ -304,7 +304,7 @@ void WinFileInfoRetriever::setDisplayNameOf(FileSystemItem *fileSystemItem)
     }
 }
 
-void WinFileInfoRetriever::refreshItem(FileSystemItem *fileSystemItem)
+bool WinFileInfoRetriever::refreshItem(FileSystemItem *fileSystemItem)
 {
     WIN32_FIND_DATAW fileAttributeData;
     HANDLE h = FindFirstFileW(fileSystemItem->getPath().toStdWString().c_str(), &fileAttributeData);
@@ -334,6 +334,14 @@ void WinFileInfoRetriever::refreshItem(FileSystemItem *fileSystemItem)
         fileSystemItem->setHidden(fileAttributeData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN);
 
         emit itemUpdated(fileSystemItem);
+
+        return true;
+
+    } else {
+
+        qDebug() << "WinFileInfoRetriever::refreshItem item" << fileSystemItem->getPath() << "seems that it doesn't exist anymore";
+        return false;
+
     }
 }
 

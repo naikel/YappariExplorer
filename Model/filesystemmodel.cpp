@@ -113,6 +113,9 @@ FileSystemModel::FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent
     connect(watcher, &DirectoryWatcher::fileModified, this, &FileSystemModel::refreshPath);
     connect(watcher, &DirectoryWatcher::fileAdded, this, &FileSystemModel::addPath);
     connect(watcher, &DirectoryWatcher::fileRemoved, this, &FileSystemModel::removePath);
+
+    // Initialize the history
+    history = new FileSystemHistory(this);
 }
 
 /*!
@@ -500,6 +503,22 @@ bool FileSystemModel::willRecycle(FileSystemItem *item)
     return fileInfoRetriever->willRecycle(item);
 }
 
+void FileSystemModel::goForward()
+{
+    if (history->canGoForward()) {
+        QString path = history->getNextItem();
+        setRoot(path);
+    }
+}
+
+void FileSystemModel::goBack()
+{
+    if (history->canGoBack()) {
+        QString path = history->getLastItem();
+        setRoot(path);
+    }
+}
+
 void FileSystemModel::freeChildren(const QModelIndex &parent)
 {
     qDebug() << "FileSystemModel::freeChildren";
@@ -612,11 +631,11 @@ bool FileSystemModel::dropMimeData(const QMimeData *data, Qt::DropAction action,
 {
     Q_UNUSED(row)
     Q_UNUSED(column)
-    qDebug() << "FileSystemMode::dropMimeData" << action;
+    qDebug() << "FileSystemModel::dropMimeData" << action;
     QList<QUrl> urls = data->urls();
 
     QString dstPath = getDropPath(parent);
-    qDebug() << "Dropping" << urls << "to" << dstPath;
+    qDebug() << "FileSystemModel::dropMimeData Dropping" << urls << "to" << dstPath;
 
     switch(action) {
         case Qt::CopyAction:
@@ -734,27 +753,38 @@ Qt::DropActions FileSystemModel::supportedDragActionsForIndexes(QModelIndexList 
 Qt::DropAction FileSystemModel::defaultDropActionForIndex(QModelIndex index, const QMimeData *data, Qt::DropActions possibleActions)
 {
 #ifdef Q_OS_WIN
-    if (possibleActions & Qt::MoveAction) {
 
-        // All items being dragged must be from the same drive
-        QString drive;
-        for (QUrl url : data->urls()) {
-            QString path = url.toLocalFile();
-            if (drive.isEmpty()) {
-                drive = path.left(3);
-            } else if (drive != path.left(3)) {
-                drive = QString();
-                break;
+    if (index.isValid() && index.internalPointer() != nullptr) {
+
+        FileSystemItem *item = getFileSystemItem(index);
+        QString itemPath = item->getPath();
+
+        // Do not allow drops to things that are not drives
+        if (itemPath.at(0) == ":" && itemPath.at(1) == ":" && itemPath.at(2) == "{")
+            return Qt::IgnoreAction;
+
+        if (possibleActions & Qt::MoveAction) {
+
+            // All items being dragged must be from the same drive
+            QString drive;
+            for (QUrl url : data->urls()) {
+                QString path = url.toLocalFile();
+                if (drive.isEmpty()) {
+                    drive = path.left(3);
+                } else if (drive != path.left(3)) {
+                    drive = QString();
+                    break;
+                }
             }
-        }
 
-        if (drive.right(1) == '/')
-            drive = drive.left(2) + separator();
+            if (drive.right(1) == '/')
+                drive = drive.left(2) + separator();
 
-        QString dstPath = getDropPath(index);
-        if (!drive.isEmpty() && index.isValid() && index.internalPointer() != nullptr && dstPath.left(3) == drive) {
-            // Default action for files in the same drive is MoveAction
-            return Qt::MoveAction;
+            QString dstPath = getDropPath(index);
+            if (!drive.isEmpty() && dstPath.left(3) == drive) {
+                // Default action for files in the same drive is MoveAction
+                return Qt::MoveAction;
+            }
         }
     }
 #endif
@@ -817,6 +847,8 @@ bool FileSystemModel::setRoot(const QString path)
         watcher->removePath(deleteLater->getPath());
         delete deleteLater;
     }
+
+    history->insert(path);
 
     return result;
 }
@@ -1009,7 +1041,7 @@ QString FileSystemModel::humanReadableSize(quint64 size) const
 
 void FileSystemModel::renamePath(QString oldFileName, QString newFileName)
 {
-    qDebug() << "FileSystemModel::renamePath" << oldFileName << newFileName;
+    qDebug() << "FileSystemModel::renamePath" << fileInfoRetriever->getScope() << oldFileName << newFileName;
 
     FileSystemItem *parentItem;
 
@@ -1041,8 +1073,10 @@ void FileSystemModel::renamePath(QString oldFileName, QString newFileName)
         parentItem->addChild(fileSystemItem);
         sort(currentSortColumn, currentSortOrder, parentIndex);
 
-    } else
-        qDebug() << "FileSystemModel::renameItem couldn't find index for" << oldFileName;
+    } else {
+        qDebug() << "FileSystemModel::renamePath" << fileInfoRetriever->getScope() << "couldn't find index for" << oldFileName << " - Trying addPath";
+        addPath(newFileName);
+    }
 }
 
 void FileSystemModel::refreshPath(QString fileName)
@@ -1053,6 +1087,10 @@ void FileSystemModel::refreshPath(QString fileName)
     if (fileInfoRetriever->getScope() == FileInfoRetriever::List) {
         FileSystemItem *fileSystemItem = root->getChild(fileName);
         if (fileSystemItem) {
+
+            // This can fail and return false if the file is deleted immediately after a modification,
+            // but we don't remove the file here because we will receive another notification that will handle that
+
             fileInfoRetriever->refreshItem(fileSystemItem);
         }
     }
@@ -1080,7 +1118,17 @@ void FileSystemModel::addPath(QString fileName)
 
     FileSystemItem *fileSystemItem = new FileSystemItem(fileName);
     fileInfoRetriever->setDisplayNameOf(fileSystemItem);
-    fileInfoRetriever->refreshItem(fileSystemItem);
+
+    bool result = fileInfoRetriever->refreshItem(fileSystemItem);
+
+    // Skip items that failed (do not exist anymore) or files in TreeView (only folder/drives go there)
+    if (!result ||
+            (fileInfoRetriever->getScope() == FileInfoRetriever::Scope::Tree &&
+            !fileSystemItem->isDrive() && !fileSystemItem->isFolder())) {
+        qDebug() << "FileSystemModel::addPath skipping file" << fileName;
+        delete fileSystemItem;
+        return;
+    }
 
     parentItem->addChild(fileSystemItem);
     parentItem->sortChildren(currentSortColumn, currentSortOrder);

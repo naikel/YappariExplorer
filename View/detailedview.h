@@ -15,12 +15,18 @@ public:
     void initialize() override;
     bool setRoot(QString root) override;
 
+signals:
+
+    void rootChanged(QString path);
+
 protected:
     void selectEvent() override;
     void mouseDoubleClickEvent(QMouseEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
+    void backEvent() override;
+    void forwardEvent() override;
 
     void setSelection(const QRect &rect, QItemSelectionModel::SelectionFlags command) override;
     void setSelectionFromViewportRect(const QRect &rect, QItemSelection &currentSelection, QItemSelectionModel::SelectionFlags command);

@@ -38,6 +38,8 @@
 #include "Shell/shellactions.h"
 #include "Shell/directorywatcher.h"
 
+#include "Model/filesystemhistory.h"
+
 /*!
  * \brief FileSystemModel class.
  *
@@ -112,6 +114,8 @@ public:
     void removeIndexes(QModelIndexList indexList, bool permanent);
     void startWatch(FileSystemItem *parent, QString verb);
     bool willRecycle(FileSystemItem *item);
+    void goForward();
+    void goBack();
 
     // Inline functions
     inline FileSystemItem *getFileSystemItem(QModelIndex index) const {
@@ -135,6 +139,7 @@ signals:
 private:
 
     DirectoryWatcher *watcher               {};
+    FileSystemHistory *history              {};
     bool watch                              {};
     FileSystemItem *parentBeingWatched      {};
     QString extensionBeingWatched           {};

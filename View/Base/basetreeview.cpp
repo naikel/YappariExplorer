@@ -34,7 +34,7 @@ BaseTreeView::BaseTreeView(QWidget *parent) : QTreeView(parent)
     // This is the timer to process queued dataChanged signals (of icons updates only) and send them as a few signals as possible
     QTimer *timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &BaseTreeView::processQueuedSignals);
-    timer->start(100);
+    timer->start(10);
 }
 
 /*!
@@ -158,6 +158,11 @@ void BaseTreeView::mousePressEvent(QMouseEvent *event)
     switch (event->button()) {
         case Qt::BackButton:
             backEvent();
+            event->accept();
+            break;
+
+        case Qt::ForwardButton:
+            forwardEvent();
             event->accept();
             break;
         default:
@@ -333,6 +338,16 @@ void BaseTreeView::selectEvent()
 void BaseTreeView::backEvent()
 {
     qDebug() << "BaseTreeView::backEvent";
+}
+
+/*!
+ * \brief Handles a Forward event.
+ *
+ * This function does nothing. Subclasses must implement this function.
+ */
+void BaseTreeView::forwardEvent()
+{
+    qDebug() << "BaseTreeView::forwardEvent";
 }
 
 int BaseTreeView::getDefaultRowHeight() const

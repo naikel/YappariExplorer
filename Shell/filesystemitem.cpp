@@ -4,6 +4,10 @@
 #include <QCollator>
 #include <QDebug>
 
+#ifdef PARALLEL
+#include <parallel/algorithm>
+#endif
+
 #include "filesystemitem.h"
 
 FileSystemItem::FileSystemItem(QString path)
@@ -158,7 +162,12 @@ void FileSystemItem::sortChildren(int column, Qt::SortOrder order)
     QTime start;
     start.start();
     qDebug() << "FileSystemItem::sortChildren Started sorting";
+#ifdef PARALLEL
+    __gnu_parallel::sort(indexedChildren.begin(), indexedChildren.end(), [column, order](FileSystemItem *i, FileSystemItem *j) { return fileSystemItemCompare(i, j, column, order); },
+                         __gnu_parallel::multiway_mergesort_tag());
+#else
     std::sort(indexedChildren.begin(), indexedChildren.end(), [column, order](FileSystemItem *i, FileSystemItem *j) { return fileSystemItemCompare(i, j, column, order); } );
+#endif
     qDebug() << "FileSystemItem::sortChildren Finished in" << start.elapsed() << "milliseconds";
 }
 

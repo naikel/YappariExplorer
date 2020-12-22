@@ -30,7 +30,7 @@ public:
     void getChildren(FileSystemItem *parent);
     virtual QIcon getIcon(FileSystemItem *fileSystemItem) const;
     virtual void setDisplayNameOf(FileSystemItem *fileSystemItem);
-    virtual void refreshItem(FileSystemItem *fileSystemItem);
+    virtual bool refreshItem(FileSystemItem *fileSystemItem) = 0;
 
     virtual bool willRecycle(FileSystemItem *fileSystemItem);
 

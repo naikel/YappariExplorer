@@ -196,6 +196,19 @@ void DetailedView::mouseReleaseEvent(QMouseEvent *event)
 
 }
 
+void DetailedView::backEvent()
+{
+    getFileSystemModel()->goBack();
+    emit rootChanged(getFileSystemModel()->getRoot()->getPath());
+}
+
+void DetailedView::forwardEvent()
+{
+    getFileSystemModel()->goForward();
+    emit rootChanged(getFileSystemModel()->getRoot()->getPath());
+
+}
+
 // Fix negative width/height rects bug in QTreeView
 void DetailedView::setSelection(const QRect &rect, QItemSelectionModel::SelectionFlags command)
 {
@@ -251,5 +264,4 @@ void DetailedView::setSelectionFromViewportRect(const QRect &rect, QItemSelectio
     selectionModel()->select(currentSelection, command);
     for (QModelIndex index : selectedIndexes)
         selectionModel()->select(index, command);
-
 }

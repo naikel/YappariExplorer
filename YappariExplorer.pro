@@ -3,6 +3,7 @@ QT       += core gui
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
+QMAKE_CXXFLAGS += -O2 -march=native
 
 # The following define makes your compiler emit warnings if you use
 # any Qt feature that has been marked deprecated (the exact warnings
@@ -16,8 +17,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    Model/filesystemhistory.cpp \
     Model/filesystemmodel.cpp \
-    Shell/Win/windirectorywatcherv2.cpp \
     Shell/contextmenu.cpp \
     Shell/directorywatcher.cpp \
     Shell/fileinforetriever.cpp \
@@ -37,8 +38,8 @@ SOURCES += \
     mainwindow.cpp
 
 HEADERS += \
+    Model/filesystemhistory.h \
     Model/filesystemmodel.h \
-    Shell/Win/windirectorywatcherv2.h \
     Shell/contextmenu.h \
     Shell/directorywatcher.h \
     Shell/fileinforetriever.h \
@@ -61,31 +62,38 @@ FORMS += \
     mainwindow.ui
 
 unix {
-    CONFIG(debug, debug|release) {
-        SOURCES += \
-            Shell/Unix/unixfileinforetriever.cpp
-        HEADERS += \
-            Shell/Unix/unixfileinforetriever.h
-        LIBS += -lstdc++fs
-    }
+    SOURCES += \
+        Shell/Unix/unixfileinforetriever.cpp
+    HEADERS += \
+        Shell/Unix/unixfileinforetriever.h
+    LIBS += -lstdc++fs
 }
 
 win32 {
-    CONFIG(debug, debug|release) {
-        DEFINES += _WIN32_IE=0x700 _WIN32_WINNT=0x0A00
-        SOURCES += \
-            Shell/Win/wincontextmenu.cpp \
-            Shell/Win/winfileinforetriever.cpp \
-            Shell/Win/windirectorywatcher.cpp \
-            Shell/Win/winshellactions.cpp
-        HEADERS += \
-            Shell/Win/windirectorywatcher.h \
-            Shell/Win/winshellactions.h \
-            Shell/Win/wincontextmenu.h \
-            Shell/Win/winfileinforetriever.h
-        LIBS += -lole32 -lgdi32 -luuid
-    }
+    DEFINES += _WIN32_IE=0x700 _WIN32_WINNT=0x0A00
+    SOURCES += \
+        Shell/Win/wincontextmenu.cpp \
+        Shell/Win/winfileinforetriever.cpp \
+        Shell/Win/windirectorywatcher.cpp \
+        Shell/Win/windirectorywatcherv2.cpp \
+        Shell/Win/winshellactions.cpp
+    HEADERS += \
+        Shell/Win/windirectorywatcher.h \
+        Shell/Win/windirectorywatcherv2.h \
+        Shell/Win/winshellactions.h \
+        Shell/Win/wincontextmenu.h \
+        Shell/Win/winfileinforetriever.h
+    LIBS += -lole32 -lgdi32 -luuid
 }
+
+# PARALLEL TEST
+#DEFINES += PARALLEL
+#QMAKE_CXXFLAGS += -fopenmp -D_GLIBCXX_PARALLEL
+#QMAKE_LFLAGS += -fopenmp
+
+# If you want to debug this application with timestamps set the environment variable
+# QT_MESSAGE_PATTERN="[%{time hh:mm:ss.zzz}] %{message}"
+CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

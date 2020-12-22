@@ -92,6 +92,7 @@ void WinShellActions::performFileOperations(QList<QUrl> srcUrls, QString dstPath
                         // Add the operation
                         switch (op) {
                             case Copy:
+                                pfo->SetOperationFlags(FOF_RENAMEONCOLLISION);
                                 pfo->CopyItem(psiFrom, psiTo, nullptr, nullptr);
                                 break;
                             case Move:

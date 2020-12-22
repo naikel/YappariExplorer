@@ -22,7 +22,7 @@ public:
     QString getRootPath() const override;
     QIcon getIcon(FileSystemItem *item) const override;
     void setDisplayNameOf(FileSystemItem *fileSystemItem) override;
-    void refreshItem(FileSystemItem *fileSystemItem) override;
+    bool refreshItem(FileSystemItem *fileSystemItem) override;
 
     bool willRecycle(FileSystemItem *fileSystemItem) override;
 

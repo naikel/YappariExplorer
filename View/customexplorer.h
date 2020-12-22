@@ -50,6 +50,7 @@ public:
     void initialize(MainWindow *mainWindow, CustomTreeView *treeView, CustomTabWidget *tabWidget);
 
 public slots:
+    bool treeViewSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected);
     void expandAndSelectRelative(QString path);
     void expandAndSelectAbsolute(QString path);
     void collapseAndSelect(QModelIndex index);

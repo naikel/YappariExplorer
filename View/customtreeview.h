@@ -25,6 +25,8 @@ protected:
 
     void mousePressEvent(QMouseEvent *event) override;
     QModelIndex moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers modifiers) override;
+    void dragMoveEvent(QDragMoveEvent *event) override;
+    void dropEvent(QDropEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     bool viewportEvent(QEvent *event) override;
     void selectEvent() override;
@@ -34,6 +36,7 @@ private:
     QModelIndex hoverIndex;
 
     void viewFocusChanged();
+    void setDropAction(QDropEvent *event);
 };
 
 #endif // CUSTOMTREEVIEW_H
