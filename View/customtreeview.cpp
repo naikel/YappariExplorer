@@ -153,6 +153,15 @@ void CustomTreeView::selectEvent()
     }
 }
 
+/*!
+ * \brief A mouse button was clicked.
+ * \param event the QMouseEvent that represents the mouse button that was sent to the widget.
+ *
+ * This function handles the following situations:
+ *
+ * - Ignores background context menu requests for the TreeView
+ * - Avoids dragging "the background" making the TreeView change selections very quickly
+ */
 void CustomTreeView::mousePressEvent(QMouseEvent *event)
 {
     switch (event->button()) {
@@ -179,12 +188,33 @@ void CustomTreeView::mousePressEvent(QMouseEvent *event)
             }
             break;
         case Qt::LeftButton:
-            viewFocusChanged();
-            BaseTreeView::mousePressEvent(event);
-            break;
+            {
+                QPoint pos = event->pos();
+                QModelIndex index = indexAt(pos);
+
+                if (!index.isValid())
+                    draggingNothing = true;
+
+                viewFocusChanged();
+                BaseTreeView::mousePressEvent(event);
+
+                break;
+            }
         default:
             BaseTreeView::mousePressEvent(event);
     }
+}
+
+void CustomTreeView::mouseReleaseEvent(QMouseEvent *event)
+{
+    draggingNothing = false;
+    BaseTreeView::mouseReleaseEvent(event);
+}
+
+void CustomTreeView::mouseMoveEvent(QMouseEvent *event)
+{
+    if (!draggingNothing)
+        BaseTreeView::mouseMoveEvent(event);
 }
 
 /*!

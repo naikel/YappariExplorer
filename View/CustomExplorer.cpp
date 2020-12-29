@@ -51,8 +51,8 @@ void CustomExplorer::initialize(AppWindow *mainWindow)
     connect(treeView, &CustomTreeView::clicked, tabWidget, &CustomTabWidget::setViewIndex);
 
     // Focus change (application title update)
-    // connect(tabWidget, &CustomTabWidget::folderFocus, mainWindow, &AppWindow::updateTitle);
-    // connect(treeView, &CustomTreeView::viewFocus, mainWindow, &AppWindow::updateTitle);
+    connect(tabWidget, &CustomTabWidget::folderFocus, mainWindow, &AppWindow::updateTitle);
+    connect(treeView, &CustomTreeView::viewFocus, mainWindow, &AppWindow::updateTitle);
 
     // Auto expand & select on view select / Auto tree select and view change on collapse
     connect(tabWidget, &CustomTabWidget::rootRelativeChange, this, &CustomExplorer::expandAndSelectRelative);

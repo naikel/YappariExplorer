@@ -212,6 +212,7 @@ void DetailedView::forwardEvent()
 /*!
  * \brief Applies the selection \a flags to the items in or touched by the rectangle \a rect.
  * \param rect a QRect
+ * \param command the selection flags
  *
  * The QAbstractItemView implementation assumes the items occupy the whole row, and then just looks for
  * the top left corner and the bottom right corner items.

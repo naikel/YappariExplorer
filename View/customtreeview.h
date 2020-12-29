@@ -24,6 +24,8 @@ public slots:
 protected:
 
     void mousePressEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
     QModelIndex moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers modifiers) override;
     void dragMoveEvent(QDragMoveEvent *event) override;
     void dropEvent(QDropEvent *event) override;
@@ -34,6 +36,7 @@ protected:
 
 private:
     QModelIndex hoverIndex;
+    bool draggingNothing {};
 
     void viewFocusChanged();
     void setDropAction(QDropEvent *event);
