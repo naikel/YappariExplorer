@@ -26,6 +26,11 @@ void FileSystemHistory::insert(QString path)
             pathList.removeLast();
     }
 
+    if (pathList.size() >= 10) {
+        --cursor;
+        pathList.removeFirst();
+    }
+
     pathList.append(path);
     cursor++;
     qDebug() << "FileSystemHistory::insert done" << path << cursor << pathList;

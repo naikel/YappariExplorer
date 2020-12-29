@@ -97,7 +97,7 @@ win32 {
     INCLUDEPATH += ThirdParty/Win/icu4c-68/include
     LIBS += -L$$PWD/ThirdParty/Win/icu4c-68/bin -licuin68 -licuuc68
 
-    QT += gui-private
+    #QT += gui-private
     DEFINES += WIN32_FRAMELESS
     DEFINES += _WIN32_IE=0x700 _WIN32_WINNT=0x0A00
     SOURCES += \
@@ -135,3 +135,7 @@ RESOURCES += \
 
 RC_FILE += \
     YappariExplorer.rc
+
+if ( !include( ThirdParty/YappariCrashReport/YappariCrashReport.pri ) ) {
+    error( Could not find the YappariCrashReport.pri file. )
+}

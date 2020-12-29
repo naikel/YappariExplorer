@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019, 2020 Naikel Aparicio. All rights reserved.
+ * Copyright (C) 2017, 2020 Andy Maloney, Naikel Aparicio. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -27,37 +27,24 @@
  * official policies, either expressed or implied, of the copyright holder.
  */
 
-#include <QApplication>
-#include <QDebug>
 
-#include "Window/AppWindow.h"
+#ifndef YAPPARICRASHREPORT_H
+#define YAPPARICRASHREPORT_H
 
-#ifdef YAPPARI_CRASH_REPORT
-#include "ThirdParty/YappariCrashReport/src/YappariCrashReport.h"
-#endif
+#include <QString>
 
-int main(int argc, char *argv[])
-{
-    // If you want to debug this application with timestamps set the environment variable
-    // QT_MESSAGE_PATTERN="[%{time hh:mm:ss.zzz}] %{message}"
 
-    //QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-    QGuiApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+namespace YappariCrashReport {
 
-    QApplication a(argc, argv);
+   /// Function signature for a crash report callback, called after the user has seen the report
+   /// @param inCrashReport The report including the stack trace as a QString
+   using crashReportCallback = void (*)(const QString &);
 
-#ifdef YAPPARI_CRASH_REPORT
-   YappariCrashReport::setSignalHandler( [] (const QString &inStackTrace) {
+   /// Set a signal handler to capture stack trace to a log file.
+   ///
+   /// @param inCrashReportCallback A callback function to call after we've shown the dialog to the user
+   void setSignalHandler( crashReportCallback inCrashReportCallback = nullptr );
 
-       const QStringList strList = QStringList(inStackTrace.split("\n"));
-       for (const QString &str : strList)
-           qCritical() << str;
-
-       ::exit(1);
-   });
-#endif
-
-    AppWindow w;
-    w.show();
-    return a.exec();
 }
+
+#endif
