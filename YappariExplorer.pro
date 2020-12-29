@@ -3,7 +3,27 @@ QT       += core gui
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
-QMAKE_CXXFLAGS += -O2 -march=native
+DEFINES += ICU_COLLATOR
+
+CONFIG(release, debug|release) {
+
+    DEFINES += QT_NO_DEBUG_OUTPUT
+    QMAKE_CXXFLAGS_RELEASE += -O3 -march=native
+
+}
+
+CONFIG(debug, debug|release) {
+
+    # If you want to debug this application with timestamps set the following environment variable in your Qt Creator project
+    # QT_MESSAGE_PATTERN="[%{time hh:mm:ss.zzz}] %{message}"
+
+    DEFINES += CRASH_REPORT
+    QMAKE_CXXFLAGS_DEBUG += -g -O0 -march=native
+
+    win32-g++* {
+        LIBS += -lDbghelp
+    }
+}
 
 # The following define makes your compiler emit warnings if you use
 # any Qt feature that has been marked deprecated (the exact warnings
@@ -26,7 +46,7 @@ SOURCES += \
     Shell/shellactions.cpp \
     View/Base/baseitemdelegate.cpp \
     View/Base/basetreeview.cpp \
-    View/customexplorer.cpp \
+    View/CustomExplorer.cpp \
     View/customtabbar.cpp \
     View/customtabbarstyle.cpp \
     View/customtabwidget.cpp \
@@ -34,8 +54,10 @@ SOURCES += \
     View/dateitemdelegate.cpp \
     View/detailedview.cpp \
     View/expandinglineedit.cpp \
-    main.cpp \
-    mainwindow.cpp
+    Window/AppWindow.cpp \
+    Window/TitleBar.cpp \
+    Window/Win/WinFramelessWindow.cpp \
+    main.cpp
 
 HEADERS += \
     Model/filesystemhistory.h \
@@ -47,7 +69,7 @@ HEADERS += \
     Shell/shellactions.h \
     View/Base/baseitemdelegate.h \
     View/Base/basetreeview.h \
-    View/customexplorer.h \
+    View/CustomExplorer.h \
     View/customtabbar.h \
     View/customtabbarstyle.h \
     View/customtabwidget.h \
@@ -55,21 +77,28 @@ HEADERS += \
     View/dateitemdelegate.h \
     View/detailedview.h \
     View/expandinglineedit.h \
-    mainwindow.h \
-    once.h
+    Window/AppWindow.h \
+    Window/TitleBar.h \
+    Window/Win/WinFramelessWindow.h \
+    once.h \
+    version.h
 
-FORMS += \
-    mainwindow.ui
+FORMS +=
 
 unix {
     SOURCES += \
         Shell/Unix/unixfileinforetriever.cpp
     HEADERS += \
         Shell/Unix/unixfileinforetriever.h
-    LIBS += -lstdc++fs
+    LIBS += -lstdc++fs -licui18n -licuuc
 }
 
 win32 {
+    INCLUDEPATH += ThirdParty/Win/icu4c-68/include
+    LIBS += -L$$PWD/ThirdParty/Win/icu4c-68/bin -licuin68 -licuuc68
+
+    QT += gui-private
+    DEFINES += WIN32_FRAMELESS
     DEFINES += _WIN32_IE=0x700 _WIN32_WINNT=0x0A00
     SOURCES += \
         Shell/Win/wincontextmenu.cpp \
@@ -83,17 +112,13 @@ win32 {
         Shell/Win/winshellactions.h \
         Shell/Win/wincontextmenu.h \
         Shell/Win/winfileinforetriever.h
-    LIBS += -lole32 -lgdi32 -luuid
+    LIBS += -lole32 -lgdi32 -luuid -ldwmapi
 }
 
 # PARALLEL TEST
 #DEFINES += PARALLEL
 #QMAKE_CXXFLAGS += -fopenmp -D_GLIBCXX_PARALLEL
 #QMAKE_LFLAGS += -fopenmp
-
-# If you want to debug this application with timestamps set the environment variable
-# QT_MESSAGE_PATTERN="[%{time hh:mm:ss.zzz}] %{message}"
-CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

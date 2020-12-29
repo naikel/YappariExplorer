@@ -27,7 +27,7 @@
  * official policies, either expressed or implied, of the copyright holder.
  */
 
-#include "mainwindow.h"
+#include "Window/AppWindow.h"
 
 #include <QApplication>
 
@@ -40,7 +40,8 @@ int main(int argc, char *argv[])
     QGuiApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 
     QApplication a(argc, argv);
-    MainWindow w;
+
+    AppWindow w;
     w.show();
     return a.exec();
 }

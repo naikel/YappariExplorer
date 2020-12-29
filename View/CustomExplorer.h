@@ -30,11 +30,13 @@
 #ifndef CUSTOMEXPLORER_H
 #define CUSTOMEXPLORER_H
 
+#include <QSplitter>
 #include <QFrame>
 
 #include "View/customtreeview.h"
 #include "View/customtabwidget.h"
-#include "mainwindow.h"
+
+#include "Window/AppWindow.h"
 
 /*!
  * \class CustomExplorer
@@ -45,9 +47,14 @@
 class CustomExplorer : public QFrame
 {
 public:
-    CustomExplorer(QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags());
+    CustomExplorer(int nExplorer, QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags());
 
-    void initialize(MainWindow *mainWindow, CustomTreeView *treeView, CustomTabWidget *tabWidget);
+    void initialize(AppWindow *mainWindow);
+
+    QSplitter *getSplitter() const;
+
+    CustomTreeView *getTreeView() const;
+    CustomTabWidget *getTabWidget() const;
 
 public slots:
     bool treeViewSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected);
@@ -59,9 +66,11 @@ public slots:
     void rootChangeFailed(QString path);
 
 private:
-    MainWindow *mainWindow;
     CustomTreeView *treeView;
     CustomTabWidget *tabWidget;
+    QSplitter *splitter;
+
+    void setupGui(int nExplorer);
 };
 
 #endif // CUSTOMEXPLORER_H

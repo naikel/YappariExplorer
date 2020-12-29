@@ -82,17 +82,19 @@ void WinShellActions::performFileOperations(QList<QUrl> srcUrls, QString dstPath
                 // Create an IShellItem from the supplied source path.
                 IShellItem *psiFrom {nullptr};
 
-                QString source = srcUrl.toLocalFile().replace('/','\\');
+                QString source = srcUrl.toLocalFile().replace('/', '\\');
                 if (SUCCEEDED(SHCreateItemFromParsingName(source.toStdWString().c_str(), nullptr, IID_PPV_ARGS(&psiFrom)))) {
                     IShellItem *psiTo {nullptr};
 
                     // Create an IShellItem from the supplied destination path.
                     if (op == Delete || SUCCEEDED(SHCreateItemFromParsingName(dstPath.toStdWString().c_str(), nullptr, IID_PPV_ARGS(&psiTo)))) {
 
+                        DWORD flags { FOF_ALLOWUNDO | FOF_NOCONFIRMMKDIR };
+
                         // Add the operation
                         switch (op) {
                             case Copy:
-                                pfo->SetOperationFlags(FOF_RENAMEONCOLLISION);
+                                flags |= FOF_RENAMEONCOLLISION;
                                 pfo->CopyItem(psiFrom, psiTo, nullptr, nullptr);
                                 break;
                             case Move:
@@ -100,10 +102,11 @@ void WinShellActions::performFileOperations(QList<QUrl> srcUrls, QString dstPath
                                 break;
                             case Delete:
                                 if (permanent)
-                                    pfo->SetOperationFlags(FOF_NOCONFIRMATION);
+                                    flags = FOF_NOCONFIRMATION;
                                 pfo->DeleteItem(psiFrom,  nullptr);
                                 break;
                         }
+                        pfo->SetOperationFlags(flags);
 
                         if (psiTo != nullptr)
                             psiTo->Release();
@@ -113,7 +116,8 @@ void WinShellActions::performFileOperations(QList<QUrl> srcUrls, QString dstPath
             }
 
             // Perform operations
-            pfo->PerformOperations();
+            HRESULT hr = pfo->PerformOperations();
+            qDebug() << "WinShellActions::performFileOperations result =" << hr;
 
             // Release the IFileOperation interface.
             pfo->Release();

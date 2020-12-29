@@ -2,6 +2,7 @@
 #include <QApplication>
 #include <QMimeDatabase>
 #include <QCollator>
+#include <QLocale>
 #include <QDebug>
 
 #ifdef PARALLEL
@@ -9,6 +10,8 @@
 #endif
 
 #include "filesystemitem.h"
+
+#include <unicode/coll.h>
 
 FileSystemItem::FileSystemItem(QString path)
 {
@@ -112,12 +115,9 @@ int FileSystemItem::childRow(FileSystemItem *child) {
     return indexedChildren.indexOf(child);
 }
 
-bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j, int column, Qt::SortOrder order)
+bool fileSystemItemCompare(const QCollator& collator, FileSystemItem *i, FileSystemItem *j, int column, Qt::SortOrder order)
 {
-    QCollator collator;
     bool comparison;
-    collator.setNumericMode(true);
-    collator.setCaseSensitivity(Qt::CaseInsensitive);
 
     // Folders are first
     if (i->isFolder() && !j->isFolder())
@@ -157,16 +157,80 @@ bool fileSystemItemCompare(FileSystemItem *i, FileSystemItem *j, int column, Qt:
     return false;
 }
 
+bool fileSystemItemCompareicu(icu::Collator *coll, FileSystemItem *i, FileSystemItem *j, int column, Qt::SortOrder order)
+{
+    bool comparison;
+
+    // Folders are first
+    if (i->isFolder() && !j->isFolder())
+        return true;
+
+    // Files are second
+    if (!i->isFolder() && !i->isDrive() && j->isDrive())
+        return true;
+
+    // Drives are third
+    if (i->isDrive() && j->isDrive()) {
+
+        i->getPath().utf16();
+        comparison = (coll->compare(reinterpret_cast<const char16_t *>(i->getPath().utf16()), i->getPath().length(),
+                                    reinterpret_cast<const char16_t *>(j->getPath().utf16()), j->getPath().length()) < 0);
+
+        return (order == Qt::AscendingOrder  && comparison) ||
+               (order == Qt::DescendingOrder && !comparison);
+    }
+
+    QVariant left  = i->getData(column);
+    QVariant right = j->getData(column);
+
+    if (static_cast<QMetaType::Type>(left.type()) == QMetaType::QString) {
+
+        QString strLeft = left.toString();
+        QString strRight = right.toString();
+
+        comparison = (coll->compare(reinterpret_cast<const char16_t *>(strLeft.utf16()), strLeft.length(),
+                                    reinterpret_cast<const char16_t *>(strRight.utf16()), strRight.length()) < 0);
+    } else
+        comparison = (left < right);
+
+    // If both items are files or both are folders then direct comparison is allowed
+    if ((!i->isFolder() && !j->isFolder()) || (i->isFolder() && j->isFolder())) {
+        if (left == right) {
+            comparison = (coll->compare(reinterpret_cast<const char16_t *>(i->getDisplayName().utf16()), i->getDisplayName().length(),
+                                        reinterpret_cast<const char16_t *>(j->getDisplayName().utf16()), j->getDisplayName().length()) < 0);
+        }
+
+        return (order == Qt::AscendingOrder  && comparison) ||
+               (order == Qt::DescendingOrder && !comparison);
+    }
+
+    return false;
+}
+
 void FileSystemItem::sortChildren(int column, Qt::SortOrder order)
 {
     QTime start;
     start.start();
     qDebug() << "FileSystemItem::sortChildren Started sorting";
+
+#ifndef ICU_COLLATOR
+    QCollator collator;
+    collator.setNumericMode(true);
+    collator.setCaseSensitivity(Qt::CaseInsensitive);
+
 #ifdef PARALLEL
-    __gnu_parallel::sort(indexedChildren.begin(), indexedChildren.end(), [column, order](FileSystemItem *i, FileSystemItem *j) { return fileSystemItemCompare(i, j, column, order); },
+    __gnu_parallel::sort(indexedChildren.begin(), indexedChildren.end(), [&collator, column, order](FileSystemItem *i, FileSystemItem *j) { return fileSystemItemCompare(collator, i, j, column, order); },
                          __gnu_parallel::multiway_mergesort_tag());
 #else
-    std::sort(indexedChildren.begin(), indexedChildren.end(), [column, order](FileSystemItem *i, FileSystemItem *j) { return fileSystemItemCompare(i, j, column, order); } );
+    std::sort(indexedChildren.begin(), indexedChildren.end(), [&collator, column, order](FileSystemItem *i, FileSystemItem *j) { return fileSystemItemCompare(collator, i, j, column, order); } );
+#endif
+
+#else
+    UErrorCode status = U_ZERO_ERROR;
+    icu::Collator *coll = icu::Collator::createInstance(icu::Locale::getDefault(), status);
+    coll->setAttribute(UCOL_NUMERIC_COLLATION, UCOL_ON, status);
+    std::sort(indexedChildren.begin(), indexedChildren.end(), [coll, column, order](FileSystemItem *i, FileSystemItem *j) { return fileSystemItemCompareicu(coll, i, j, column, order); } );
+    delete coll;
 #endif
     qDebug() << "FileSystemItem::sortChildren Finished in" << start.elapsed() << "milliseconds";
 }

@@ -4,11 +4,11 @@
 
 #include "windirectorywatcherv2.h"
 
-#include "mainwindow.h"
+#include "Window/AppWindow.h"
 
 WinDirectoryWatcherv2::WinDirectoryWatcherv2(QObject *parent) : DirectoryWatcher(parent)
 {
-    id = MainWindow::registerWatcher(this);
+    id = AppWindow::registerWatcher(this);
 }
 
 WinDirectoryWatcherv2::~WinDirectoryWatcherv2()
@@ -31,7 +31,7 @@ void WinDirectoryWatcherv2::addPath(QString path)
 
     if (SUCCEEDED(hr)) {
 
-        HWND hwnd = reinterpret_cast<HWND>(MainWindow::getWinId());
+        HWND hwnd = reinterpret_cast<HWND>(AppWindow::getWinId());
 
         SHChangeNotifyEntry const entries[] = { { pidl, false } };
 

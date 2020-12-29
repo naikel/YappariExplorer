@@ -16,7 +16,7 @@ bool FileSystemHistory::isCursorAtTheEnd()
 void FileSystemHistory::insert(QString path)
 {
     // Check if we're just trying to reinsert the same path the cursor is at
-    if (pathList.size() > 0 && (path == pathList.at(cursor)))
+    if (cursor >= 0 && cursor < pathList.size() && (path == pathList.at(cursor)))
         return;
 
     if (!isCursorAtTheEnd()) {

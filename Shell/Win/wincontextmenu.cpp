@@ -12,6 +12,10 @@
 #define VERB_VIEW               "view"
 #define VERB_SORTBY             "arrange"
 #define VERB_GROUPBY            "groupby"
+#define VERB_UNDO               "undo"
+#define VERB_DELETE             "delete"
+#define VERB_RENAME             "rename"
+#define VERB_REFRESH            "refresh"
 #define VERB_SHARE              "Windows.Share"
 #define VERB_MODERNSHARE        "Windows.ModernShare"
 #define VERB_VIEWCUSTOMWIZARD   "viewcustomwizard"
@@ -48,6 +52,7 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
 
             HWND hwnd = reinterpret_cast<HWND>(wId);
             IContextMenu *imenu;
+            FileSystemItem *parent {};
 
             if (viewAspect == ContextMenu::Background) {
                 // Context menu was requested on the background of the view
@@ -57,8 +62,9 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
                 IShellView* pShellView = nullptr;
                 psf->CreateViewObject(hwnd, IID_PPV_ARGS(&pShellView));
 
-                hr = pShellView->GetItemObject(SVGIO_BACKGROUND, IID_IContextMenu, reinterpret_cast<void**>(&imenu));
+                parent = fileSystemItems[0];
 
+                hr = pShellView->GetItemObject(SVGIO_BACKGROUND, IID_IContextMenu, reinterpret_cast<void**>(&imenu));
 
             } else {
                 // Context menu was requested on one or more selected items
@@ -85,7 +91,11 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
                     }
                 }
 
+                parent = fileSystemItems[0]->getParent();
+
                 hr = psf->GetUIObjectOf(hwnd, i, pidlList, IID_IContextMenu, nullptr, reinterpret_cast<void**>(&imenu));
+
+
             }
 
             if (SUCCEEDED(hr)) {
@@ -111,7 +121,7 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
                         qDebug() << "imenu3 failed";
 
                     qDebug() << "WinContextMenu::show " << QTime::currentTime() << "Before calling the menu";
-                    UINT iCmd = static_cast<UINT>(::TrackPopupMenuEx(hmenu, TPM_RETURNCMD, pos.x(), pos.y(), hwnd, nullptr));
+                    UINT iCmd = static_cast<UINT>(::TrackPopupMenuEx(hmenu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_LEFTALIGN, pos.x(), pos.y(), hwnd, nullptr));
                     if (imenu2) {
                       imenu2->Release();
                       imenu2 = nullptr;
@@ -129,12 +139,12 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
 
                         QString strVerb = QString::fromWCharArray(reinterpret_cast<wchar_t *>(cBuffer));
 
-                        if (strVerb == "rename" && view != nullptr && fileSystemItems.size() == 1) {
+                        if (strVerb == VERB_RENAME && view != nullptr && fileSystemItems.size() == 1) {
 
                             FileSystemModel *model = static_cast<FileSystemModel *>(view->model());
                             view->edit(model->index(fileSystemItems[0]));
 
-                        } else if (strVerb == "delete" && view != nullptr) {
+                        } else if (strVerb == VERB_DELETE && view != nullptr) {
 
                             // TODO: We need a QAbstractItemView implementation of this
                             // like get selected items and then call model()->removeIndexes
@@ -142,10 +152,15 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
                             BaseTreeView *baseView = static_cast<BaseTreeView*>(view);
                             baseView->deleteSelectedItems();
 
+                        } else if (strVerb == VERB_REFRESH && view != nullptr) {
+
+                            FileSystemModel *model = static_cast<FileSystemModel *>(view->model());
+                            model->refresh();
+
                         } else {
 
                             // All entries have the same root and at least there's one
-                            invokeCommand(hwnd, iCmd, imenu, pos, fileSystemItems[0]->getParent(), view);
+                            invokeCommand(hwnd, iCmd, imenu, pos, parent, view);
                         }
                     }
                 }
@@ -214,7 +229,8 @@ void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QP
     CHAR cBuffer[256] {};
 
     // This holds the working directory data it has to be valid until the InvokeCommand call
-    std::wstring wrkDir;
+    std::wstring wstrWrkDir;
+    std::string strWrkDir;
 
     CMINVOKECOMMANDINFOEX info = {};
     info.cbSize = sizeof(info);
@@ -230,10 +246,13 @@ void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QP
     info.nShow = SW_SHOWNORMAL;
 
     if (parent != nullptr) {
-        wrkDir = parent->getPath().toStdWString();
+        wstrWrkDir = parent->getPath().toStdWString();
+        strWrkDir = parent->getPath().toStdString();
 
-        // Pointer to wrkDir (std::wstring), and it has to be valid until the InvokeCommand call
-        info.lpDirectoryW = wrkDir.c_str();
+        // Pointers to wstrWrkDir (std::wstring) and strWrkDir (std::string) have to be valid until the InvokeCommand call
+
+        info.lpDirectoryW = wstrWrkDir.c_str();
+        info.lpDirectory = strWrkDir.c_str();
     }
 
     // Get language-independent verb
@@ -242,12 +261,12 @@ void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QP
     QString strVerb = QString::fromWCharArray(reinterpret_cast<wchar_t *>(cBuffer));
 
     // Tell the view's model to watch for new objects so the view can ask the user to rename them
-    if (strVerb.size() > 1 && (strVerb == "NewFolder" || strVerb.left(1) == ".")) {
+    if (strVerb.size() > 1 && (strVerb == CMDSTR_NEWFOLDERA || strVerb.left(1) == ".")) {
         FileSystemModel *model = reinterpret_cast<FileSystemModel *>(view->model());
         model->startWatch(parent, strVerb);
     }
 
-    qDebug() << "WinContextMenu::invokeCommand command selected " << command << strVerb << "working directory" << wrkDir;
+    qDebug() << "WinContextMenu::invokeCommand command selected " << command << strVerb << "working directory" << wstrWrkDir;
 
     HRESULT hr = imenu->InvokeCommand(reinterpret_cast<LPCMINVOKECOMMANDINFO>(&info));
     qDebug() << "WinContextMenu::invokeCommand result code " << QString("%1").arg(hr, 0, 16) << "HWND" << hwnd;
@@ -258,7 +277,7 @@ bool WinContextMenu::handleNativeEvent(const QByteArray &eventType, void *messag
     Q_UNUSED(eventType)
     Q_UNUSED(result)
 
-    MSG *msg = static_cast< MSG * >( message );
+    MSG *msg = static_cast<MSG *>(message);
     if (msg->message == WM_INITMENUPOPUP || msg->message == WM_DRAWITEM || msg->message == WM_MENUCHAR || msg->message == WM_MEASUREITEM) {
 
         if (imenu3) {
@@ -312,7 +331,7 @@ void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const
 
                     // Delete default explorer entries for the background view
                     // We will add our own implementation later
-                    if (verb == VERB_VIEW || verb == VERB_SORTBY || verb == VERB_GROUPBY || verb == VERB_VIEWCUSTOMWIZARD || verb == VERB_SHARE) {
+                    if (verb == VERB_UNDO || verb == VERB_VIEW || verb == VERB_SORTBY || verb == VERB_GROUPBY || verb == VERB_VIEWCUSTOMWIZARD || verb == VERB_SHARE) {
                         verbsToDelete.append(i);
                         continue;
                     }

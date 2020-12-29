@@ -5,7 +5,6 @@
 
 #include "customtabbar.h"
 #include "detailedview.h"
-#include "mainwindow.h"
 
 CustomTabWidget::CustomTabWidget(QWidget *parent) : QTabWidget(parent)
 {

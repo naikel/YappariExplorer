@@ -138,7 +138,7 @@ void BaseTreeView::keyPressEvent(QKeyEvent *event)
             break;
 
         case Qt::Key_F5:
-            getFileSystemModel()->setRoot(getFileSystemModel()->getRoot()->getPath());
+            getFileSystemModel()->refresh();
             break;
 
 
@@ -188,11 +188,12 @@ void BaseTreeView::dragEnterEvent(QDragEnterEvent *event)
     QTreeView::dragEnterEvent(event);
 
     // ToDo: Support for FileGroupDescriptorW in Windows
-    // qDebug() << event->mimeData()->formats()
+    // qDebug() << event->mimeData()->formats();
     if (event->mimeData()->hasFormat("text/uri-list")) {
         event->acceptProposedAction();
     } else
         event->ignore();
+
 }
 
 void BaseTreeView::dragMoveEvent(QDragMoveEvent *event)
@@ -621,6 +622,9 @@ bool BaseTreeView::setRoot(QString path)
  */
 void BaseTreeView::processQueuedSignals()
 {
+    if (!signalsQueue.size())
+        return;
+
     mutex.lock();
     for (QModelIndex parent : signalsQueue.keys()) {
         QMap<int, QModelIndex> *queue = signalsQueue.value(parent);

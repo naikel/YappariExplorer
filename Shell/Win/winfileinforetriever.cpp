@@ -5,14 +5,17 @@
 #include <QTime>
 
 #include "winfileinforetriever.h"
-#include "mainwindow.h"
+#include "Window/AppWindow.h"
 
-#define COMPUTER_FOLDER_GUID    "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"
-#define CONTROL_PANEL_GUID      "::{26EE0668-A00A-44D7-9371-BEB064C98683}"
+#define COMPUTER_FOLDER_GUID          "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"
+#define CONTROL_PANEL_GUID            "::{26EE0668-A00A-44D7-9371-BEB064C98683}"
 
 // Known icon indexes from the Windows System List
 #define DEFAULT_FILE_ICON_INDEX       0
 #define DEFAULT_FOLDER_ICON_INDEX     3
+
+#define GUID_SIZE                     38
+#define BITBUCKET_VOLUME_KEY          "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\BitBucket\\Volume\\"
 
 // Qt exports a non-documented function to convert a native Windows HICON to a QPixmap
 // This function is found in Qt5Gui.dll
@@ -102,7 +105,7 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             if (getScope() == FileInfoRetriever::List)
                 flags |= SHCONTF_NONFOLDERS;
 
-            if (SUCCEEDED(psf->EnumObjects(reinterpret_cast<HWND>(MainWindow::getWinId()), flags, reinterpret_cast<IEnumIDList**>(&ppenumIDList)))) {
+            if (SUCCEEDED(psf->EnumObjects(reinterpret_cast<HWND>(AppWindow::getWinId()), flags, reinterpret_cast<IEnumIDList**>(&ppenumIDList)))) {
 
                 qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "Children enumerated";
 
@@ -117,7 +120,7 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                     // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << QTime::currentTime() << "Got attributes";
 
                     // Compressed files will have SFGAO_FOLDER and SFGAO_STREAM attributes
-                    // We want to skip those
+                    // We want to skip those for the Tree scope
                     if (getScope() == FileInfoRetriever::List || !(attributes & SFGAO_STREAM)) {
 
                         STRRET strRet;
@@ -141,12 +144,14 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
                         // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << child->getPath() << "isDrive" << child->isDrive();
 
-                        // Check if it has subfolders only if it's a folder
                         if (child->isFolder()) {
-                            SFGAOF subfolders { SFGAO_HASSUBFOLDER };
-                            psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChildren), &subfolders);
-                            child->setHasSubFolders((getScope() == FileInfoRetriever::Tree) ? (subfolders & SFGAO_HASSUBFOLDER) : false);
 
+                            // Check if it has subfolders only if it's a folder and it's the Tree scope
+                            if (getScope() == FileInfoRetriever::Tree) {
+                                SFGAOF subfolders { SFGAO_HASSUBFOLDER };
+                                psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChildren), &subfolders);
+                                child->setHasSubFolders((getScope() == FileInfoRetriever::Tree) ? (subfolders & SFGAO_HASSUBFOLDER) : false);
+                            }
                             if (!subFolders)
                                 subFolders = true;
 
@@ -156,17 +161,29 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
                         child->setHidden(attributes & SFGAO_HIDDEN);
 
-                        // File Size - Method 3 - FASTEST
-                        if (!child->isDrive()) {
-                            WIN32_FIND_DATAW fileAttributeData;
-                            if (SUCCEEDED(::SHGetDataFromIDListW(psf, pidlChildren, SHGDFIL_FINDDATA, &fileAttributeData, sizeof(fileAttributeData)))) {
-                                quint64 size = fileAttributeData.nFileSizeHigh;
-                                size = (size << 32) + fileAttributeData.nFileSizeLow;
-                                child->setSize(size);
+                        if (getScope() == FileInfoRetriever::List) {
 
-                                child->setCreationTime(fileTimeToQDateTime(&(fileAttributeData.ftCreationTime)));
-                                child->setLastChangeTime(fileTimeToQDateTime(&(fileAttributeData.ftLastWriteTime)));
-                                child->setLastAccessTime(fileTimeToQDateTime(&(fileAttributeData.ftLastAccessTime)));
+                            // File Size - Method 3 - FASTEST
+                            if (!child->isDrive()) {
+                                WIN32_FIND_DATAW fileAttributeData;
+                                if (SUCCEEDED(::SHGetDataFromIDListW(psf, pidlChildren, SHGDFIL_FINDDATA, &fileAttributeData, sizeof(fileAttributeData)))) {
+                                    quint64 size = fileAttributeData.nFileSizeHigh;
+                                    size = (size << 32) + fileAttributeData.nFileSizeLow;
+                                    child->setSize(size);
+
+                                    child->setCreationTime(fileTimeToQDateTime(&(fileAttributeData.ftCreationTime)));
+                                    child->setLastChangeTime(fileTimeToQDateTime(&(fileAttributeData.ftLastWriteTime)));
+                                    child->setLastAccessTime(fileTimeToQDateTime(&(fileAttributeData.ftLastAccessTime)));
+                                }
+                            }
+
+                            // File Type
+                            if (!child->isFolder()) {
+                                SFGAOF noAttributes {};
+                                UINT flags = SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME;
+                                SHFILEINFO info;
+                                ::SHGetFileInfo(child->getPath().toStdWString().c_str(), noAttributes, &info, sizeof(SHFILEINFO), flags);
+                                child->setType(QString::fromStdWString(info.szTypeName));
                             }
                         }
 
@@ -192,8 +209,8 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
         parent->setAllChildrenFetched(true);
         emit parentUpdated(parent, 0, QString());
 
-        if (getScope() == FileInfoRetriever::List)
-             getExtendedInfo(parent);
+        //if (getScope() == FileInfoRetriever::List)
+        //     getExtendedInfo(parent);
 
         running.store(false);
     }
@@ -219,10 +236,7 @@ void WinFileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
                 break;
 
             QString strType;
-            if (item->isFolder()) {
-                strType = QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer");
-            } else {
-
+            if (!item->isFolder()) {
                 /*
                 if (!item->isDrive()) {
                     // File Size - Method 1 - VERY SLOW
@@ -250,9 +264,9 @@ void WinFileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
                 SHFILEINFO info;
                 ::SHGetFileInfo(item->getPath().toStdWString().c_str(), attributes, &info, sizeof(SHFILEINFO), flags);
                 strType = QString::fromStdWString(info.szTypeName);
+                item->setType(strType);
+                emit itemUpdated(item);
             }
-            item->setType(strType);
-            emit itemUpdated(item);
         }
 
         if (!running.load()) {
@@ -372,9 +386,9 @@ bool WinFileInfoRetriever::willRecycle(FileSystemItem *fileSystemItem)
     if (index  < 0)
         return false;
 
-    QString guid = volumeName.mid(index, 38);
+    QString guid = volumeName.mid(index, GUID_SIZE);
 
-    QString subKey = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\BitBucket\\Volume\\" + guid;
+    QString subKey = BITBUCKET_VOLUME_KEY + guid;
     qDebug() << "WinFileInfoRetriever::willRecycle subkey" << subKey;
 
     // Check if the Recycle Bin is enabled for this drive

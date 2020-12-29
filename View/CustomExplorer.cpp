@@ -27,33 +27,32 @@
  * official policies, either expressed or implied, of the copyright holder.
  */
 
+#include <QHeaderView>
+#include <QSplitter>
+#include <QLayout>
 #include <QDebug>
 
-#include "customexplorer.h"
+#include "CustomExplorer.h"
 #include "once.h"
 
-CustomExplorer::CustomExplorer(QWidget *parent, Qt::WindowFlags f) : QFrame(parent, f)
+CustomExplorer::CustomExplorer(int nExplorer, QWidget *parent, Qt::WindowFlags f) : QFrame(parent, f)
 {
-
+    setupGui(nExplorer);
 }
 
-void CustomExplorer::initialize(MainWindow *mainWindow, CustomTreeView *treeView, CustomTabWidget *tabWidget)
+void CustomExplorer::initialize(AppWindow *mainWindow)
 {
-    this->mainWindow = mainWindow;
-    this->treeView = treeView;
-    this->tabWidget = tabWidget;
-
     FileSystemModel *fileSystemModel = new FileSystemModel(FileInfoRetriever::Tree, this);
     fileSystemModel->setDefaultRoot();
     treeView->setModel(fileSystemModel);
 
     // Handling of single selections
     connect(treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CustomExplorer::treeViewSelectionChanged);
-    // connect(treeView, &CustomTreeView::clicked, tabWidget, &CustomTabWidget::setViewIndex);
+    connect(treeView, &CustomTreeView::clicked, tabWidget, &CustomTabWidget::setViewIndex);
 
     // Focus change (application title update)
-    connect(tabWidget, &CustomTabWidget::folderFocus, mainWindow, &MainWindow::updateTitle);
-    connect(treeView, &CustomTreeView::viewFocus, mainWindow, &MainWindow::updateTitle);
+    // connect(tabWidget, &CustomTabWidget::folderFocus, mainWindow, &AppWindow::updateTitle);
+    // connect(treeView, &CustomTreeView::viewFocus, mainWindow, &AppWindow::updateTitle);
 
     // Auto expand & select on view select / Auto tree select and view change on collapse
     connect(tabWidget, &CustomTabWidget::rootRelativeChange, this, &CustomExplorer::expandAndSelectRelative);
@@ -66,11 +65,11 @@ void CustomExplorer::initialize(MainWindow *mainWindow, CustomTreeView *treeView
     connect(fileSystemModel, &FileSystemModel::displayNameChanged, tabWidget, &CustomTabWidget::displayNameChanged);
 
     // Context Menu
-    connect(tabWidget, &CustomTabWidget::contextMenuRequestedForItems, mainWindow, &MainWindow::showContextMenu);
-    connect(treeView, &CustomTreeView::contextMenuRequestedForItems, mainWindow, &MainWindow::showContextMenu);
+    connect(tabWidget, &CustomTabWidget::contextMenuRequestedForItems, mainWindow, &AppWindow::showContextMenu);
+    connect(treeView, &CustomTreeView::contextMenuRequestedForItems, mainWindow, &AppWindow::showContextMenu);
 
     // Actions
-    connect(tabWidget, &CustomTabWidget::defaultActionRequestedForItem, mainWindow, &MainWindow::defaultAction);
+    connect(tabWidget, &CustomTabWidget::defaultActionRequestedForItem, mainWindow, &AppWindow::defaultAction);
 
     // Errors
     connect(tabWidget, &CustomTabWidget::rootChangeFailed, this, &CustomExplorer::rootChangeFailed);
@@ -357,4 +356,60 @@ void CustomExplorer::rootChangeFailed(QString path)
         treeView->selectIndex(index);
         tabWidget->setViewIndex(index);
     }
+}
+
+CustomTabWidget *CustomExplorer::getTabWidget() const
+{
+    return tabWidget;
+}
+
+CustomTreeView *CustomExplorer::getTreeView() const
+{
+    return treeView;
+}
+
+QSplitter *CustomExplorer::getSplitter() const
+{
+    return splitter;
+}
+
+void CustomExplorer::setupGui(int nExplorer)
+{
+    splitter = new QSplitter(this);
+    splitter->setObjectName(QString::fromUtf8("explorerSplitter") + QString::number(nExplorer));
+    splitter->setHandleWidth(5);
+    splitter->setChildrenCollapsible(false);
+
+    treeView = new CustomTreeView(splitter);
+    treeView->setObjectName(QString::fromUtf8("treeView") + QString::number(nExplorer));
+
+    QSizePolicy sizePolicy1(QSizePolicy::MinimumExpanding, QSizePolicy::Expanding);
+    sizePolicy1.setHorizontalStretch(0);
+    sizePolicy1.setVerticalStretch(0);
+    sizePolicy1.setHeightForWidth(treeView->sizePolicy().hasHeightForWidth());
+
+    treeView->setSizePolicy(sizePolicy1);
+    treeView->setMinimumSize(QSize(400, 0));
+    treeView->setBaseSize(QSize(600, 0));
+    treeView->setSizeAdjustPolicy(QAbstractScrollArea::AdjustIgnored);
+
+    splitter->addWidget(treeView);
+    treeView->header()->setStretchLastSection(false);
+
+    tabWidget = new CustomTabWidget(splitter);
+    tabWidget->setObjectName(QString::fromUtf8("tabWidget") + QString::number(nExplorer));
+
+    QSizePolicy sizePolicy2(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    sizePolicy2.setHorizontalStretch(1);
+    sizePolicy2.setVerticalStretch(0);
+    sizePolicy2.setHeightForWidth(tabWidget->sizePolicy().hasHeightForWidth());
+
+    tabWidget->setSizePolicy(sizePolicy2);
+    tabWidget->setMinimumSize(QSize(0, 0));
+
+    splitter->addWidget(tabWidget);
+
+    setLayout(new QVBoxLayout());
+    layout()->setContentsMargins(0, 0, 0, 0);
+    layout()->addWidget(splitter);
 }

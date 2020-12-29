@@ -519,6 +519,11 @@ void FileSystemModel::goBack()
     }
 }
 
+void FileSystemModel::refresh()
+{
+    setRoot(root->getPath());
+}
+
 void FileSystemModel::freeChildren(const QModelIndex &parent)
 {
     qDebug() << "FileSystemModel::freeChildren";
@@ -608,6 +613,7 @@ QMimeData *FileSystemModel::mimeData(const QModelIndexList &indexes) const
         }
     }
     data->setUrls(urls);
+
     return data;
 }
 
@@ -643,6 +649,12 @@ bool FileSystemModel::dropMimeData(const QMimeData *data, Qt::DropAction action,
             break;
         case Qt::MoveAction:
             shellActions->moveItems(urls, dstPath);
+
+#ifdef Q_OS_WIN
+            // In Windows moving from the File Explorer to this application and returning true makes the File Explorer
+            // delete the source file before it is copied
+            return false;
+#endif
             break;
         case Qt::LinkAction:
             shellActions->linkItems(urls, dstPath);
@@ -754,9 +766,8 @@ Qt::DropAction FileSystemModel::defaultDropActionForIndex(QModelIndex index, con
 {
 #ifdef Q_OS_WIN
 
-    if (index.isValid() && index.internalPointer() != nullptr) {
-
-        FileSystemItem *item = getFileSystemItem(index);
+    FileSystemItem *item = (fileInfoRetriever->getScope() == FileInfoRetriever::Scope::List && !index.isValid()) ? root : getFileSystemItem(index);
+    if (item != nullptr) {
         QString itemPath = item->getPath();
 
         // Do not allow drops to things that are not drives
@@ -1074,17 +1085,26 @@ void FileSystemModel::renamePath(QString oldFileName, QString newFileName)
         sort(currentSortColumn, currentSortOrder, parentIndex);
 
     } else {
-        qDebug() << "FileSystemModel::renamePath" << fileInfoRetriever->getScope() << "couldn't find index for" << oldFileName << " - Trying addPath";
+
+        if (fileInfoRetriever->getScope() == FileInfoRetriever::Scope::List) {
+
+            // Check the item is for us, we might have changed the root already
+            int i = oldFileName.lastIndexOf(separator());
+            if (i > 0 && oldFileName.left(i) != root->getPath())
+                return;
+        }
+        qDebug() << "FileSystemModel::renamePath" << fileInfoRetriever->getScope() << "couldn't find index for" << oldFileName << "in" << root->getPath() << " - Trying addPath";
         addPath(newFileName);
     }
 }
 
 void FileSystemModel::refreshPath(QString fileName)
 {
-    qDebug() << "FileSystemModel::refreshPath" << fileInfoRetriever->getScope() << fileName;
+    qDebug() << "FileSystemModel::refreshPath" << fileInfoRetriever->getScope() << fileInfoRetriever->getScope() << fileName;
 
     // Only the list view has other columns
     if (fileInfoRetriever->getScope() == FileInfoRetriever::List) {
+
         FileSystemItem *fileSystemItem = root->getChild(fileName);
         if (fileSystemItem) {
 

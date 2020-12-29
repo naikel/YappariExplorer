@@ -116,6 +116,7 @@ public:
     bool willRecycle(FileSystemItem *item);
     void goForward();
     void goBack();
+    void refresh();
 
     // Inline functions
     inline FileSystemItem *getFileSystemItem(QModelIndex index) const {
