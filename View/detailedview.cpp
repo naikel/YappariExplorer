@@ -209,20 +209,24 @@ void DetailedView::forwardEvent()
 
 }
 
-// Fix negative width/height rects bug in QTreeView
+/*!
+ * \brief Applies the selection \a flags to the items in or touched by the rectangle \a rect.
+ * \param rect a QRect
+ *
+ * The QAbstractItemView implementation assumes the items occupy the whole row, and then just looks for
+ * the top left corner and the bottom right corner items.
+ *
+ * Since the items don't occupy the whole row in this view, most of the times the corners would point
+ * to an invalid index.
+ *
+ * To solve this we modify the rectangle to be 1px at the left and 1px wide.  That ensures the rectangle
+ * touches all the items.
+ */
 void DetailedView::setSelection(const QRect &rect, QItemSelectionModel::SelectionFlags command)
 {
-    QRect newRect = rect;
+    QRect newRect = rect.normalized();
 
-    if (newRect.width() < 0) {
-        int width = newRect.width() * -1;
-        newRect.setLeft(rect.x() - width);
-    }
-
-    if (newRect.height() < 0) {
-        int height = newRect.height() * -1;
-        newRect.setLeft(rect.y() - height);
-    }
+    newRect.adjust(1, 0, -newRect.width() + 1, 0);
 
     BaseTreeView::setSelection(newRect, command);
 }

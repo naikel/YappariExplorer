@@ -566,6 +566,15 @@ void BaseTreeView::contextMenuRequested(const QPoint &pos)
     // Get current selected item if any
     QModelIndex index = indexAt(pos);
     if (index.isValid() && index.column() == 0 && index.internalPointer() != nullptr) {
+
+        // If the index is not selected, we should select it
+        // and clear the previous selection
+
+        QModelIndexList indexes = selectedIndexes();
+        if (!indexes.contains(index)) {
+            selectionModel()->select(index, QItemSelectionModel::ClearAndSelect);
+        }
+
         viewAspect = ContextMenu::Selection;
         for (QModelIndex selectedIndex : selectedIndexes()) {
             if (selectedIndex.column() == 0 && selectedIndex.internalPointer() != nullptr) {
