@@ -1,6 +1,10 @@
 #include <QApplication>
+#include <QClipboard>
+#include <QMimeData>
 #include <QDebug>
 #include <QTime>
+
+#include <ole2.h>
 
 #include "View/Base/basetreeview.h"
 #include "wincontextmenu.h"
@@ -8,17 +12,26 @@
 #define SCRATCH_QCM_FIRST      1
 #define SCRATCH_QCM_LAST  0x7FFF
 
-// Menu verbs
-#define VERB_VIEW               "view"
-#define VERB_SORTBY             "arrange"
-#define VERB_GROUPBY            "groupby"
-#define VERB_UNDO               "undo"
-#define VERB_DELETE             "delete"
-#define VERB_RENAME             "rename"
-#define VERB_REFRESH            "refresh"
-#define VERB_SHARE              "Windows.Share"
-#define VERB_MODERNSHARE        "Windows.ModernShare"
-#define VERB_VIEWCUSTOMWIZARD   "viewcustomwizard"
+// Windows Menu Verbs
+#define VERB_VIEW                   "view"
+#define VERB_SORTBY                 "arrange"
+#define VERB_GROUPBY                "groupby"
+#define VERB_UNDO                   "undo"
+#define VERB_DELETE                 "delete"
+#define VERB_RENAME                 "rename"
+#define VERB_REFRESH                "refresh"
+#define VERB_PASTE                  "paste"
+#define VERB_PASTELINK              "pastelink"
+#define VERB_SHARE                  "Windows.Share"
+#define VERB_MODERNSHARE            "Windows.ModernShare"
+#define VERB_VIEWCUSTOMWIZARD       "viewcustomwizard"
+
+// Yappari Menu IDs
+#define MENU_ID_PASTE               0x8000
+#define MENU_ID_PASTELINK           0x8001
+#define MENU_ID_SEPARATOR           0x8001
+
+#define getFileSystemModel(view)    static_cast<FileSystemModel *>(view->model());
 
 WinContextMenu::WinContextMenu(QObject *parent) : ContextMenu(parent)
 {
@@ -46,6 +59,7 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
         IShellFolder *psf;
         LPCITEMIDLIST pidlChild {};
         PCUITEMID_CHILD_ARRAY pidlList {};
+        FileSystemModel *model = getFileSystemModel(view);
 
         // All items have the same parent we just need one to bind to the parent
         if (SUCCEEDED(hr = ::SHBindToParent(pidl, IID_IShellFolder, reinterpret_cast<void**>(&psf), &pidlChild))) {
@@ -141,7 +155,6 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
 
                         if (strVerb == VERB_RENAME && view != nullptr && fileSystemItems.size() == 1) {
 
-                            FileSystemModel *model = static_cast<FileSystemModel *>(view->model());
                             view->edit(model->index(fileSystemItems[0]));
 
                         } else if (strVerb == VERB_DELETE && view != nullptr) {
@@ -154,13 +167,30 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
 
                         } else if (strVerb == VERB_REFRESH && view != nullptr) {
 
-                            FileSystemModel *model = static_cast<FileSystemModel *>(view->model());
+                            FileSystemModel *model = getFileSystemModel(view);
                             model->refresh();
 
                         } else {
 
-                            // All entries have the same root and at least there's one
-                            invokeCommand(hwnd, iCmd, imenu, pos, parent, view);
+                            switch (iCmd - SCRATCH_QCM_FIRST) {
+
+                                // These are Background Menu actions *only*
+                                case MENU_ID_PASTE: {
+                                        paste(parent, model, false);
+                                        break;
+                                    }
+
+                                case MENU_ID_PASTELINK: {
+                                        qDebug() << "Paste Link";
+                                        paste(parent, model, true);
+                                        break;
+                                    }
+
+                                default:
+                                    // All entries have the same root and at least there's one
+                                    invokeCommand(hwnd, iCmd, imenu, pos, parent, model);
+                            }
+
                         }
                     }
                 }
@@ -222,7 +252,7 @@ void WinContextMenu::defaultAction(const WId wId, const FileSystemItem *fileSyst
     ::CoUninitialize();
 }
 
-void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QPoint pos, FileSystemItem *parent, QAbstractItemView *view)
+void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QPoint pos, FileSystemItem *parent, FileSystemModel *model)
 {
     UINT command = iCmd - SCRATCH_QCM_FIRST;
 
@@ -262,7 +292,6 @@ void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QP
 
     // Tell the view's model to watch for new objects so the view can ask the user to rename them
     if (strVerb.size() > 1 && (strVerb == CMDSTR_NEWFOLDERA || strVerb.left(1) == ".")) {
-        FileSystemModel *model = reinterpret_cast<FileSystemModel *>(view->model());
         model->startWatch(parent, strVerb);
     }
 
@@ -302,20 +331,20 @@ bool WinContextMenu::handleNativeEvent(const QByteArray &eventType, void *messag
 void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const ContextMenu::ContextViewAspect viewAspect)
 {
     // Browse the explorer menu
-    int count = GetMenuItemCount(hmenu);
+    UINT count = GetMenuItemCount(hmenu);
     qDebug() << "Menu items" << count;
     wchar_t buffer[1024];
     QString verb;
     QList<UINT> verbsToDelete;
     bool lastSeparator {};
-    for (int i = 0 ; i < count; i++) {
+    for (UINT i = 0 ; i < count; i++) {
         MENUITEMINFO info {};
-        info.fMask = MIIM_ID | MIIM_FTYPE | MIIM_STRING;
+        info.fMask = MIIM_ID | MIIM_FTYPE | MIIM_STRING | MIIM_STATE;
         info.fType = MFT_STRING;
         info.cbSize = sizeof(MENUITEMINFO);
         info.cch = 1024;
         info.dwTypeData = buffer;
-        if (!GetMenuItemInfoW(hmenu, static_cast<UINT>(i), TRUE, &info))
+        if (!GetMenuItemInfoW(hmenu, i, TRUE, &info))
             qDebug() << "failed";
         CHAR cBuffer[256] {};
 
@@ -331,7 +360,8 @@ void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const
 
                     // Delete default explorer entries for the background view
                     // We will add our own implementation later
-                    if (verb == VERB_UNDO || verb == VERB_VIEW || verb == VERB_SORTBY || verb == VERB_GROUPBY || verb == VERB_VIEWCUSTOMWIZARD || verb == VERB_SHARE) {
+                    if (verb == VERB_UNDO || verb == VERB_VIEW || verb == VERB_SORTBY || verb == VERB_GROUPBY || verb == VERB_VIEWCUSTOMWIZARD || verb == VERB_SHARE
+                            || verb == VERB_PASTE || verb == VERB_PASTELINK) {
                         verbsToDelete.append(i);
                         continue;
                     }
@@ -357,7 +387,7 @@ void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const
             lastSeparator = true;
         }
 
-        qDebug() << info.wID << QString::fromWCharArray(info.dwTypeData) << "VERB: " << verb << "Is Separator?" << (info.fType & MFT_SEPARATOR);
+        qDebug() << info.wID << QString::fromWCharArray(info.dwTypeData) << "VERB: " << verb << "Is Separator?" << (info.fType & MFT_SEPARATOR) << "STATE" << info.fState;
 
         verb.clear();
     }
@@ -367,4 +397,85 @@ void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const
     for (UINT id : verbsToDelete)
         DeleteMenu(hmenu, (id - offset++), MF_BYPOSITION);
 
+    // Add our own custom options for the background menu
+    if (viewAspect == ContextMenu::Background) {
+        MENUITEMINFO info {};
+
+        info.fMask = MIIM_ID | MIIM_FTYPE | MIIM_STRING;
+        info.fState = MFS_DEFAULT;
+        info.cbSize = sizeof(MENUITEMINFO);
+
+        info.fType = MFT_SEPARATOR;
+        info.wID = MENU_ID_SEPARATOR + SCRATCH_QCM_FIRST;
+        InsertMenuItemW(hmenu, 0, MF_BYPOSITION, &info);
+
+        QClipboard *clipboard = QGuiApplication::clipboard();
+        const QMimeData *mimeData = clipboard->mimeData();
+
+        qDebug() << mimeData->formats();
+
+        if (!mimeData->hasUrls()) {
+            info.fMask |= MIIM_STATE;
+            info.fState = MFS_GRAYED;
+        }
+
+        info.cch = 1024;
+        info.dwTypeData = buffer;
+        info.fType = MFT_STRING;
+        info.wID = MENU_ID_PASTELINK + SCRATCH_QCM_FIRST;
+        QString strMenu = "Paste Link";
+        strMenu.toWCharArray(buffer);
+        buffer[strMenu.length()] = '\0';
+        InsertMenuItemW(hmenu, 0, MF_BYPOSITION, &info);
+
+        info.wID = MENU_ID_PASTE + SCRATCH_QCM_FIRST;
+        strMenu = "Paste";
+        strMenu.toWCharArray(buffer);
+        buffer[strMenu.length()] = '\0';
+        InsertMenuItemW(hmenu, 0, MF_BYPOSITION, &info);
+
+    }
+}
+
+
+void WinContextMenu::paste(FileSystemItem *parent, FileSystemModel *model, bool createLink)
+{
+    FORMATETC pfmtetc;
+    STGMEDIUM pmedium;
+
+    IDataObject *clipBoardData {};
+
+    qDebug() << "WinContextMenu::paste";
+
+    if (OleGetClipboard(&clipBoardData) == S_OK) {
+
+        qDebug() << "Clipboard retrieved";
+
+        pfmtetc.cfFormat = (CLIPFORMAT) RegisterClipboardFormat(CFSTR_PREFERREDDROPEFFECT);
+        pfmtetc.tymed = TYMED_HGLOBAL;
+        pfmtetc.lindex = -1;
+        pfmtetc.dwAspect = DVASPECT_CONTENT;
+        pfmtetc.ptd = nullptr;
+
+        if (SUCCEEDED(clipBoardData->GetData(&pfmtetc, &pmedium))) {
+            DWORD *pdwEffect;
+            pdwEffect = (DWORD *)GlobalLock(pmedium.hGlobal);
+
+            GlobalUnlock(pmedium.hGlobal);
+
+            ReleaseStgMedium(&pmedium);
+
+            QClipboard *clipboard = QGuiApplication::clipboard();
+            const QMimeData *mimeData = clipboard->mimeData();
+
+            Qt::DropAction action = createLink ? Qt::LinkAction : ((*pdwEffect & DROPEFFECT_MOVE) ? Qt::MoveAction : Qt::CopyAction);
+
+            qDebug() << action;
+
+            QModelIndex parentIndex = model->index(parent);
+
+            model->dropMimeData(mimeData, action, -1, -1, parentIndex);
+        }
+
+    }
 }

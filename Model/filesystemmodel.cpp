@@ -700,6 +700,10 @@ QModelIndex FileSystemModel::index(FileSystemItem *item) const
 {
     FileSystemItem *parent = item->getParent();
 
+    // ListView items don't have a parent
+    if (parent == nullptr)
+        return QModelIndex();
+
     return createIndex(parent->childRow(item), 0, item);
 }
 
@@ -1105,13 +1109,17 @@ void FileSystemModel::refreshPath(QString fileName)
     // Only the list view has other columns
     if (fileInfoRetriever->getScope() == FileInfoRetriever::List) {
 
-        FileSystemItem *fileSystemItem = root->getChild(fileName);
-        if (fileSystemItem) {
+        if (root->getPath() == fileName)
+            refresh();
+        else {
+            FileSystemItem *fileSystemItem = root->getChild(fileName);
+            if (fileSystemItem) {
 
-            // This can fail and return false if the file is deleted immediately after a modification,
-            // but we don't remove the file here because we will receive another notification that will handle that
+                // This can fail and return false if the file is deleted immediately after a modification,
+                // but we don't remove the file here because we will receive another notification that will handle that
 
-            fileInfoRetriever->refreshItem(fileSystemItem);
+                fileInfoRetriever->refreshItem(fileSystemItem);
+            }
         }
     }
 }

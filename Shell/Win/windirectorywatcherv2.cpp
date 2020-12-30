@@ -104,7 +104,6 @@ bool WinDirectoryWatcherv2::handleNativeEvent(const QByteArray &eventType, void 
                     emit fileModified(strPath1);
                     break;
                 case SHCNE_UPDATEDIR:
-                    // TODO: Need to update the whole dir
                     break;
             }
 

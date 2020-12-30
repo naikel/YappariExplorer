@@ -56,7 +56,6 @@ SOURCES += \
     View/expandinglineedit.cpp \
     Window/AppWindow.cpp \
     Window/TitleBar.cpp \
-    Window/Win/WinFramelessWindow.cpp \
     main.cpp
 
 HEADERS += \
@@ -79,11 +78,8 @@ HEADERS += \
     View/expandinglineedit.h \
     Window/AppWindow.h \
     Window/TitleBar.h \
-    Window/Win/WinFramelessWindow.h \
     once.h \
     version.h
-
-FORMS +=
 
 unix {
     SOURCES += \
@@ -101,12 +97,14 @@ win32 {
     DEFINES += WIN32_FRAMELESS
     DEFINES += _WIN32_IE=0x700 _WIN32_WINNT=0x0A00
     SOURCES += \
+        Window/Win/WinFramelessWindow.cpp \
         Shell/Win/wincontextmenu.cpp \
         Shell/Win/winfileinforetriever.cpp \
         Shell/Win/windirectorywatcher.cpp \
         Shell/Win/windirectorywatcherv2.cpp \
         Shell/Win/winshellactions.cpp
     HEADERS += \
+        Window/Win/WinFramelessWindow.h \
         Shell/Win/windirectorywatcher.h \
         Shell/Win/windirectorywatcherv2.h \
         Shell/Win/winshellactions.h \

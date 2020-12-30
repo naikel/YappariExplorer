@@ -501,8 +501,9 @@ QRect BaseTreeView::visualRect(const QModelIndex &index) const
         x1 += padding;
         x2 += padding;
 
+        // This disables the decoration hovering: not good
         if (rootIsDecorated()) {
-            x1 += iconSize + 7;
+            //x1 += iconSize + 7;
             x2 += indentation();
         }
 
