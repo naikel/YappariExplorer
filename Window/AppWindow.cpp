@@ -129,6 +129,7 @@ void AppWindow::setupGui()
         QSplitter *splitter = new QSplitter(contentWidget());
         splitter->setObjectName(QString::fromUtf8("splitter"));
         splitter->setOrientation(verticalMode ? Qt::Vertical : Qt::Horizontal);
+        splitter->setStyleSheet("QSplitter::handle { background: #9fcdb3;  } QSplitter::handle:vertical { height: 1px; }");
         w = splitter;
     } else
         w = contentWidget();

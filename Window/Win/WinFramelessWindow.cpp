@@ -204,7 +204,7 @@ void WinFramelessWindow::resizeEvent(QResizeEvent *event)
     }
 
     if (placement.showCmd != SW_MAXIMIZE) {
-        _contentWidget->layout()->setContentsMargins(borderWidth + 1, borderWidth + 1, borderWidth + 1, borderWidth + 1);
+        _contentWidget->layout()->setContentsMargins(borderWidth + 1, 0, borderWidth + 1, borderWidth);
     } else {
         _contentWidget->layout()->setContentsMargins(0, 0, 0, 0);
     }

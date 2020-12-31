@@ -9,6 +9,13 @@
 
 #include <limits>
 
+#define FSI_CAN_COPY    0x0001
+#define FSI_CAN_MOVE    0x0002
+#define FSI_CAN_LINK    0x0004
+#define FSI_CAN_RENAME  0x0008
+#define FSI_CAN_DELETE  0x0010
+#define FSI_DROP_TARGET 0x0020
+
 class FileSystemItem
 {
 public:
@@ -87,6 +94,9 @@ public:
 
     FileSystemItem *clone();
 
+    quint16 getCapabilities() const;
+    void setCapabilities(const quint16 &value);
+
 private:
 
     QString     path                {};
@@ -98,6 +108,7 @@ private:
     QDateTime   creationTime        {};
     QDateTime   lastAccessTime      {};
     QDateTime   lastChangeTime      {};
+    quint16     capabilities        {};
 
     bool folder                 {false};
     bool hidden                 {false};

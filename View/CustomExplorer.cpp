@@ -377,8 +377,10 @@ void CustomExplorer::setupGui(int nExplorer)
 {
     splitter = new QSplitter(this);
     splitter->setObjectName(QString::fromUtf8("explorerSplitter") + QString::number(nExplorer));
-    splitter->setHandleWidth(5);
+    splitter->setHandleWidth(1);
     splitter->setChildrenCollapsible(false);
+
+    splitter->setStyleSheet("QSplitter::handle { background: #9fcdb3; }");
 
     treeView = new CustomTreeView(splitter);
     treeView->setObjectName(QString::fromUtf8("treeView") + QString::number(nExplorer));
@@ -398,6 +400,7 @@ void CustomExplorer::setupGui(int nExplorer)
 
     tabWidget = new CustomTabWidget(splitter);
     tabWidget->setObjectName(QString::fromUtf8("tabWidget") + QString::number(nExplorer));
+    tabWidget->setStyleSheet("QTabWidget::pane { border: 0px; } ");
 
     QSizePolicy sizePolicy2(QSizePolicy::Expanding, QSizePolicy::Expanding);
     sizePolicy2.setHorizontalStretch(1);

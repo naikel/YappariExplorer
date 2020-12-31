@@ -390,6 +390,16 @@ FileSystemItem *FileSystemItem::clone()
     return item;
 }
 
+quint16 FileSystemItem::getCapabilities() const
+{
+    return capabilities;
+}
+
+void FileSystemItem::setCapabilities(const quint16 &value)
+{
+    capabilities = value;
+}
+
 QVariant FileSystemItem::getData(int column)
 {
     DataInfo dataInfo = static_cast<DataInfo>(column);

@@ -56,6 +56,20 @@ bool WinFileInfoRetriever::getParentInfo(FileSystemItem *parent)
         parent->setIcon(icon);
         qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " setIcon" << start.elapsed();
 
+        // The Windows root (My Computer) shouldn't have any capability
+        if (parent->getPath() != getRootPath()) {
+            SFGAOF attributes { SFGAO_CAPABILITYMASK | SFGAO_READONLY };
+            IShellFolder *psf {};
+
+            // Get the IShellFolder interface for the parent to get the attributes
+            LPCITEMIDLIST child;
+            if (SUCCEEDED(::SHBindToParent(pidl, IID_IShellFolder, reinterpret_cast<void**>(&psf), &child))) {
+                psf->GetAttributesOf(1, &child, &attributes);
+                setCapabilities(parent, attributes);
+                psf->Release();
+            }
+        }
+
         ::CoTaskMemFree(pwstrName);
         ::ILFree(pidl);
 
@@ -114,7 +128,7 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                 while (running.load() && ppenumIDList->Next(1, &pidlChildren, nullptr) == S_OK) {
 
                     // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << QTime::currentTime() << "Before getting attributes";
-                    SFGAOF attributes { SFGAO_STREAM | SFGAO_FOLDER | SFGAO_HIDDEN };
+                    SFGAOF attributes { SFGAO_STREAM | SFGAO_FOLDER | SFGAO_HIDDEN | SFGAO_CAPABILITYMASK | SFGAO_READONLY };
 
                     psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChildren), &attributes);
                     // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << QTime::currentTime() << "Got attributes";
@@ -186,6 +200,9 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                                 child->setType(QString::fromStdWString(info.szTypeName));
                             }
                         }
+
+                        // Capabilites
+                        setCapabilities(child, attributes);
 
                         parent->addChild(child);
                     }
@@ -333,16 +350,21 @@ bool WinFileInfoRetriever::refreshItem(FileSystemItem *fileSystemItem)
 
         if (fileAttributeData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
             fileSystemItem->setFolder(true);
+        }
 
-            if (getScope() == FileInfoRetriever::Tree) {
-                SFGAOF attributes {};
-                ULONG flags = SFGAO_HASSUBFOLDER;
-                LPITEMIDLIST pidl;
-                if (SUCCEEDED(SHParseDisplayName(fileSystemItem->getPath().toStdWString().c_str(), nullptr, &pidl, flags, &attributes))) {
-                    fileSystemItem->setHasSubFolders(attributes & SFGAO_HASSUBFOLDER);
-                    ::ILFree(pidl);
-                }
-            }
+        SFGAOF attributes {};
+        ULONG flags = SFGAO_CAPABILITYMASK;
+        if (getScope() == FileInfoRetriever::Tree && fileSystemItem->isFolder())
+            flags |= SFGAO_HASSUBFOLDER;
+
+        LPITEMIDLIST pidl;
+        if (SUCCEEDED(SHParseDisplayName(fileSystemItem->getPath().toStdWString().c_str(), nullptr, &pidl, flags, &attributes))) {
+
+            if (getScope() == FileInfoRetriever::Tree)
+                fileSystemItem->setHasSubFolders(attributes & SFGAO_HASSUBFOLDER);
+
+            setCapabilities(fileSystemItem, attributes);
+            ::ILFree(pidl);
         }
 
         fileSystemItem->setHidden(fileAttributeData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN);
@@ -507,5 +529,24 @@ QDateTime WinFileInfoRetriever::fileTimeToQDateTime(LPFILETIME fileTime)
     QDate date = QDate(systemTime.wYear, systemTime.wMonth, systemTime.wDay);
     QTime time = QTime(systemTime.wHour, systemTime.wMinute, systemTime.wSecond, systemTime.wMilliseconds);
     return(QDateTime(date, time, Qt::UTC));
+}
+
+void WinFileInfoRetriever::setCapabilities(FileSystemItem *item, const SFGAOF &attributes)
+{
+    quint16 capabilities {};
+    if (attributes & SFGAO_CANCOPY)
+        capabilities |= FSI_CAN_COPY;
+    if (attributes & SFGAO_CANMOVE)
+        capabilities |= FSI_CAN_MOVE;
+    if (attributes & SFGAO_CANLINK)
+        capabilities |= FSI_CAN_LINK;
+    if (attributes & SFGAO_CANRENAME)
+        capabilities |= FSI_CAN_RENAME;
+    if (attributes & SFGAO_CANDELETE)
+        capabilities |= FSI_CAN_DELETE;
+    if (!(attributes & SFGAO_READONLY))
+        capabilities |= FSI_DROP_TARGET;
+
+    item->setCapabilities(capabilities);
 }
 

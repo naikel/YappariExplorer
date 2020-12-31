@@ -20,7 +20,7 @@ private:
     IContextMenu2 *imenu2   {};
     IContextMenu3 *imenu3   {};
 
-    void customizeMenu(IContextMenu *imenu, const HMENU hmenu, const ContextMenu::ContextViewAspect viewAspect);
+    void customizeMenu(IContextMenu *imenu, const HMENU hmenu, const ContextMenu::ContextViewAspect viewAspect, FileSystemItem *parent);
     void invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QPoint pos, FileSystemItem *parent, FileSystemModel *model);
     void paste(FileSystemItem *parent, FileSystemModel *model, bool createLink = false);
 };

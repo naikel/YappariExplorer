@@ -39,6 +39,7 @@ private:
     SHFILEINFOW getSystemImageListIndexFromPIDL(LPITEMIDLIST pidl) const;
     SHFILEINFOW getSystemImageListIndexFromPath(QString path) const;
     QDateTime fileTimeToQDateTime(LPFILETIME fileTime);
+    void setCapabilities(FileSystemItem *item, const SFGAOF& attributes);
 };
 
 #endif // WINFILEINFORETRIEVER_H

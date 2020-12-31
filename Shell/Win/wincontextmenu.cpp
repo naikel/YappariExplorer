@@ -29,7 +29,7 @@
 // Yappari Menu IDs
 #define MENU_ID_PASTE               0x8000
 #define MENU_ID_PASTELINK           0x8001
-#define MENU_ID_SEPARATOR           0x8001
+#define MENU_ID_SEPARATOR           0x8002
 
 #define getFileSystemModel(view)    static_cast<FileSystemModel *>(view->model());
 
@@ -126,7 +126,7 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
 
                     // Delete/Add custom menu items
                     qDebug() << "WinContextMenu::show " << QTime::currentTime() << "Before customizing the menu";
-                    customizeMenu(imenu, hmenu, viewAspect);
+                    customizeMenu(imenu, hmenu, viewAspect, parent);
 
                     if (FAILED(imenu->QueryInterface(IID_IContextMenu2, reinterpret_cast<void**>(&imenu2))))
                         qDebug() << "imenu2 failed";
@@ -181,7 +181,6 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
                                     }
 
                                 case MENU_ID_PASTELINK: {
-                                        qDebug() << "Paste Link";
                                         paste(parent, model, true);
                                         break;
                                     }
@@ -328,7 +327,7 @@ bool WinContextMenu::handleNativeEvent(const QByteArray &eventType, void *messag
     return false;
 }
 
-void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const ContextMenu::ContextViewAspect viewAspect)
+void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const ContextMenu::ContextViewAspect viewAspect, FileSystemItem *parent)
 {
     // Browse the explorer menu
     UINT count = GetMenuItemCount(hmenu);
@@ -336,8 +335,10 @@ void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const
     wchar_t buffer[1024];
     QString verb;
     QList<UINT> verbsToDelete;
-    bool lastSeparator {};
-    for (UINT i = 0 ; i < count; i++) {
+    bool lastSeparator      {};
+    UINT lastSeparatorPos   { 0 };
+    UINT i;
+    for (i = 0 ; i < count; i++) {
         MENUITEMINFO info {};
         info.fMask = MIIM_ID | MIIM_FTYPE | MIIM_STRING | MIIM_STATE;
         info.fType = MFT_STRING;
@@ -385,12 +386,21 @@ void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const
                 verbsToDelete.append(i);
 
             lastSeparator = true;
+            lastSeparatorPos = i;
         }
 
         qDebug() << info.wID << QString::fromWCharArray(info.dwTypeData) << "VERB: " << verb << "Is Separator?" << (info.fType & MFT_SEPARATOR) << "STATE" << info.fState;
 
         verb.clear();
     }
+
+    if (lastSeparator && !verbsToDelete.contains(lastSeparatorPos)) {
+        verbsToDelete.append(lastSeparatorPos);
+        std::sort(verbsToDelete.begin(), verbsToDelete.end());
+        qDebug() << verbsToDelete;
+    }
+
+    qDebug() << verbsToDelete;
 
     // Delete verbs we marked that we do not want
     int offset = 0;
@@ -414,7 +424,7 @@ void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const
 
         qDebug() << mimeData->formats();
 
-        if (!mimeData->hasUrls()) {
+        if (!mimeData->hasUrls() || !(parent->getCapabilities() & FSI_DROP_TARGET)) {
             info.fMask |= MIIM_STATE;
             info.fState = MFS_GRAYED;
         }
@@ -423,13 +433,13 @@ void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const
         info.dwTypeData = buffer;
         info.fType = MFT_STRING;
         info.wID = MENU_ID_PASTELINK + SCRATCH_QCM_FIRST;
-        QString strMenu = "Paste Link";
+        QString strMenu = tr("Paste Link");
         strMenu.toWCharArray(buffer);
         buffer[strMenu.length()] = '\0';
         InsertMenuItemW(hmenu, 0, MF_BYPOSITION, &info);
 
         info.wID = MENU_ID_PASTE + SCRATCH_QCM_FIRST;
-        strMenu = "Paste";
+        strMenu = tr("Paste");
         strMenu.toWCharArray(buffer);
         buffer[strMenu.length()] = '\0';
         InsertMenuItemW(hmenu, 0, MF_BYPOSITION, &info);
@@ -448,8 +458,6 @@ void WinContextMenu::paste(FileSystemItem *parent, FileSystemModel *model, bool 
     qDebug() << "WinContextMenu::paste";
 
     if (OleGetClipboard(&clipBoardData) == S_OK) {
-
-        qDebug() << "Clipboard retrieved";
 
         pfmtetc.cfFormat = (CLIPFORMAT) RegisterClipboardFormat(CFSTR_PREFERREDDROPEFFECT);
         pfmtetc.tymed = TYMED_HGLOBAL;
@@ -470,12 +478,12 @@ void WinContextMenu::paste(FileSystemItem *parent, FileSystemModel *model, bool 
 
             Qt::DropAction action = createLink ? Qt::LinkAction : ((*pdwEffect & DROPEFFECT_MOVE) ? Qt::MoveAction : Qt::CopyAction);
 
-            qDebug() << action;
-
             QModelIndex parentIndex = model->index(parent);
 
             model->dropMimeData(mimeData, action, -1, -1, parentIndex);
         }
+
+        clipBoardData->Release();
 
     }
 }

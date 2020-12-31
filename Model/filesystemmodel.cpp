@@ -619,18 +619,34 @@ QMimeData *FileSystemModel::mimeData(const QModelIndexList &indexes) const
 
 bool FileSystemModel::canDropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) const
 {
-    // Check if dropping to itself
-    if (QAbstractItemModel::canDropMimeData(data, action, row, column, parent)) {
-        QString dstPath = getDropPath(parent);
-        for (QUrl url : data->urls()) {
-            QString path = url.toLocalFile().replace('/', separator());
-            if (path == dstPath) {
-                return false;
+    Q_UNUSED(row)
+    Q_UNUSED(column)
+
+    FileSystemItem *item = (fileInfoRetriever->getScope() == FileInfoRetriever::Scope::List && !parent.isValid()) ? root : getFileSystemItem(parent);
+    if (item != nullptr) {
+        QString itemPath = item->getPath();
+
+        if (!(item->getCapabilities() & FSI_DROP_TARGET))
+            return false;
+
+        if (action == Qt::MoveAction) {
+            // We can't move data to the same folder
+            QList<QUrl> urls = data->urls();
+
+            if (urls.size() > 0) {
+
+                QString path = urls[0].toLocalFile().replace('/', separator());
+                int index = path.lastIndexOf(separator());
+
+                if (path.left(index) == itemPath.left(index))
+                    return false;
             }
         }
+
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 bool FileSystemModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent)
@@ -768,16 +784,22 @@ Qt::DropActions FileSystemModel::supportedDragActionsForIndexes(QModelIndexList 
  */
 Qt::DropAction FileSystemModel::defaultDropActionForIndex(QModelIndex index, const QMimeData *data, Qt::DropActions possibleActions)
 {
+
+    QString dstPath = getDropPath(index);
+    if (!dstPath.isNull()) {
+
+        QList<QUrl> urls = data->urls();
+
+        if (urls.size() > 0) {
+
+            QString path = urls[0].toLocalFile().replace('/', separator());
+            int idx = path.lastIndexOf(separator());
+
+            if (path.left(idx) == dstPath.left(idx))
+                return Qt::IgnoreAction;
+        }
+
 #ifdef Q_OS_WIN
-
-    FileSystemItem *item = (fileInfoRetriever->getScope() == FileInfoRetriever::Scope::List && !index.isValid()) ? root : getFileSystemItem(index);
-    if (item != nullptr) {
-        QString itemPath = item->getPath();
-
-        // Do not allow drops to things that are not drives
-        if (itemPath.at(0) == ":" && itemPath.at(1) == ":" && itemPath.at(2) == "{")
-            return Qt::IgnoreAction;
-
         if (possibleActions & Qt::MoveAction) {
 
             // All items being dragged must be from the same drive
@@ -795,14 +817,14 @@ Qt::DropAction FileSystemModel::defaultDropActionForIndex(QModelIndex index, con
             if (drive.right(1) == '/')
                 drive = drive.left(2) + separator();
 
-            QString dstPath = getDropPath(index);
             if (!drive.isEmpty() && dstPath.left(3) == drive) {
                 // Default action for files in the same drive is MoveAction
                 return Qt::MoveAction;
             }
         }
-    }
 #endif
+
+    }
 
     if (possibleActions & Qt::CopyAction)
         return Qt::CopyAction;
