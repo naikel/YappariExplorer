@@ -16,5 +16,11 @@
         <file>icons/button_maximize_white_inactive.svg</file>
         <file>icons/button_minimize_white_inactive.svg</file>
         <file>icons/button_restore_white_inactive.svg</file>
+        <file>icons/back.svg</file>
+        <file>icons/next.svg</file>
+        <file>icons/up.svg</file>
+        <file>icons/back_inactive.svg</file>
+        <file>icons/next_inactive.svg</file>
+        <file>icons/up_inactive.svg</file>
     </qresource>
 </RCC>

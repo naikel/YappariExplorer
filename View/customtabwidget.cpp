@@ -93,6 +93,8 @@ void CustomTabWidget::updateTab()
     detailedView->scrollToTop();
     qDebug() << "CustomTabWidget::updateTab tab updated. " << fileSystemModel->getRoot()->childrenCount() << " items";
     qDebug() << "---------------------------------------------------------------------------------------------------";
+
+    emit viewModelChanged(fileSystemModel);
 }
 
 void CustomTabWidget::nameTab(int index, FileSystemItem *item)

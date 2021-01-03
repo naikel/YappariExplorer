@@ -2,14 +2,21 @@
 #define FILESYSTEMHISTORY_H
 
 #include <QList>
+#include <QIcon>
 
 class FileSystemHistory : QObject
 {
 public:
+    typedef struct _HistoryEntry {
+        QString path;
+        QIcon icon;
+    } HistoryEntry;
+
     FileSystemHistory(QObject *parent = nullptr);
+    ~FileSystemHistory();
 
     bool isCursorAtTheEnd();
-    void insert(QString path);
+    void insert(QString path, QIcon icon);
 
     bool canGoForward();
     bool canGoBack();
@@ -18,7 +25,7 @@ public:
     QString getNextItem();
 
 private:
-    QList<QString> pathList;
+    QList<HistoryEntry *> pathList;
     int cursor { -1 };
 
 };

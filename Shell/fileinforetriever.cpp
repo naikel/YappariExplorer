@@ -92,7 +92,7 @@ void FileInfoRetriever::getChildren(FileSystemItem *parent)
         pool.waitForDone();
     }
 
-    // Let's double check the children hasn't been fetched
+    // Let's double check the children haven't been fetched
     if (!parent->areAllChildrenFetched()) {
         running.store(true);
         QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileInfoRetriever *>(this), &FileInfoRetriever::getChildrenBackground, parent);

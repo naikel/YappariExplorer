@@ -116,6 +116,10 @@ public:
     bool willRecycle(FileSystemItem *item);
     void goForward();
     void goBack();
+    void goUp();
+    bool canGoForward();
+    bool canGoBack();
+    bool canGoUp();
     void refresh();
 
     // Inline functions

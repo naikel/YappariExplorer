@@ -73,6 +73,11 @@ void CustomExplorer::initialize(AppWindow *mainWindow)
 
     // Errors
     connect(tabWidget, &CustomTabWidget::rootChangeFailed, this, &CustomExplorer::rootChangeFailed);
+
+    // Path Bar
+    connect(tabWidget, &CustomTabWidget::viewModelChanged, pathBar, &PathBar::setModel);
+    connect(pathBar, &PathBar::rootChange, this, &CustomExplorer::expandAndSelectAbsolute);
+
 }
 
 bool CustomExplorer::treeViewSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
@@ -321,6 +326,8 @@ void CustomExplorer::tabChanged(int index)
     FileSystemModel *viewModel = static_cast<FileSystemModel *>(detailedView->model());
     QString viewModelCurrentPath = viewModel->getRoot()->getPath();
     expandAndSelectAbsolute(viewModelCurrentPath);
+
+    pathBar->setModel(viewModel);
 }
 
 void CustomExplorer::rootChangeFailed(QString path)
@@ -392,25 +399,37 @@ void CustomExplorer::setupGui(int nExplorer)
 
     treeView->setSizePolicy(sizePolicy1);
     treeView->setMinimumSize(QSize(400, 0));
-    treeView->setBaseSize(QSize(600, 0));
+    treeView->setBaseSize(QSize(400, 0));
     treeView->setSizeAdjustPolicy(QAbstractScrollArea::AdjustIgnored);
 
     splitter->addWidget(treeView);
+
     treeView->header()->setStretchLastSection(false);
 
-    tabWidget = new CustomTabWidget(splitter);
+    QWidget *expWidget = new QWidget(this);
+    QVBoxLayout *expLayout = new QVBoxLayout(expWidget);
+    expLayout->setContentsMargins(0, 0, 0, 0);
+    expLayout->setSpacing(0);
+
+    pathBar = new PathBar(expWidget);
+    expLayout->addWidget(pathBar);
+
+    tabWidget = new CustomTabWidget(expWidget);
     tabWidget->setObjectName(QString::fromUtf8("tabWidget") + QString::number(nExplorer));
-    tabWidget->setStyleSheet("QTabWidget::pane { border: 0px; } ");
+    tabWidget->setStyleSheet("QTabWidget::pane { border: 0px; }");
 
     QSizePolicy sizePolicy2(QSizePolicy::Expanding, QSizePolicy::Expanding);
     sizePolicy2.setHorizontalStretch(1);
     sizePolicy2.setVerticalStretch(0);
     sizePolicy2.setHeightForWidth(tabWidget->sizePolicy().hasHeightForWidth());
 
+    expWidget->setSizePolicy(sizePolicy2);
     tabWidget->setSizePolicy(sizePolicy2);
     tabWidget->setMinimumSize(QSize(0, 0));
 
-    splitter->addWidget(tabWidget);
+    expLayout->addWidget(tabWidget);
+
+    splitter->addWidget(expWidget);
 
     setLayout(new QVBoxLayout());
     layout()->setContentsMargins(0, 0, 0, 0);

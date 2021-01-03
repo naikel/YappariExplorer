@@ -35,6 +35,7 @@
 
 #include "View/customtreeview.h"
 #include "View/customtabwidget.h"
+#include "View/PathBar.h"
 
 #include "Window/AppWindow.h"
 
@@ -68,6 +69,7 @@ public slots:
 private:
     CustomTreeView *treeView;
     CustomTabWidget *tabWidget;
+    PathBar *pathBar;
     QSplitter *splitter;
 
     void setupGui(int nExplorer);

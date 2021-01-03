@@ -114,6 +114,9 @@ FileSystemModel::FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent
     connect(watcher, &DirectoryWatcher::fileAdded, this, &FileSystemModel::addPath);
     connect(watcher, &DirectoryWatcher::fileRemoved, this, &FileSystemModel::removePath);
 
+    // TODO: Refresh by path here, checking if it's the root, or only refreshing the branch
+    connect(watcher, &DirectoryWatcher::folderUpdated, this, &FileSystemModel::refresh);
+
     // Initialize the history
     history = new FileSystemHistory(this);
 }
@@ -505,7 +508,7 @@ bool FileSystemModel::willRecycle(FileSystemItem *item)
 
 void FileSystemModel::goForward()
 {
-    if (history->canGoForward()) {
+    if (canGoForward()) {
         QString path = history->getNextItem();
         setRoot(path);
     }
@@ -513,15 +516,56 @@ void FileSystemModel::goForward()
 
 void FileSystemModel::goBack()
 {
-    if (history->canGoBack()) {
+    if (canGoBack()) {
         QString path = history->getLastItem();
         setRoot(path);
     }
 }
 
+void FileSystemModel::goUp()
+{
+    if (canGoUp()) {
+        const QString& currentPath = getRoot()->getPath();
+        int index = currentPath.lastIndexOf(separator());
+        if (index > 1) {
+
+#ifdef Q_OS_WIN
+            // If the parent folder is a drive we need to complete it
+            if (index == 2 && currentPath.at(0).isLetter() && currentPath.at(1) == ':' && currentPath.at(2) == '\\') {
+
+                if (currentPath.size() == 3) {
+                    setRoot(fileInfoRetriever->getRootPath());
+                    return;
+                }
+                index ++;
+            }
+#endif
+
+            setRoot(currentPath.left(index));
+        }
+    }
+}
+
+bool FileSystemModel::canGoForward()
+{
+    return history->canGoForward();
+}
+
+bool FileSystemModel::canGoBack()
+{
+    return history->canGoBack();
+}
+
+bool FileSystemModel::canGoUp()
+{
+    return !(fileInfoRetriever->getRootPath() == getRoot()->getPath());
+}
+
 void FileSystemModel::refresh()
 {
-    setRoot(root->getPath());
+    if (!settingRoot.load()) {
+        setRoot(root->getPath());
+    }
 }
 
 void FileSystemModel::freeChildren(const QModelIndex &parent)
@@ -635,8 +679,11 @@ bool FileSystemModel::canDropMimeData(const QMimeData *data, Qt::DropAction acti
 
             if (urls.size() > 0) {
 
+                if (item->isFolder())
+                    itemPath += separator();
+
                 QString path = urls[0].toLocalFile().replace('/', separator());
-                int index = path.lastIndexOf(separator());
+                int index = qMax(path.lastIndexOf(separator()), itemPath.lastIndexOf(separator()));
 
                 if (path.left(index) == itemPath.left(index))
                     return false;
@@ -784,16 +831,28 @@ Qt::DropActions FileSystemModel::supportedDragActionsForIndexes(QModelIndexList 
  */
 Qt::DropAction FileSystemModel::defaultDropActionForIndex(QModelIndex index, const QMimeData *data, Qt::DropActions possibleActions)
 {
+    FileSystemItem *item {};
 
-    QString dstPath = getDropPath(index);
-    if (!dstPath.isNull()) {
+    if (!index.isValid() || !(index.flags() & Qt::ItemIsDropEnabled)) {
+        item = getRoot();
+    } else {
+        if (index.isValid() && index.internalPointer() != nullptr)
+            item = getFileSystemItem(index);
+    }
+
+    if (item != nullptr) {
+        QString dstPath = item->getPath();
+        if (item->isFolder())
+            dstPath += separator();
 
         QList<QUrl> urls = data->urls();
+
+        qDebug() << "Checking if " << urls << "can be dropped to " << dstPath;
 
         if (urls.size() > 0) {
 
             QString path = urls[0].toLocalFile().replace('/', separator());
-            int idx = path.lastIndexOf(separator());
+            int idx = qMax(path.lastIndexOf(separator()), dstPath.lastIndexOf(separator()));
 
             if (path.left(idx) == dstPath.left(idx))
                 return Qt::IgnoreAction;
@@ -816,6 +875,8 @@ Qt::DropAction FileSystemModel::defaultDropActionForIndex(QModelIndex index, con
 
             if (drive.right(1) == '/')
                 drive = drive.left(2) + separator();
+
+            QString dstPath = getDropPath(index);
 
             if (!drive.isEmpty() && dstPath.left(3) == drive) {
                 // Default action for files in the same drive is MoveAction
@@ -885,7 +946,7 @@ bool FileSystemModel::setRoot(const QString path)
         delete deleteLater;
     }
 
-    history->insert(path);
+    history->insert(path, root->getIcon());
 
     return result;
 }
@@ -1131,17 +1192,13 @@ void FileSystemModel::refreshPath(QString fileName)
     // Only the list view has other columns
     if (fileInfoRetriever->getScope() == FileInfoRetriever::List) {
 
-        if (root->getPath() == fileName)
-            refresh();
-        else {
-            FileSystemItem *fileSystemItem = root->getChild(fileName);
-            if (fileSystemItem) {
+        FileSystemItem *fileSystemItem = root->getChild(fileName);
+        if (fileSystemItem) {
 
-                // This can fail and return false if the file is deleted immediately after a modification,
-                // but we don't remove the file here because we will receive another notification that will handle that
+            // This can fail and return false if the file is deleted immediately after a modification,
+            // but we don't remove the file here because we will receive another notification that will handle that
 
-                fileInfoRetriever->refreshItem(fileSystemItem);
-            }
+            fileInfoRetriever->refreshItem(fileSystemItem);
         }
     }
 }

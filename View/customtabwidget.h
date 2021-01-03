@@ -35,6 +35,7 @@ signals:
                                       const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view);
     void defaultActionRequestedForItem(FileSystemItem *fileSystemItem);
     void folderFocus(FileSystemItem *fileSystemItem);
+    void viewModelChanged(FileSystemModel *model);
 
 
 protected:

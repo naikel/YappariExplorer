@@ -83,33 +83,38 @@ bool WinDirectoryWatcherv2::handleNativeEvent(const QByteArray &eventType, void 
                 strPath2 = QString::fromWCharArray(path2);
             }
 
-            qDebug() << "WinDirectoryWatcher::handleNativeEvent notification received " << lEvent << strPath1 << strPath2;
+            if (!strPath1.isEmpty()) {
 
-            switch (lEvent) {
-                case SHCNE_CREATE:
-                case SHCNE_MKDIR:
-                case SHCNE_DRIVEADD:
-                    emit fileAdded(strPath1);
-                    break;
-                case SHCNE_RENAMEFOLDER:
-                case SHCNE_RENAMEITEM:
-                    emit fileRename(strPath1, strPath2);
-                    break;
-                case SHCNE_DELETE:
-                case SHCNE_RMDIR:
-                case SHCNE_DRIVEREMOVED:
-                    emit fileRemoved(strPath1);
-                    break;
-                case SHCNE_UPDATEITEM:
-                    emit fileModified(strPath1);
-                    break;
-                case SHCNE_UPDATEDIR:
-                    break;
+                qDebug() << "WinDirectoryWatcher::handleNativeEvent notification received " << lEvent << strPath1 << strPath2;
+
+                switch (lEvent) {
+                    case SHCNE_CREATE:
+                    case SHCNE_MKDIR:
+                    case SHCNE_DRIVEADD:
+                        emit fileAdded(strPath1);
+                        break;
+                    case SHCNE_RENAMEFOLDER:
+                    case SHCNE_RENAMEITEM:
+                        emit fileRename(strPath1, strPath2);
+                        break;
+                    case SHCNE_DELETE:
+                    case SHCNE_RMDIR:
+                    case SHCNE_DRIVEREMOVED:
+                        emit fileRemoved(strPath1);
+                        break;
+                    case SHCNE_UPDATEITEM:
+                        emit fileModified(strPath1);
+                        break;
+                    case SHCNE_UPDATEDIR:
+                        emit folderUpdated(strPath1);
+                        break;
+                }
+
+                r = true;
+                *result = 0;
+            } else {
+                r = false;
             }
-
-            r = true;
-            *result = 0;
-
         }
         SHChangeNotification_Unlock(hNotifyLock);
     }

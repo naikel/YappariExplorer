@@ -18,6 +18,7 @@ signals:
     void fileModified(QString fileName);
     void fileAdded(QString fileName);
     void fileRemoved(QString fileName);
+    void folderUpdated(QString path);
 };
 
 #endif // DIRECTORYWATCHER_H

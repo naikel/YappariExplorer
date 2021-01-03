@@ -60,7 +60,7 @@ bool DetailedView::setRoot(QString root)
 void DetailedView::selectEvent()
 {
     qDebug() << "DetailedView::selectEvent";
-    for (QModelIndex selectedIndex : selectedIndexes()) {
+    for (QModelIndex& selectedIndex : selectedIndexes()) {
         if (selectedIndex.column() == 0 && selectedIndex.internalPointer() != nullptr) {
             FileSystemItem *fileSystemItem = getFileSystemModel()->getFileSystemItem(selectedIndex);
             qDebug() << "DetailedView::selectEvent selected for " << fileSystemItem->getPath();
@@ -253,9 +253,9 @@ void DetailedView::setSelectionFromViewportRect(const QRect &rect, QItemSelectio
     if (bottomRow > maxRow)
         bottomRow = maxRow;
 
-    QModelIndexList selectedIndexes;
+    QVector<QModelIndex> selectedIndexes;
     for (int row = topRow; row <= bottomRow; row++) {
-        QModelIndex index = model()->index(row, 0, QModelIndex());
+        const QModelIndex& index = model()->index(row, 0, QModelIndex());
         QRect indexRect = visualRect(index);
         QPoint topLeft = (isRightToLeft()) ? indexRect.topRight() : indexRect.topLeft();
         QPoint pos = mapToViewport(topLeft);
@@ -267,6 +267,6 @@ void DetailedView::setSelectionFromViewportRect(const QRect &rect, QItemSelectio
 
     selectionModel()->clear();
     selectionModel()->select(currentSelection, command);
-    for (QModelIndex index : selectedIndexes)
+    for (QModelIndex& index : selectedIndexes)
         selectionModel()->select(index, command);
 }

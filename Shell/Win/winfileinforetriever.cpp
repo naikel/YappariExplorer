@@ -369,6 +369,17 @@ bool WinFileInfoRetriever::refreshItem(FileSystemItem *fileSystemItem)
 
         fileSystemItem->setHidden(fileAttributeData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN);
 
+        // File Type
+        if (!fileSystemItem->isFolder()) {
+            SFGAOF noAttributes {};
+            UINT flags = SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME;
+            SHFILEINFO info;
+            ::SHGetFileInfo(fileSystemItem->getPath().toStdWString().c_str(), noAttributes, &info, sizeof(SHFILEINFO), flags);
+            fileSystemItem->setType(QString::fromStdWString(info.szTypeName));
+        } else {
+            fileSystemItem->setType(QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer"));
+        }
+
         emit itemUpdated(fileSystemItem);
 
         return true;
