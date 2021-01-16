@@ -19,12 +19,30 @@ bool FileSystemHistory::isCursorAtTheEnd()
     return (cursor == (pathList.size() - 1));
 }
 
-void FileSystemHistory::insert(QString path, QIcon icon)
+void FileSystemHistory::insert(FileSystemItem *item)
 {
     // Check if we're just trying to reinsert the same path the cursor is at
-    if (cursor >= 0 && cursor < pathList.size() && (path == pathList.at(cursor)->path))
+    if (cursor >= 0 && cursor < pathList.size() && (item->getPath() == pathList.at(cursor)->path))
         return;
 
+    // If the path is already in history, remove it, so it gets added at the end with a new icon and displayName (they could have changed)
+    int row     {};
+    bool found  {};
+    while (row < pathList.size()) {
+        HistoryEntry *entry = pathList.at(row);
+        if (entry->path == item->getPath()) {
+            found = true;
+            break;
+        }
+        row++;
+    }
+
+    if (found) {
+        pathList.removeAt(row);
+        cursor--;
+    }
+
+    // If the cursor is not at the end we discard all forward history from the cursor
     if (!isCursorAtTheEnd()) {
 
         int itemsToRemove = pathList.size() - cursor - 1;
@@ -40,8 +58,9 @@ void FileSystemHistory::insert(QString path, QIcon icon)
     }
 
     HistoryEntry *newEntry = new HistoryEntry;
-    newEntry->path = path;
-    newEntry->icon = icon;
+    newEntry->path =        item->getPath();
+    newEntry->icon =        item->getIcon();
+    newEntry->displayName = item->getDisplayName();
 
     pathList.append(newEntry);
     cursor++;
@@ -76,4 +95,24 @@ QString FileSystemHistory::getNextItem()
     }
 
     return QString();
+}
+
+QString FileSystemHistory::getItemAtPos(int pos)
+{
+    if (pos >= 0 && pos < pathList.size()) {
+        cursor = pos;
+        return pathList.at(cursor)->path;
+    }
+
+    return QString();
+}
+
+int FileSystemHistory::getCursor() const
+{
+    return cursor;
+}
+
+QList<HistoryEntry *>& FileSystemHistory::getPathList()
+{
+    return pathList;
 }

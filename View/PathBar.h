@@ -5,6 +5,7 @@
 #include <QFrame>
 
 #include "Model/filesystemmodel.h"
+#include "View/PathBarButton.h"
 
 class PathBar : public QFrame
 {
@@ -14,17 +15,18 @@ public:
 
 public slots:
     void setModel(FileSystemModel *model);
+    void menuSelected(QAction *action);
 
 signals:
     void rootChange(QString path);
 
 private:
     FileSystemModel *model {};
-    QPushButton *backButton;
-    QPushButton *upButton;
-    QPushButton *nextButton;
+    PathBarButton *backButton;
+    PathBarButton *upButton;
+    PathBarButton *nextButton;
 
-    QPushButton *createButton(QIcon icon, QString objectName);
+    PathBarButton *createButton(QIcon icon, QString objectName);
 
 private slots:
     void buttonClicked();

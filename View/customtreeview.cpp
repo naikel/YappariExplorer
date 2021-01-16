@@ -9,6 +9,38 @@
 #include "Model/filesystemmodel.h"
 #include "Base/baseitemdelegate.h"
 
+#include <QProxyStyle>
+
+/*!
+ * \brief A ProxyStyle class.
+ *
+ * This proxy style class fixes a bug where the base style not always clear the decoration after the cursor
+ * has left hovering it.
+ *
+ */
+class ProxyStyle : public QProxyStyle {
+
+    void drawPrimitive(QStyle::PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget = nullptr) const override {
+
+        QStyleOptionViewItem *opt = const_cast<QStyleOptionViewItem *>(reinterpret_cast<const QStyleOptionViewItem *>(option));
+
+        if (element == QStyle::PE_IndicatorBranch) {
+
+            const CustomTreeView *treeView = dynamic_cast<const CustomTreeView *>(widget);
+            QPoint pos = treeView->mapFromGlobal(QCursor::pos());
+            QPoint pos2 = pos;
+            pos2 += { treeView->indentation(), 0 };
+
+            // Cursor is not hovering this item
+            if (!treeView->indexAt(pos).isValid() && !treeView->indexAt(pos2).isValid())
+                opt->state &= ~QStyle::State_MouseOver;
+        }
+
+        QProxyStyle::drawPrimitive(element, opt, painter, widget);
+    }
+
+};
+
 CustomTreeView::CustomTreeView(QWidget *parent) : BaseTreeView(parent)
 {
     // Custom initialization
@@ -26,6 +58,10 @@ CustomTreeView::CustomTreeView(QWidget *parent) : BaseTreeView(parent)
     // Disconnect the default customContextMenuRequested to disable background context menu requests
     // Context menu on items is done by mousePressEvent directly
     disconnect(this, &QTreeView::customContextMenuRequested, 0, 0);
+
+    BaseItemDelegate *baseDelegate = new BaseItemDelegate(this);
+    setItemDelegateForColumn(FileSystemModel::Columns::Name, baseDelegate);
+    setStyle(new ProxyStyle);
 }
 
 QModelIndex CustomTreeView::selectedItem()
@@ -97,7 +133,6 @@ void CustomTreeView::setDropAction(QDropEvent *event)
 
     // Ignore the action if the drop is coming from another view and is moving objects to the same folder
     if (event->possibleActions() & Qt::CopyAction && event->mimeData()->urls().size() > 0) {
-        QString drive;
         QUrl url = event->mimeData()->urls().at(0);
         QString srcPath = url.toLocalFile();
 
@@ -224,7 +259,13 @@ void CustomTreeView::mouseMoveEvent(QMouseEvent *event)
  * This function fixes a Qt bug where expand/collapse icons do not return to normal colors after
  * hovering the mouse out of them.  See QTBUG-86852.
  *
+ * It also has a better detection of the decoration than the base implementation because of the
+ * new implementation of indexAt() and visualRect() functions.
+ *
  * Basically this function updates the old row.
+ *
+ * \see CustomTreeView::indexAt
+ * \see CustomTreeView::visualRect
  */
 bool CustomTreeView::viewportEvent(QEvent *event)
 {
@@ -234,16 +275,36 @@ bool CustomTreeView::viewportEvent(QEvent *event)
         case QEvent::HoverMove: {
 
             QHoverEvent *he = static_cast<QHoverEvent*>(event);
-            QModelIndex index = indexAt(he->pos());
-            if (index.isValid() && index != hoverIndex) {
+            QPoint pos = he->pos();
+            QModelIndex index = QModelIndex();
+
+            // If the cursor is over the text then it is not over the decoration
+            // so it is invalid for the purpose of this function
+            // Otherwise we try to get the index of the decoration only if the cursor
+            // is over a decoration
+            if (!indexAt(he->pos()).isValid()) {
+                pos += { indentation(), 0 };
+                index = indexAt(pos);
+            }
+
+            if (hoverIndex.isValid() && index != hoverIndex) {
 
                 // Workaround for QTBUG-86852
+                // Clear last hovered index
                 QRect rect = visualRect(hoverIndex);
                 rect.setX(0);
                 rect.setWidth(viewport()->width());
                 viewport()->update(rect);
             }
             hoverIndex = index;
+
+            if (index.isValid()) {
+                // Update the hovered row
+                QRect rect = visualRect(index);
+                rect.setX(0);
+                rect.setWidth(viewport()->width());
+                viewport()->update(rect);
+            }
             break;
         }
         default:

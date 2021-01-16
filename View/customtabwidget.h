@@ -15,8 +15,8 @@ public:
     void addNewTab(const QString path);
 
 public slots:
-    bool setViewIndex(const QModelIndex &index);
-    void changeRootPath(const QString path);
+    bool setViewRootIndex(const QModelIndex &index);
+    bool setViewRootPath(const QString &path);
     void doubleClicked(const QModelIndex &index);
     void updateTab();
     void nameTab(int index, FileSystemItem *item);

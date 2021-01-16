@@ -46,6 +46,13 @@ int main(int argc, char *argv[])
 
     QApplication a(argc, argv);
 
+#ifdef Q_OS_WIN
+    // On Windows Qt default font is always MS Shell Dlg 2 except in QMenu
+    // Set that to the whole application
+    // This is supposed to be fixed in Qt 6
+    a.setFont(QApplication::font("QMenu"));
+#endif
+
 #ifdef YAPPARI_CRASH_REPORT
    YappariCrashReport::setSignalHandler( [] (const QString &inStackTrace) {
 

@@ -69,7 +69,7 @@ void BaseItemDelegate::initStyleOption(QStyleOptionViewItem *option, const QMode
 
     // If we are editing this item don't draw the text underneath
     if (treeView->isEditingIndex(index))
-        option->text = "";
+        option->text = QString();
 }
 
 QWidget *BaseItemDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const

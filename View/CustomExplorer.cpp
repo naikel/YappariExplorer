@@ -48,7 +48,7 @@ void CustomExplorer::initialize(AppWindow *mainWindow)
 
     // Handling of single selections
     connect(treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CustomExplorer::treeViewSelectionChanged);
-    connect(treeView, &CustomTreeView::clicked, tabWidget, &CustomTabWidget::setViewIndex);
+    connect(treeView, &CustomTreeView::clicked, tabWidget, &CustomTabWidget::setViewRootIndex);
 
     // Focus change (application title update)
     connect(tabWidget, &CustomTabWidget::folderFocus, mainWindow, &AppWindow::updateTitle);
@@ -88,7 +88,7 @@ bool CustomExplorer::treeViewSelectionChanged(const QItemSelection &selected, co
 
     QModelIndexList indexes = selected.indexes();
     if (indexes.size() > 0)
-        return tabWidget->setViewIndex(indexes.at(0));
+        return tabWidget->setViewRootIndex(indexes.at(0));
     else {
         // We need to select something, the parent
 
@@ -284,7 +284,7 @@ void CustomExplorer::collapseAndSelect(QModelIndex index)
             {
                 if (i.internalPointer() == index.internalPointer()) {
                     FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
-                    tabWidget->changeRootPath(fileSystemItem->getPath());
+                    tabWidget->setViewRootPath(fileSystemItem->getPath());
                     treeView->selectIndex(index);
                 }
             }
@@ -347,7 +347,7 @@ void CustomExplorer::rootChangeFailed(QString path)
             qDebug() << index.row() << index.column() << indexItem->getPath();
         }
 
-        tabWidget->setViewIndex(index);
+        tabWidget->setViewRootIndex(index);
 
         // Refresh
 
@@ -361,7 +361,7 @@ void CustomExplorer::rootChangeFailed(QString path)
         FileSystemModel *treeViewModel = reinterpret_cast<FileSystemModel *>(treeView->model());
         index = treeViewModel->index(0, 0);
         treeView->selectIndex(index);
-        tabWidget->setViewIndex(index);
+        tabWidget->setViewRootIndex(index);
     }
 }
 

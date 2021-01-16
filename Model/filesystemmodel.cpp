@@ -141,6 +141,7 @@ FileSystemModel::~FileSystemModel()
         disconnect(watcher, &DirectoryWatcher::fileModified, this, &FileSystemModel::refreshPath);
         disconnect(watcher, &DirectoryWatcher::fileAdded, this, &FileSystemModel::addPath);
         disconnect(watcher, &DirectoryWatcher::fileRemoved, this, &FileSystemModel::removePath);
+        disconnect(watcher, &DirectoryWatcher::folderUpdated, this, &FileSystemModel::refresh);
         watcher->deleteLater();
         watcher = nullptr;
     }
@@ -179,7 +180,7 @@ QModelIndex FileSystemModel::index(int row, int column, const QModelIndex &paren
         return createIndex(row, column, (fileInfoRetriever->getScope() == FileInfoRetriever::List) ? root->getChildAt(row) : this->root);
 
     if (parent.isValid() && parent.internalPointer() != nullptr) {
-        FileSystemItem *parentItem = static_cast<FileSystemItem*>(parent.internalPointer());
+        FileSystemItem *parentItem = getFileSystemItem(parent);
 
         return createIndex(row, column, parentItem->getChildAt(row));
     }
@@ -522,6 +523,14 @@ void FileSystemModel::goBack()
     }
 }
 
+
+void FileSystemModel::goToPos(int pos)
+{
+    QString path = history->getItemAtPos(pos);
+    if (!path.isNull())
+        setRoot(path);
+}
+
 void FileSystemModel::goUp()
 {
     if (canGoUp()) {
@@ -561,10 +570,53 @@ bool FileSystemModel::canGoUp()
     return !(fileInfoRetriever->getRootPath() == getRoot()->getPath());
 }
 
-void FileSystemModel::refresh()
+QList<HistoryEntry *> &FileSystemModel::getHistory(int *cursor) const
 {
-    if (!settingRoot.load()) {
-        setRoot(root->getPath());
+    *cursor = history->getCursor();
+    return history->getPathList();
+}
+
+void FileSystemModel::refresh(QString path)
+{
+    if (path == root->getPath() && !settingRoot.load() && !fetchingMore.load()) {
+        qDebug() << "FileSystemModel::refresh" << fileInfoRetriever->getScope();
+        fetchingMore.store(true);
+        emit fetchStarted();
+
+        // Abort all the pending threads
+        pool.clear();
+        qDebug() << "FileSystemModel::refresh" << fileInfoRetriever->getScope() << "Waiting for all threads to finish";
+        pool.waitForDone();
+        qDebug() << "FileSystemModel::refresh" << fileInfoRetriever->getScope() << "All threads finished";
+
+        // Process all dataChanged events that could still modify the old root structure
+        QApplication::processEvents();
+
+        removeAllRows(index(root));
+
+        fileInfoRetriever->getInfo(root);
+        qDebug() << "FileSystemModel::refresh root is ready" << root->getPath();
+
+        // Now let's tell the views brand new rows are coming
+        beginInsertRows(index(root), 0, 0);
+    }
+}
+
+void FileSystemModel::refreshPath(QString fileName)
+{
+    qDebug() << "FileSystemModel::refreshPath" << fileInfoRetriever->getScope() << fileInfoRetriever->getScope() << fileName;
+
+    // Only the list view has other columns
+    if (fileInfoRetriever->getScope() == FileInfoRetriever::List) {
+
+        FileSystemItem *fileSystemItem = root->getChild(fileName);
+        if (fileSystemItem) {
+
+            // This can fail and return false if the file is deleted immediately after a modification,
+            // but we don't remove the file here because we will receive another notification that will handle that
+
+            fileInfoRetriever->refreshItem(fileSystemItem);
+        }
     }
 }
 
@@ -901,10 +953,10 @@ QModelIndex FileSystemModel::relativeIndex(QString path, QModelIndex parent)
 {
     qDebug() << "FileSystemModel::relativeIndex" << path;
     if (parent.isValid() && parent.internalPointer() != nullptr) {
-        FileSystemItem *fileSystemItem = static_cast<FileSystemItem *>(parent.internalPointer());
-        FileSystemItem *child = fileSystemItem->getChild(path);
+        FileSystemItem *item = getFileSystemItem(parent);
+        FileSystemItem *child = item->getChild(path);
 
-        return createIndex(fileSystemItem->childRow(child), 0, child);
+        return createIndex(item->childRow(child), 0, child);
 
     }
     return QModelIndex();
@@ -946,7 +998,7 @@ bool FileSystemModel::setRoot(const QString path)
         delete deleteLater;
     }
 
-    history->insert(path, root->getIcon());
+    history->insert(root);
 
     return result;
 }
@@ -959,15 +1011,20 @@ FileSystemItem *FileSystemModel::getRoot() const
 
 bool FileSystemModel::removeAllRows(const QModelIndex &parent)
 {
-    if (parent.isValid() && parent.internalPointer() != nullptr) {
+    FileSystemItem *item {};
+    if (fileInfoRetriever->getScope() == FileInfoRetriever::Tree && parent.isValid() && parent.internalPointer() != nullptr)
+        item = getFileSystemItem(parent);
+    else if (fileInfoRetriever->getScope() == FileInfoRetriever::List)
+        item = root;
+
+    if (item != nullptr) {
         int count = rowCount(parent);
 
         qDebug() << "FileSystemModel::removeAllRows removing" << count << "rows";
         if (count > 0) {
-            FileSystemItem *fileSystemItem = static_cast<FileSystemItem *>(parent.internalPointer());
 
             beginRemoveRows(parent, 0, count - 1);
-            fileSystemItem->removeChildren();
+            item->removeChildren();
             endRemoveRows();
 
             return true;
@@ -986,7 +1043,7 @@ QModelIndex FileSystemModel::parent(QString path) const
 {
     qDebug() << "FileSystemModel::parent" << path;
 
-    if (path == "/") {
+    if (path == fileInfoRetriever->getRootPath()) {
         return QModelIndex();
     }
 
@@ -1010,7 +1067,7 @@ QModelIndex FileSystemModel::parent(QString path) const
 
             if (absolutePath.isEmpty())
                 absolutePath = folder + separator();
-            else if (absolutePath.at(absolutePath.length()-1) != separator())
+            else if (absolutePath.at(absolutePath.length() - 1) != separator())
                 absolutePath += separator() + folder;
             else
                 absolutePath += folder;
@@ -1182,24 +1239,6 @@ void FileSystemModel::renamePath(QString oldFileName, QString newFileName)
         }
         qDebug() << "FileSystemModel::renamePath" << fileInfoRetriever->getScope() << "couldn't find index for" << oldFileName << "in" << root->getPath() << " - Trying addPath";
         addPath(newFileName);
-    }
-}
-
-void FileSystemModel::refreshPath(QString fileName)
-{
-    qDebug() << "FileSystemModel::refreshPath" << fileInfoRetriever->getScope() << fileInfoRetriever->getScope() << fileName;
-
-    // Only the list view has other columns
-    if (fileInfoRetriever->getScope() == FileInfoRetriever::List) {
-
-        FileSystemItem *fileSystemItem = root->getChild(fileName);
-        if (fileSystemItem) {
-
-            // This can fail and return false if the file is deleted immediately after a modification,
-            // but we don't remove the file here because we will receive another notification that will handle that
-
-            fileInfoRetriever->refreshItem(fileSystemItem);
-        }
     }
 }
 

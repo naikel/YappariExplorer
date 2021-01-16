@@ -13,13 +13,13 @@ WinDirectoryWatcherv2::WinDirectoryWatcherv2(QObject *parent) : DirectoryWatcher
 
 WinDirectoryWatcherv2::~WinDirectoryWatcherv2()
 {
-    qDebug() << "WinDirectoryWatcher::~WinDirectoryWatcher About to destroy";
+    qDebug() << "WinDirectoryWatcher::~WinDirectoryWatcher About to destroy" << id;
 
     QStringList paths = watchedPaths.keys();
     for (QString path : paths)
         removePath(path);
 
-    qDebug() << "WinDirectoryWatcher::~WinDirectoryWatcher Destroyed";
+    qDebug() << "WinDirectoryWatcher::~WinDirectoryWatcher Destroyed" << id;
 }
 
 void WinDirectoryWatcherv2::addPath(QString path)
@@ -27,34 +27,38 @@ void WinDirectoryWatcherv2::addPath(QString path)
     LPITEMIDLIST pidl;
     HRESULT hr;
 
-    hr = ::SHParseDisplayName(path.toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
+    if (!watchedPaths.contains(path)) {
 
-    if (SUCCEEDED(hr)) {
+        hr = ::SHParseDisplayName(path.toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
 
-        HWND hwnd = reinterpret_cast<HWND>(AppWindow::getWinId());
+        if (SUCCEEDED(hr)) {
 
-        SHChangeNotifyEntry const entries[] = { { pidl, false } };
+            HWND hwnd = reinterpret_cast<HWND>(AppWindow::getWinId());
 
-        int nSources = SHCNRF_ShellLevel | SHCNRF_InterruptLevel | SHCNRF_NewDelivery;
+            SHChangeNotifyEntry const entries[] = { { pidl, false } };
 
-        ULONG regId;
-        if (SUCCEEDED(regId = SHChangeNotifyRegister(hwnd, nSources, SHCNE_ALLEVENTS, id, ARRAYSIZE(entries), entries))) {
+            int nSources = SHCNRF_ShellLevel | SHCNRF_InterruptLevel | SHCNRF_NewDelivery;
 
-            watchedPaths.insert(path, regId);
+            ULONG regId;
+            if (SUCCEEDED(regId = SHChangeNotifyRegister(hwnd, nSources, SHCNE_ALLEVENTS, id, ARRAYSIZE(entries), entries))) {
 
-            qDebug() << "WinDirectoryWatcher::run watching path " << path;
+                watchedPaths.insert(path, regId);
+
+                qDebug() << "WinDirectoryWatcher::addPath watching path " << id << path << watchedPaths;
+            }
+
+            ::CoTaskMemFree(pidl);
         }
-
-        ::CoTaskMemFree(pidl);
     }
 }
 
 void WinDirectoryWatcherv2::removePath(QString path)
 {
-    qDebug() << "WinDirectoryWatcher::removePath" << path;
+    qDebug() << "WinDirectoryWatcher::removePath" << id << path;
     if (watchedPaths.contains(path)) {
         SHChangeNotifyDeregister(watchedPaths.value(path));
-        qDebug() << "WinDirectoryWatcher::removePath removed successfully" << path;
+        watchedPaths.remove(path);
+        qDebug() << "WinDirectoryWatcher::removePath removed successfully" << id << path << watchedPaths;
     }
 }
 
@@ -85,7 +89,44 @@ bool WinDirectoryWatcherv2::handleNativeEvent(const QByteArray &eventType, void 
 
             if (!strPath1.isEmpty()) {
 
-                qDebug() << "WinDirectoryWatcher::handleNativeEvent notification received " << lEvent << strPath1 << strPath2;
+                QString strEvent;
+                switch (lEvent) {
+                    case SHCNE_CREATE:
+                        strEvent = "SHCNE_CREATE";
+                        break;
+                    case SHCNE_MKDIR:
+                        strEvent = "SHCNE_MKDIR";
+                        break;
+                    case SHCNE_DRIVEADD:
+                        strEvent = "SHCNE_DRIVEADD";
+                        break;
+                    case SHCNE_RENAMEFOLDER:
+                        strEvent = "SHCNE_RENAMEFOLDER";
+                        break;
+                    case SHCNE_RENAMEITEM:
+                        strEvent = "SHCNE_RENAMEITEM";
+                        break;
+                    case SHCNE_DELETE:
+                        strEvent = "SHCNE_DELETE";
+                        break;
+                    case SHCNE_RMDIR:
+                        strEvent = "SHCNE_RMDIR";
+                        break;
+                    case SHCNE_DRIVEREMOVED:
+                        strEvent = "SHCNE_DRIVEREMOVED";
+                        break;
+                    case SHCNE_UPDATEITEM:
+                        strEvent = "SHCNE_UPDATEITEM";
+                        break;
+                    case SHCNE_UPDATEDIR:
+                        strEvent = "SHCNE_UPDATEDIR";
+                        break;
+                    default:
+                        strEvent = "UNKNOWN";
+
+                }
+
+                qDebug() << "WinDirectoryWatcher::handleNativeEvent notification received " << id << strEvent << strPath1 << strPath2 << watchedPaths;
 
                 switch (lEvent) {
                     case SHCNE_CREATE:

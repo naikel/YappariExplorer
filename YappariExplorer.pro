@@ -48,6 +48,7 @@ SOURCES += \
     View/Base/basetreeview.cpp \
     View/CustomExplorer.cpp \
     View/PathBar.cpp \
+    View/PathBarButton.cpp \
     View/customtabbar.cpp \
     View/customtabbarstyle.cpp \
     View/customtabwidget.cpp \
@@ -71,6 +72,7 @@ HEADERS += \
     View/Base/basetreeview.h \
     View/CustomExplorer.h \
     View/PathBar.h \
+    View/PathBarButton.h \
     View/customtabbar.h \
     View/customtabbarstyle.h \
     View/customtabwidget.h \

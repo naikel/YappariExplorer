@@ -44,27 +44,22 @@ void CustomTabWidget::addNewTab(const QString path)
     setCurrentIndex(pos);
 }
 
-bool CustomTabWidget::setViewIndex(const QModelIndex &index)
+bool CustomTabWidget::setViewRootIndex(const QModelIndex &index)
 {
     qDebug() << "CustomTabWidget::setViewIndex";
     if (index.isValid() && index.internalPointer() != nullptr) {
-        DetailedView *detailedView = static_cast<DetailedView *>(currentWidget());
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
-        return detailedView->setRoot(fileSystemItem->getPath());
+        return setViewRootPath(fileSystemItem->getPath());
     }
 
     return false;
 }
 
-void CustomTabWidget::changeRootPath(const QString path)
+bool CustomTabWidget::setViewRootPath(const QString &path)
 {
-    qDebug() << "CustomTabWidget::changeRootPath new path " << path;
+    qDebug() << "CustomTabWidget::setViewRootPath new path " << path;
     DetailedView *detailedView = static_cast<DetailedView *>(currentWidget());
-    FileSystemModel *fileSystemModel = static_cast<FileSystemModel *>(detailedView->model());
-    if (!(fileSystemModel->getRoot()->getPath() == path))
-        fileSystemModel->setRoot(path);
-    else
-        qDebug() << "CustomTabWidget::changeRootPath already in path " << path;
+    return detailedView->setRoot(path);
 }
 
 void CustomTabWidget::doubleClicked(const QModelIndex &index)
@@ -76,7 +71,7 @@ void CustomTabWidget::doubleClicked(const QModelIndex &index)
             QString path = fileSystemItem->getPath();
 
             // This will delete (free) the fileSystemItem of index and will be no longer valid
-            if (setViewIndex(index))
+            if (setViewRootIndex(index))
                 emit rootRelativeChange(path);
         } else {
             emit defaultActionRequestedForItem(fileSystemItem);

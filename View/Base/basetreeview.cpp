@@ -138,7 +138,7 @@ void BaseTreeView::keyPressEvent(QKeyEvent *event)
             break;
 
         case Qt::Key_F5:
-            getFileSystemModel()->refresh();
+            getFileSystemModel()->refresh(getFileSystemModel()->getRoot()->getPath());
             break;
 
 
@@ -459,7 +459,9 @@ QModelIndex BaseTreeView::indexAt(const QPoint &point) const
     if (index.isValid() && index.column() == 0) {
 
         QRect rect = visualRect(index);
-        if (rect.x() > point.x() || (rect.width() + rect.x()) < point.x())
+
+        bool isInRect = (point.x() >= rect.x()) && (point.x() <= rect.x() + rect.width());
+        if (!isInRect)
             return QModelIndex();
     }
 
@@ -501,8 +503,9 @@ QRect BaseTreeView::visualRect(const QModelIndex &index) const
         x2 += padding;
 
         // This disables the decoration hovering: not good
+        // But positions correctly the editor...
         if (rootIsDecorated()) {
-            //x1 += iconSize + 7;
+            x1 += indentation();
             x2 += indentation();
         }
 
@@ -576,7 +579,7 @@ void BaseTreeView::contextMenuRequested(const QPoint &pos)
         }
 
         viewAspect = ContextMenu::Selection;
-        for (QModelIndex selectedIndex : selectedIndexes()) {
+        for (const QModelIndex selectedIndex : selectedIndexes()) {
             if (selectedIndex.column() == 0 && selectedIndex.internalPointer() != nullptr) {
                 FileSystemItem *fileSystemItem = getFileSystemModel()->getFileSystemItem(selectedIndex);
                 fileSystemItems.append(fileSystemItem);

@@ -16,28 +16,6 @@
 
 CustomTabBar::CustomTabBar(QWidget *parent) : QTabBar(parent)
 {
-
-#ifdef Q_OS_WIN
-
-    // The tab bar doesn't have the default font on Windows 10
-    // I believe this will be fixed in Qt 6 but in the meantime let's just get the default font and apply it to the tab bar
-    // Most of the cases it should be Segoe UI 9 pts
-
-    NONCLIENTMETRICS ncm;
-    ncm.cbSize = FIELD_OFFSET(NONCLIENTMETRICS, lfMessageFont) + sizeof(LOGFONT);
-    SystemParametersInfo(SPI_GETNONCLIENTMETRICS, ncm.cbSize , &ncm, 0);
-
-    HDC defaultDC = GetDC(nullptr);
-    int verticalDPI_In = GetDeviceCaps(defaultDC, LOGPIXELSY);
-    ReleaseDC(nullptr, defaultDC);
-
-    QFont f = font();
-    f.setFamily(QString::fromWCharArray(ncm.lfMenuFont.lfFaceName));
-    f.setPointSize(static_cast<int>(qAbs(ncm.lfMenuFont.lfHeight) * 72.0 / qreal(verticalDPI_In)));
-    setFont(f);
-
-#endif
-
     CustomTabBarStyle *style = new CustomTabBarStyle();
     setStyle(style);
     setExpanding(false);

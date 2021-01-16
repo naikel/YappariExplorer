@@ -91,6 +91,8 @@ public:
     void fetchMore(const QModelIndex &parent) override;
     void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;
     Qt::ItemFlags flags(const QModelIndex &index) const override;
+
+    // Drag n' Drop
     Qt::DropActions supportedDropActions() const override;
     QMimeData *mimeData(const QModelIndexList &indexes) const override;
     bool canDropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) const override;
@@ -114,13 +116,18 @@ public:
     void removeIndexes(QModelIndexList indexList, bool permanent);
     void startWatch(FileSystemItem *parent, QString verb);
     bool willRecycle(FileSystemItem *item);
+
+    // History
     void goForward();
     void goBack();
     void goUp();
+    void goToPos(int pos);
     bool canGoForward();
     bool canGoBack();
     bool canGoUp();
-    void refresh();
+
+    QList<HistoryEntry *> &getHistory(int *cursor) const;
+
 
     // Inline functions
     inline FileSystemItem *getFileSystemItem(QModelIndex index) const {
@@ -132,6 +139,7 @@ public slots:
     void itemUpdated(FileSystemItem *item);
     void extendedInfoUpdated(FileSystemItem *parent);
     void freeChildren(const QModelIndex &parent);
+    void refresh(QString path);
 
 signals:
     void fetchStarted();

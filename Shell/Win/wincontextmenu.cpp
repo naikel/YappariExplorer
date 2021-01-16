@@ -168,7 +168,7 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
                         } else if (strVerb == VERB_REFRESH && view != nullptr) {
 
                             FileSystemModel *model = getFileSystemModel(view);
-                            model->refresh();
+                            model->refresh(parent->getPath());
 
                         } else {
 
