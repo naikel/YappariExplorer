@@ -57,6 +57,7 @@ public:
     void setAllChildrenFetched(bool value);
 
     bool isDrive() const;
+    bool isInADrive() const;
 
     QVariant getData(int column);
 

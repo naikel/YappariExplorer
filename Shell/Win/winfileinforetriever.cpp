@@ -298,25 +298,6 @@ void WinFileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
     qDebug() << "WinFileInfoRetriever::getExtendedInfo Finished in" << start.elapsed() << "milliseconds";
 }
 
-QIcon WinFileInfoRetriever::getIcon(FileSystemItem *item) const
-{
-    ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-    // qDebug() << "WinFileInfoRetriever::getIcon " << getScope() << item->getPath();
-    LPITEMIDLIST pidl;
-    HRESULT hr;
-    if (SUCCEEDED(hr = ::SHParseDisplayName(item->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr))) {
-        QIcon icon = getIconFromPIDL(pidl, item->isHidden());
-        ::ILFree(pidl);
-        ::CoUninitialize();
-        return icon;
-    }
-    else
-        qDebug() << "WinFileInfoRetriever::getIcon failed " << QString::number(hr, 16) << getScope() << item->getPath();
-
-    ::CoUninitialize();
-    return QIcon();
-}
-
 void WinFileInfoRetriever::setDisplayNameOf(FileSystemItem *fileSystemItem)
 {
     SFGAOF attributes {};
@@ -352,6 +333,8 @@ bool WinFileInfoRetriever::refreshItem(FileSystemItem *fileSystemItem)
             fileSystemItem->setFolder(true);
         }
 
+        fileSystemItem->setHidden(fileAttributeData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN);
+
         SFGAOF attributes {};
         ULONG flags = SFGAO_CAPABILITYMASK;
         if (getScope() == FileInfoRetriever::Tree && fileSystemItem->isFolder())
@@ -364,21 +347,23 @@ bool WinFileInfoRetriever::refreshItem(FileSystemItem *fileSystemItem)
                 fileSystemItem->setHasSubFolders(attributes & SFGAO_HASSUBFOLDER);
 
             setCapabilities(fileSystemItem, attributes);
+
+            // Refresh icon
+            fileSystemItem->setIcon(getIconFromPIDL(pidl, fileSystemItem->isHidden(), true));
+
             ::ILFree(pidl);
         }
 
-        fileSystemItem->setHidden(fileAttributeData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN);
-
         // File Type
-        if (!fileSystemItem->isFolder()) {
+        //if (!fileSystemItem->isFolder()) {
             SFGAOF noAttributes {};
-            UINT flags = SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME;
+            UINT sFlags = SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME;
             SHFILEINFO info;
-            ::SHGetFileInfo(fileSystemItem->getPath().toStdWString().c_str(), noAttributes, &info, sizeof(SHFILEINFO), flags);
+            ::SHGetFileInfo(fileSystemItem->getPath().toStdWString().c_str(), noAttributes, &info, sizeof(SHFILEINFO), sFlags);
             fileSystemItem->setType(QString::fromStdWString(info.szTypeName));
-        } else {
-            fileSystemItem->setType(QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer"));
-        }
+        //} else {
+        //    fileSystemItem->setType(QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer"));
+        //}
 
         emit itemUpdated(fileSystemItem);
 
@@ -438,6 +423,25 @@ bool WinFileInfoRetriever::willRecycle(FileSystemItem *fileSystemItem)
     }
 
     return false;
+}
+
+QIcon WinFileInfoRetriever::getIcon(FileSystemItem *item) const
+{
+    ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    // qDebug() << "WinFileInfoRetriever::getIcon " << getScope() << item->getPath();
+    LPITEMIDLIST pidl;
+    HRESULT hr;
+    if (SUCCEEDED(hr = ::SHParseDisplayName(item->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr))) {
+        QIcon icon = getIconFromPIDL(pidl, item->isHidden());
+        ::ILFree(pidl);
+        ::CoUninitialize();
+        return icon;
+    }
+    else
+        qDebug() << "WinFileInfoRetriever::getIcon failed " << QString::number(hr, 16) << getScope() << item->getPath();
+
+    ::CoUninitialize();
+    return QIcon();
 }
 
 QIcon WinFileInfoRetriever::getIconFromPath(QString path, bool isHidden, bool ignoreDefault) const

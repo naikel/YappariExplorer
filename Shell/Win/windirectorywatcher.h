@@ -4,6 +4,8 @@
 #include <qt_windows.h>
 #include <fileapi.h>
 
+#include <QMutex>
+#include <QHash>
 #include <QMap>
 
 #include "Shell/directorywatcher.h"
@@ -25,15 +27,19 @@ private:
 
     typedef struct _DirectoryWatch {
         QString path;
-        HANDLE handle                       {};
-        OVERLAPPED overlapped               {};
-        FILE_NOTIFY_INFORMATION info[32]    {};
-        DWORD dwBytesReturned               {};
+        HANDLE handle                           {};
+        OVERLAPPED overlapped                   {};
+        FILE_NOTIFY_INFORMATION info[10240]     {};
+        DWORD dwBytesReturned                   {};
     } DirectoryWatch;
 
-    QMap<QString, DirectoryWatch *> watchedPaths;
+    QMutex mutex;
+    QHash<QString, DirectoryWatch *> watchedPaths;
 
     bool readDirectory(DirectoryWatch *watch);
+
+    static int id;
+    int thisId;
 };
 
 #endif // WINDIRECTORYWATCHER_H

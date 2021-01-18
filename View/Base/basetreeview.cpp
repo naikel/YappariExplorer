@@ -141,7 +141,6 @@ void BaseTreeView::keyPressEvent(QKeyEvent *event)
             getFileSystemModel()->refresh(getFileSystemModel()->getRoot()->getPath());
             break;
 
-
         default:
             QTreeView::keyPressEvent(event);
     }

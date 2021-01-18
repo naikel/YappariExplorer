@@ -99,6 +99,23 @@ void CustomTreeView::selectionChanged(const QItemSelection &selected, const QIte
     BaseTreeView::selectionChanged(selected, deselected);
 }
 
+void CustomTreeView::keyPressEvent(QKeyEvent *event)
+{
+    switch (event->key()) {
+
+        case Qt::Key_F5: {
+            QModelIndexList list = selectedIndexes();
+            if (list.size() > 0)
+                getFileSystemModel()->refreshIndex(list[0]);
+                emit refreshed();
+            }
+            break;
+
+        default:
+            BaseTreeView::keyPressEvent(event);
+    }
+}
+
 void CustomTreeView::viewFocusChanged()
 {
     QModelIndex index = selectedItem();

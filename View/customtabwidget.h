@@ -25,6 +25,7 @@ public slots:
     void closeTab(int index);
     void displayNameChanged(QString oldPath, FileSystemItem *item);
     void tabFocus(FileSystemItem *item);
+    void refreshCurrentTab();
 
 signals:
     void rootRelativeChange(const QString path);

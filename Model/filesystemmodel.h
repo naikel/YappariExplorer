@@ -140,6 +140,7 @@ public slots:
     void extendedInfoUpdated(FileSystemItem *parent);
     void freeChildren(const QModelIndex &parent);
     void refresh(QString path);
+    void refreshIndex(QModelIndex index);
 
 signals:
     void fetchStarted();
@@ -152,6 +153,7 @@ signals:
 private:
 
     DirectoryWatcher *watcher               {};
+    DirectoryWatcher *directoryWatcher         {};
     FileSystemHistory *history              {};
     bool watch                              {};
     FileSystemItem *parentBeingWatched      {};

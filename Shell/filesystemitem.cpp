@@ -99,6 +99,10 @@ QList<FileSystemItem *> FileSystemItem::getChildren()
 
 void FileSystemItem::removeChildren()
 {
+    for (FileSystemItem *item : qAsConst(indexedChildren))
+        if (item->hasSubFolders)
+            item->removeChildren();
+
     qDeleteAll(indexedChildren);
     children.clear();
     indexedChildren.clear();
@@ -258,6 +262,11 @@ void FileSystemItem::setAllChildrenFetched(bool value)
 bool FileSystemItem::isDrive() const
 {
     return (!path.isNull() && path.length() == 3 && path.at(0).isLetter() && path.at(1) == ':' && path.at(2) == '\\');
+}
+
+bool FileSystemItem::isInADrive() const
+{
+    return (!path.isNull() && path.length() >= 3 && path.at(0).isLetter() && path.at(1) == ':' && path.at(2) == '\\');
 }
 
 QString FileSystemItem::getPath() const

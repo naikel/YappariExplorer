@@ -136,7 +136,7 @@ void CustomTabWidget::displayNameChanged(QString oldPath, FileSystemItem *item)
         for (int tab = 0; tab < count() - 1; tab++) {
             DetailedView *detailedView = static_cast<DetailedView *>(widget(tab));
             if (detailedView != nullptr) {
-                FileSystemModel *fileSystemModel = static_cast<FileSystemModel *>(detailedView->model());
+                FileSystemModel *fileSystemModel = detailedView->getFileSystemModel();
                 FileSystemItem *root = fileSystemModel->getRoot();
                 if (root->getPath() == oldPath) {
 
@@ -154,6 +154,13 @@ void CustomTabWidget::displayNameChanged(QString oldPath, FileSystemItem *item)
 void CustomTabWidget::tabFocus(FileSystemItem *item)
 {
     emit folderFocus(item);
+}
+
+void CustomTabWidget::refreshCurrentTab()
+{
+    DetailedView *detailedView = static_cast<DetailedView *>(currentWidget());
+    FileSystemModel *fileSystemModel = detailedView->getFileSystemModel();
+    fileSystemModel->refresh(fileSystemModel->getRoot()->getPath());
 }
 
 void CustomTabWidget::mouseDoubleClickEvent(QMouseEvent *event)

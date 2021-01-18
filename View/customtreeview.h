@@ -15,6 +15,7 @@ public:
 signals:
 
     void resized();
+    void refreshed();
 
 public slots:
 
@@ -33,6 +34,7 @@ protected:
     bool viewportEvent(QEvent *event) override;
     void selectEvent() override;
     void selectionChanged(const QItemSelection &selected, const QItemSelection &deselected) override;
+    void keyPressEvent(QKeyEvent *event) override;
 
 private:
     QModelIndex hoverIndex;

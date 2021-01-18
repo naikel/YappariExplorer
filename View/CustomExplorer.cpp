@@ -50,6 +50,9 @@ void CustomExplorer::initialize(AppWindow *mainWindow)
     connect(treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CustomExplorer::treeViewSelectionChanged);
     connect(treeView, &CustomTreeView::clicked, tabWidget, &CustomTabWidget::setViewRootIndex);
 
+    // Refresh in the Tree
+    connect(treeView, &CustomTreeView::refreshed, tabWidget, CustomTabWidget::refreshCurrentTab);
+
     // Focus change (application title update)
     connect(tabWidget, &CustomTabWidget::folderFocus, mainWindow, &AppWindow::updateTitle);
     connect(treeView, &CustomTreeView::viewFocus, mainWindow, &AppWindow::updateTitle);
