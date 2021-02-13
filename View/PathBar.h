@@ -6,6 +6,7 @@
 
 #include "Model/filesystemmodel.h"
 #include "View/PathBarButton.h"
+#include "View/PathWidget.h"
 
 class PathBar : public QFrame
 {
@@ -14,22 +15,30 @@ public:
     explicit PathBar(QWidget *parent = nullptr);
 
 public slots:
-    void setModel(FileSystemModel *model);
+    void setTabModel(FileSystemModel *tabModel);
+    void setTreeModel(FileSystemModel *treeModel);
+    void selectTreeIndex(QModelIndex& selectedIndex);
     void menuSelected(QAction *action);
+    void selectedIndex(const QModelIndex &index);
 
 signals:
     void rootChange(QString path);
 
 private:
-    FileSystemModel *model {};
-    PathBarButton *backButton;
-    PathBarButton *upButton;
-    PathBarButton *nextButton;
+    FileSystemModel *tabModel       {};
+    FileSystemModel *treeModel      {};
+    PathBarButton *backButton       {};
+    PathBarButton *upButton         {};
+    PathBarButton *nextButton       {};
+    PathWidget *pathWidget          {};
 
     PathBarButton *createButton(QIcon icon, QString objectName);
 
 private slots:
     void buttonClicked();
+
+
+
 };
 
 #endif // PATHBAR_H

@@ -440,7 +440,7 @@ void FileSystemModel::fetchMore(const QModelIndex &parent)
 {
     if (parent.isValid() && parent.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = getFileSystemItem(parent);
-        if (fileSystemItem->getHasSubFolders() && !fileSystemItem->areAllChildrenFetched()) {
+        if (fileSystemItem->getHasSubFolders() && !fileSystemItem->areAllChildrenFetched() && !fetchingMore.load()) {
 
             fetchingMore.store(true);
             emit fetchStarted();
@@ -1045,6 +1045,10 @@ bool FileSystemModel::setRoot(const QString path)
 #ifdef Q_OS_WIN
         directoryWatcher->removePath(deleteLater->getPath());
 #endif
+        // Process all dataChanged events that could still modify the old root structure
+        QApplication::processEvents();
+
+        // Finally delete the old root
         delete deleteLater;
     }
 
@@ -1091,9 +1095,10 @@ QChar FileSystemModel::separator() const
 
 QModelIndex FileSystemModel::parent(QString path) const
 {
-    qDebug() << "FileSystemModel::parent" << path;
+    qDebug() << "FileSystemModel::parent" << fileInfoRetriever->getScope() << path;
 
     if (path == fileInfoRetriever->getRootPath()) {
+        qDebug() << "FileSystemModel::parent" << fileInfoRetriever->getScope() << path << "this is root";
         return QModelIndex();
     }
 
@@ -1103,8 +1108,10 @@ QModelIndex FileSystemModel::parent(QString path) const
         parentPath = path.left(path.length() - 1);
 
     int index = parentPath.lastIndexOf(separator());
-    if (index < 0)
+    if (index < 0) {
+        qDebug() << "FileSystemModel::parent" << fileInfoRetriever->getScope() << path << "seems to be root";
         return QModelIndex();
+    }
 
     parentPath = parentPath.left(index);
     QStringList pathList = parentPath.split(separator());
@@ -1112,29 +1119,43 @@ QModelIndex FileSystemModel::parent(QString path) const
     FileSystemItem *grandParentItem = nullptr;
     FileSystemItem *parentItem = root;
 
-    for (auto folder : pathList) {
-        if (!folder.isEmpty()) {
+    if (parentPath != root->getPath()) {
 
-            if (absolutePath.isEmpty())
-                absolutePath = folder + separator();
-            else if (absolutePath.at(absolutePath.length() - 1) != separator())
-                absolutePath += separator() + folder;
-            else
-                absolutePath += folder;
+        for (auto folder : pathList) {
+            if (!folder.isEmpty()) {
 
-            grandParentItem = parentItem;
-            parentItem = parentItem->getChild(absolutePath);
+                if (absolutePath.isEmpty()) {
 
-            if (parentItem == nullptr)
-                return QModelIndex();
+#ifdef Q_OS_WIN
+                    if (folder.length() == 2 && folder[0].isLetter() && folder[1] == ':')
+                        absolutePath = folder + separator();
+                    else
+                        absolutePath = folder;
+#else
+                    absolutePath = separator() + folder;
+#endif
 
+                } else if (absolutePath.at(absolutePath.length() - 1) != separator())
+                    absolutePath += separator() + folder;
+                else
+                    absolutePath += folder;
+
+                grandParentItem = parentItem;
+                parentItem = parentItem->getChild(absolutePath);
+
+                if (parentItem == nullptr) {
+                    qDebug() << "FileSystemModel::parent" << fileInfoRetriever->getScope() << "couldn't find child" << absolutePath;
+                    return QModelIndex();
+                }
+
+            }
         }
+    } else {
+        return createIndex(0, 0, root);
     }
 
     if (grandParentItem == nullptr)
         return QModelIndex();
-
-    qDebug() << grandParentItem->getPath() << parentItem->getPath();
 
     return createIndex(grandParentItem->childRow(parentItem), 0, parentItem);
 }
@@ -1153,7 +1174,7 @@ void FileSystemModel::parentUpdated(FileSystemItem *parent, qint32 err, QString 
         endInsertRows();
         fetchingMore.store(false);
 #ifdef Q_OS_WIN
-        if (parent->isInADrive())
+        if (parent->getMediaType() == FileSystemItem::Fixed)
             directoryWatcher->addPath(parent->getPath());
         else
             watcher->addPath(parent->getPath());
@@ -1167,7 +1188,7 @@ void FileSystemModel::parentUpdated(FileSystemItem *parent, qint32 err, QString 
         endResetModel();
         settingRoot.store(false);
 #ifdef Q_OS_WIN
-        if (parent->isInADrive())
+        if (parent->getMediaType() == FileSystemItem::Fixed)
             directoryWatcher->addPath(parent->getPath());
         else
             watcher->addPath(parent->getPath());
@@ -1323,8 +1344,10 @@ void FileSystemModel::addPath(QString fileName)
 
          parentIndex = parent(fileName);
 
-        if (!parentIndex.isValid())
+        if (!parentIndex.isValid()) {
+            qDebug() << "FileSystemModel::addPath" << fileInfoRetriever->getScope() << "couldn't find a valid parent for" << fileName;
             return;
+        }
 
         parentItem = getFileSystemItem(parentIndex);
     }
@@ -1344,7 +1367,7 @@ void FileSystemModel::addPath(QString fileName)
     if (!result ||
             (fileInfoRetriever->getScope() == FileInfoRetriever::Scope::Tree &&
             !fileSystemItem->isDrive() && !fileSystemItem->isFolder())) {
-        qDebug() << "FileSystemModel::addPath skipping file" << fileName;
+        qDebug() << "FileSystemModel::addPath" << fileInfoRetriever->getScope() << "skipping file" << fileName;
         delete fileSystemItem;
         return;
     }
@@ -1355,6 +1378,8 @@ void FileSystemModel::addPath(QString fileName)
     int row = parentItem->childRow(fileSystemItem);
     beginInsertRows(parentIndex, row, row);
     endInsertRows();
+
+    qDebug() << "FileSystemModel::addPath" << fileInfoRetriever->getScope() << "row inserted for" << fileName;
 
     // If we were waiting for an item like this, tell the view the user has to set a new name for it
     if (watch && ((extensionBeingWatched == "NewFolder" && fileSystemItem->isFolder()) ||

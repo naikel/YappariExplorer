@@ -85,18 +85,27 @@ bool FileInfoRetriever::willRecycle(FileSystemItem *fileSystemItem)
  */
 void FileInfoRetriever::getChildren(FileSystemItem *parent)
 {
+    qDebug() << "FileInfoRetriever::getChildren" << getScope();
+
     // This function might get called several times for the same parent
+    // Why? Because QTreeView somehow calls fetchMore twice
     // So let's try to serialize it
+    // Right now this is not happening since fetchMore() is checking the QAtomicInt fecthingMore
+
+    // TODO: This check should be in a different thread to not block the GUI
     if (running.load()) {
-        qDebug() << "FileInfoRetriever::getChildren waiting for previous threads to finish";
+        qDebug() << "FileInfoRetriever::getChildren" << getScope() << "waiting for previous threads to finish" << pool.activeThreadCount();
         pool.waitForDone();
+        qDebug() << "FileInfoRetriever::getChildren" << getScope() << "all threads finished";
     }
 
     // Let's double check the children haven't been fetched
     if (!parent->areAllChildrenFetched()) {
+        qDebug() << "FileInfoRetriever::getChildren" << getScope() << "about to go on the background to fetch the children";
         running.store(true);
         QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileInfoRetriever *>(this), &FileInfoRetriever::getChildrenBackground, parent);
-    }
+    } else
+        qDebug() << "FileInfoRetriever::getChildren" << getScope() << "all children were already fetched";
 }
 
 void FileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
@@ -118,6 +127,8 @@ void FileInfoRetriever::setScope(const Scope &value)
 {
     scope = value;
 }
+
+// TODO: Everything here should have a different thread
 
 QIcon FileInfoRetriever::getIcon(FileSystemItem *item) const
 {

@@ -94,7 +94,7 @@ void FileSystemItem::removeChild(QString path)
 
 QList<FileSystemItem *> FileSystemItem::getChildren()
 {
-    return children.values();
+    return indexedChildren;
 }
 
 void FileSystemItem::removeChildren()
@@ -407,6 +407,16 @@ quint16 FileSystemItem::getCapabilities() const
 void FileSystemItem::setCapabilities(const quint16 &value)
 {
     capabilities = value;
+}
+
+FileSystemItem::MediaType FileSystemItem::getMediaType() const
+{
+    return mediaType;
+}
+
+void FileSystemItem::setMediaType(const MediaType &value)
+{
+    mediaType = value;
 }
 
 QVariant FileSystemItem::getData(int column)

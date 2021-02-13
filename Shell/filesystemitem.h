@@ -29,6 +29,15 @@ public:
         MaxColumns
     };
 
+    enum MediaType {
+        Unknown,
+        Removable,
+        Fixed,
+        Remote,
+        CDROM,
+        RamDisk
+    };
+
     FileSystemItem(QString path);
     ~FileSystemItem();
 
@@ -98,6 +107,9 @@ public:
     quint16 getCapabilities() const;
     void setCapabilities(const quint16 &value);
 
+    MediaType getMediaType() const;
+    void setMediaType(const MediaType &value);
+
 private:
 
     QString     path                {};
@@ -110,6 +122,7 @@ private:
     QDateTime   lastAccessTime      {};
     QDateTime   lastChangeTime      {};
     quint16     capabilities        {};
+    MediaType   mediaType           {};
 
     bool folder                 {false};
     bool hidden                 {false};

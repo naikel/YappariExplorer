@@ -5,7 +5,7 @@
 
 #define BASESTYLESHEET      "QFrame { background: white; border-bottom: 1px solid #9fcdb3; } " \
                             "QPushButton { border-style: none; background-color: transparent; } "
-#define BUTTONSTYLESHEET    "QPushButton:hover { background-color: #800fbd46; } QPushButton:pressed { background-color: #80075520; }"
+#define BUTTONSTYLESHEET    "QPushButton:hover { background-color: #500fbd46; } QPushButton:pressed { background-color: #800fbd46; }"
 
 #ifdef Q_OS_WIN
 #define getText(entry) ((entry->path.size() > 3 && entry->path.left(3) == "::{") || (!entry->path.isNull() && entry->path.length() == 3 && entry->path.right(2) == ":\\")) ? entry->displayName : entry->path
@@ -15,12 +15,16 @@
 
 PathBar::PathBar(QWidget *parent) : QFrame(parent)
 {
-    setMinimumHeight(40);
-    setMaximumHeight(40);
+    setMinimumHeight(50);
+    setMaximumHeight(50);
     setFrameShape(QFrame::NoFrame);
     setFrameShadow(QFrame::Plain);
     setObjectName(QString::fromUtf8("pathBar"));
     setStyleSheet(BASESTYLESHEET);
+
+    pathWidget = new PathWidget(this);
+
+    connect(pathWidget, &PathWidget::selectedIndex, this, &PathBar::selectedIndex);
 
     QHBoxLayout *hLayout = new QHBoxLayout(this);
     setLayout(hLayout);
@@ -39,16 +43,17 @@ PathBar::PathBar(QWidget *parent) : QFrame(parent)
     hLayout->addWidget(backButton);
     hLayout->addWidget(nextButton);
     hLayout->addWidget(upButton);
+    hLayout->addSpacerItem(new QSpacerItem(10, 50));
+    hLayout->addWidget(pathWidget);
     hLayout->setSpacing(0);
-    hLayout->addStretch(1);
-    hLayout->setContentsMargins(0, 0, 0, 0);
+    hLayout->setContentsMargins(5, 0, 5, 0);
 }
 
-void PathBar::setModel(FileSystemModel *model)
+void PathBar::setTabModel(FileSystemModel *model)
 {
     int cursor;
 
-    this->model = model;
+    this->tabModel = model;
 
     QList<HistoryEntry *> &history = model->getHistory(&cursor);
 
@@ -84,6 +89,17 @@ void PathBar::setModel(FileSystemModel *model)
 
 }
 
+void PathBar::setTreeModel(FileSystemModel *treeModel)
+{
+    this->treeModel = treeModel;
+    pathWidget->setModel(treeModel);
+}
+
+void PathBar::selectTreeIndex(QModelIndex& selectedIndex)
+{
+    pathWidget->selectIndex(selectedIndex);
+}
+
 void PathBar::menuSelected(QAction *action)
 {
     if (action != nullptr) {
@@ -92,9 +108,18 @@ void PathBar::menuSelected(QAction *action)
         QVariant actionData = action->data();
         if (actionData.isValid()) {
             pos = actionData.toInt();
-            model->goToPos(pos);
-            emit rootChange(model->getRoot()->getPath());
+            tabModel->goToPos(pos);
+            emit rootChange(tabModel->getRoot()->getPath());
         }
+    }
+}
+
+void PathBar::selectedIndex(const QModelIndex &index)
+{
+    if (index.isValid() && index.internalPointer() != nullptr) {
+        QString path = reinterpret_cast<FileSystemItem *>(index.internalPointer())->getPath();
+        tabModel->setRoot(path);
+        emit rootChange(path);
     }
 }
 
@@ -121,19 +146,19 @@ PathBarButton *PathBar::createButton(QIcon icon, QString objectName)
 
 void PathBar::buttonClicked()
 {
-    if (model == nullptr)
+    if (tabModel == nullptr)
         return;
 
     PathBarButton *button = reinterpret_cast<PathBarButton *>(sender());
 
-    if (button == nextButton && model->canGoForward())
-        model->goForward();
-    else if (button == backButton && model->canGoBack()) {
-        model->goBack();
-    } else if (button == upButton && model->canGoUp())
-        model->goUp();
+    if (button == nextButton && tabModel->canGoForward())
+        tabModel->goForward();
+    else if (button == backButton && tabModel->canGoBack()) {
+        tabModel->goBack();
+    } else if (button == upButton && tabModel->canGoUp())
+        tabModel->goUp();
     else
         return;
 
-    emit rootChange(model->getRoot()->getPath());
+    emit rootChange(tabModel->getRoot()->getPath());
 }

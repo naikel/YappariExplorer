@@ -49,6 +49,7 @@ SOURCES += \
     View/CustomExplorer.cpp \
     View/PathBar.cpp \
     View/PathBarButton.cpp \
+    View/PathWidget.cpp \
     View/customtabbar.cpp \
     View/customtabbarstyle.cpp \
     View/customtabwidget.cpp \
@@ -73,6 +74,7 @@ HEADERS += \
     View/CustomExplorer.h \
     View/PathBar.h \
     View/PathBarButton.h \
+    View/PathWidget.h \
     View/customtabbar.h \
     View/customtabbarstyle.h \
     View/customtabwidget.h \
@@ -114,7 +116,7 @@ win32 {
         Shell/Win/winshellactions.h \
         Shell/Win/wincontextmenu.h \
         Shell/Win/winfileinforetriever.h
-    LIBS += -lole32 -lgdi32 -luuid -ldwmapi
+    LIBS += -lole32 -lgdi32 -luuid -ldwmapi -loleaut32 -luxtheme
 }
 
 # PARALLEL TEST

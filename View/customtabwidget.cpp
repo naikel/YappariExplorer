@@ -46,7 +46,7 @@ void CustomTabWidget::addNewTab(const QString path)
 
 bool CustomTabWidget::setViewRootIndex(const QModelIndex &index)
 {
-    qDebug() << "CustomTabWidget::setViewIndex";
+    qDebug() << "CustomTabWidget::setViewRootIndex";
     if (index.isValid() && index.internalPointer() != nullptr) {
         FileSystemItem *fileSystemItem = static_cast<FileSystemItem*>(index.internalPointer());
         return setViewRootPath(fileSystemItem->getPath());

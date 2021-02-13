@@ -32,6 +32,7 @@ protected:
     void getExtendedInfo(FileSystemItem *parent) override;
 
 private:
+    void getChildInfo(IShellFolder *psf, LPITEMIDLIST pidlChild, FileSystemItem *child);
     QIcon getIconFromFileInfo(SHFILEINFOW sfi, bool isHidden, bool ignoreDefault = false) const;
     QIcon getIconFromPath(QString path, bool isHidden, bool ignoreDefault = false) const;
     QIcon getIconFromPIDL(LPITEMIDLIST pidl, bool isHidden, bool ignoreDefault = false) const;

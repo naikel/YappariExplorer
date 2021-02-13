@@ -22,5 +22,6 @@
         <file>icons/back_inactive.svg</file>
         <file>icons/next_inactive.svg</file>
         <file>icons/up_inactive.svg</file>
+        <file>icons/down.svg</file>
     </qresource>
 </RCC>

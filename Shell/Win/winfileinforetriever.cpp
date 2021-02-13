@@ -7,6 +7,8 @@
 #include "winfileinforetriever.h"
 #include "Window/AppWindow.h"
 
+#include <ntquery.h>
+
 #define COMPUTER_FOLDER_GUID          "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"
 #define CONTROL_PANEL_GUID            "::{26EE0668-A00A-44D7-9371-BEB064C98683}"
 
@@ -16,6 +18,11 @@
 
 #define GUID_SIZE                     38
 #define BITBUCKET_VOLUME_KEY          "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\BitBucket\\Volume\\"
+
+// PSGUID_STORAGE is defined in ntquery.h
+// See https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-wsp/2dbe759c-c955-4770-a545-e46d7f6332ed
+// This is not actually documented there, but it should be.  PropId 4 is the Type of the file
+#define PROPERTYKEY_TYPE_COLUMN       { PSGUID_STORAGE, 4 }
 
 // Qt exports a non-documented function to convert a native Windows HICON to a QPixmap
 // This function is found in Qt5Gui.dll
@@ -106,6 +113,35 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
         IShellFolder *psf {};
 
+        if (parent->isInADrive()) {
+            QString drive = parent->getPath().left(3);
+            UINT type = ::GetDriveTypeW(drive.toStdWString().c_str());
+
+            FileSystemItem::MediaType mediaType;
+            switch (type) {
+                case DRIVE_REMOVABLE:
+                    mediaType = FileSystemItem::Removable;
+                    break;
+                case DRIVE_FIXED:
+                    mediaType = FileSystemItem::Fixed;
+                    break;
+                case DRIVE_REMOTE:
+                    mediaType = FileSystemItem::Remote;
+                    break;
+                case DRIVE_CDROM:
+                    mediaType = FileSystemItem::CDROM;
+                    break;
+                case DRIVE_RAMDISK:
+                    mediaType = FileSystemItem::RamDisk;
+                    break;
+                default:
+                    mediaType = FileSystemItem::Unknown;
+            }
+
+            parent->setMediaType(mediaType);
+            qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " mediaType" << drive << mediaType;
+        }
+
         // Get the IShellFolder interface for it
         if (SUCCEEDED(::SHBindToObject(nullptr, pidl, nullptr, IID_IShellFolder, reinterpret_cast<void**>(&psf)))) {
 
@@ -114,7 +150,7 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             // Get the enumeration interface
             IEnumIDList *ppenumIDList {};
 
-            SHCONTF flags = SHCONTF_FOLDERS | SHCONTF_INCLUDEHIDDEN | SHCONTF_INCLUDESUPERHIDDEN; // | SHCONTF_ENABLE_ASYNC | SHCONTF_FASTITEMS;
+            SHCONTF flags = SHCONTF_FOLDERS | SHCONTF_INCLUDEHIDDEN | SHCONTF_INCLUDESUPERHIDDEN | SHCONTF_ENABLE_ASYNC | SHCONTF_FASTITEMS;
 
             if (getScope() == FileInfoRetriever::List)
                 flags |= SHCONTF_NONFOLDERS;
@@ -123,14 +159,14 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
                 qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "Children enumerated";
 
-                LPITEMIDLIST pidlChildren {};
+                LPITEMIDLIST pidlChild {};
 
-                while (running.load() && ppenumIDList->Next(1, &pidlChildren, nullptr) == S_OK) {
+                while (running.load() && ppenumIDList->Next(1, &pidlChild, nullptr) == S_OK) {
 
                     // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << QTime::currentTime() << "Before getting attributes";
-                    SFGAOF attributes { SFGAO_STREAM | SFGAO_FOLDER | SFGAO_HIDDEN | SFGAO_CAPABILITYMASK | SFGAO_READONLY };
+                    SFGAOF attributes { SFGAO_STREAM };
 
-                    psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChildren), &attributes);
+                    psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChild), &attributes);
                     // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << QTime::currentTime() << "Got attributes";
 
                     // Compressed files will have SFGAO_FOLDER and SFGAO_STREAM attributes
@@ -140,7 +176,7 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                         STRRET strRet;
 
                         // Get the absolute path and create a FileSystemItem with it
-                        psf->GetDisplayNameOf(pidlChildren, SHGDN_FORPARSING, &strRet);
+                        psf->GetDisplayNameOf(pidlChild, SHGDN_FORPARSING, &strRet);
                         QString displayName = QString::fromWCharArray(strRet.pOleStr);
 
                         if (displayName == CONTROL_PANEL_GUID)
@@ -148,66 +184,17 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
                         FileSystemItem *child = new FileSystemItem(displayName);
 
-                        // Set basic attributes
-                        child->setFolder((attributes & SFGAO_FOLDER) && !(attributes & SFGAO_STREAM) && !child->isDrive());
+                        getChildInfo(psf, pidlChild, child);
 
-                        // Get the display name
-                        flags = (child->isFolder() || child->isDrive()) ? SHGDN_NORMAL : SHGDN_FORPARSING | SHGDN_INFOLDER;
-                        psf->GetDisplayNameOf(pidlChildren, flags, &strRet);
-                        child->setDisplayName(QString::fromWCharArray(strRet.pOleStr));
+                        if (child != nullptr) {
 
-                        // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << child->getPath() << "isDrive" << child->isDrive();
-
-                        if (child->isFolder()) {
-
-                            // Check if it has subfolders only if it's a folder and it's the Tree scope
-                            if (getScope() == FileInfoRetriever::Tree) {
-                                SFGAOF subfolders { SFGAO_HASSUBFOLDER };
-                                psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChildren), &subfolders);
-                                child->setHasSubFolders((getScope() == FileInfoRetriever::Tree) ? (subfolders & SFGAO_HASSUBFOLDER) : false);
-                            }
-                            if (!subFolders)
+                            if (child->isFolder() && !subFolders)
                                 subFolders = true;
 
-                            child->setType(QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer"));
-                        } else
-                            child->setHasSubFolders(child->isDrive() ? true : false);
-
-                        child->setHidden(attributes & SFGAO_HIDDEN);
-
-                        if (getScope() == FileInfoRetriever::List) {
-
-                            // File Size - Method 3 - FASTEST
-                            if (!child->isDrive()) {
-                                WIN32_FIND_DATAW fileAttributeData;
-                                if (SUCCEEDED(::SHGetDataFromIDListW(psf, pidlChildren, SHGDFIL_FINDDATA, &fileAttributeData, sizeof(fileAttributeData)))) {
-                                    quint64 size = fileAttributeData.nFileSizeHigh;
-                                    size = (size << 32) + fileAttributeData.nFileSizeLow;
-                                    child->setSize(size);
-
-                                    child->setCreationTime(fileTimeToQDateTime(&(fileAttributeData.ftCreationTime)));
-                                    child->setLastChangeTime(fileTimeToQDateTime(&(fileAttributeData.ftLastWriteTime)));
-                                    child->setLastAccessTime(fileTimeToQDateTime(&(fileAttributeData.ftLastAccessTime)));
-                                }
-                            }
-
-                            // File Type
-                            if (!child->isFolder()) {
-                                SFGAOF noAttributes {};
-                                UINT flags = SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME;
-                                SHFILEINFO info;
-                                ::SHGetFileInfo(child->getPath().toStdWString().c_str(), noAttributes, &info, sizeof(SHFILEINFO), flags);
-                                child->setType(QString::fromStdWString(info.szTypeName));
-                            }
+                            parent->addChild(child);
                         }
-
-                        // Capabilites
-                        setCapabilities(child, attributes);
-
-                        parent->addChild(child);
                     }
-
-                    ::ILFree(pidlChildren);
+                    ::ILFree(pidlChild);
                 }
                 ppenumIDList->Release();
             }
@@ -215,6 +202,8 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
         }
 
         ::ILFree(pidl);
+
+        // TODO: Everything from here should be in parent class, and this function should call the parent version here
 
         if (!running.load()) {
             qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "Parent path " << parent->getPath() << " aborted!";
@@ -232,7 +221,95 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
         running.store(false);
     }
 
+
     ::CoUninitialize();
+
+    qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "Parent path" << parent->getPath() << "finished successfully";
+}
+
+void WinFileInfoRetriever::getChildInfo(IShellFolder *psf, LPITEMIDLIST pidlChild, FileSystemItem *child)
+{
+    SFGAOF attributes { SFGAO_STREAM | SFGAO_FOLDER | SFGAO_CAPABILITYMASK };
+    STRRET strRet;
+
+    psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChild), &attributes);
+
+    // Set basic attributes
+    child->setFolder((attributes & SFGAO_FOLDER) && !(attributes & SFGAO_STREAM) && !child->isDrive());
+
+    // Get the display name
+    SHCONTF flags = (child->isFolder() || child->isDrive()) ? SHGDN_NORMAL : SHGDN_FORPARSING | SHGDN_INFOLDER;
+    psf->GetDisplayNameOf(pidlChild, flags, &strRet);
+    child->setDisplayName(QString::fromWCharArray(strRet.pOleStr));
+
+    // qDebug() << "WinFileInfoRetriever::getChildInfo" << getScope() << child->getPath() << "isDrive" << child->isDrive();
+
+    if (child->isFolder()) {
+
+        // Check if it has subfolders only if it's a folder and it's the Tree scope
+        if (getScope() == FileInfoRetriever::Tree) {
+            SFGAOF subfolders { SFGAO_HASSUBFOLDER };
+            psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChild), &subfolders);
+            child->setHasSubFolders((getScope() == FileInfoRetriever::Tree) ? (subfolders & SFGAO_HASSUBFOLDER) : false);
+        }
+
+    } else
+        child->setHasSubFolders(child->isDrive() ? true : false);
+
+   if (getScope() == FileInfoRetriever::List) {
+
+        DWORD attrib {};
+
+        // File Size - Method 3 - FASTEST
+        if (!child->isDrive()) {
+            WIN32_FIND_DATAW fileAttributeData;
+            if (SUCCEEDED(::SHGetDataFromIDListW(psf, pidlChild, SHGDFIL_FINDDATA, &fileAttributeData, sizeof(fileAttributeData)))) {
+                quint64 size = fileAttributeData.nFileSizeHigh;
+                size = (size << 32) + fileAttributeData.nFileSizeLow;
+                child->setSize(size);
+
+                child->setCreationTime(fileTimeToQDateTime(&(fileAttributeData.ftCreationTime)));
+                child->setLastChangeTime(fileTimeToQDateTime(&(fileAttributeData.ftLastWriteTime)));
+                child->setLastAccessTime(fileTimeToQDateTime(&(fileAttributeData.ftLastAccessTime)));
+
+                attrib = fileAttributeData.dwFileAttributes;
+                child->setHidden(attrib & FILE_ATTRIBUTE_HIDDEN);
+            }
+        }
+
+        // File Type
+        if (!child->isFolder()) {
+            /*
+            SFGAOF noAttributes {};
+            SHFILEINFO info;
+            UINT flags = SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME;
+            ::SHGetFileInfo(child->getPath().toStdWString().c_str(), noAttributes, &info, sizeof(SHFILEINFO), flags);
+
+            QString type = QString::fromStdWString(info.szTypeName);
+            if (attrib & FILE_ATTRIBUTE_REPARSE_POINT)
+                type += " (SymLink)";
+            child->setType(type);
+            */
+
+            IShellFolder2 *psf2;
+            if (SUCCEEDED(psf->QueryInterface(IID_IShellFolder2, reinterpret_cast<void**>(&psf2)))) {
+                SHCOLUMNID pscid = PROPERTYKEY_TYPE_COLUMN;
+                VARIANT var;
+                VariantInit(&var);
+                if (SUCCEEDED(psf2->GetDetailsEx(pidlChild, &pscid, &var))) {
+                    child->setType(QString::fromWCharArray(var.bstrVal));
+                    VariantClear(&var);
+                }
+                psf2->Release();
+
+            }
+        } else if (child->isFolder()) {
+            child->setType((attrib & FILE_ATTRIBUTE_REPARSE_POINT) ? tr("Junction") : QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer"));
+        }
+    }
+
+    // Capabilites
+    setCapabilities(child, attributes);
 }
 
 void WinFileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
@@ -318,63 +395,70 @@ void WinFileInfoRetriever::setDisplayNameOf(FileSystemItem *fileSystemItem)
 
 bool WinFileInfoRetriever::refreshItem(FileSystemItem *fileSystemItem)
 {
-    WIN32_FIND_DATAW fileAttributeData;
-    HANDLE h = FindFirstFileW(fileSystemItem->getPath().toStdWString().c_str(), &fileAttributeData);
-    if (h != INVALID_HANDLE_VALUE) {
-        FindClose(h);
-        quint64 size = fileAttributeData.nFileSizeHigh;
-        size = (size << 32) + fileAttributeData.nFileSizeLow;
-        fileSystemItem->setSize(size);
-        fileSystemItem->setCreationTime(fileTimeToQDateTime(&(fileAttributeData.ftCreationTime)));
-        fileSystemItem->setLastChangeTime(fileTimeToQDateTime(&(fileAttributeData.ftLastWriteTime)));
-        fileSystemItem->setLastAccessTime(fileTimeToQDateTime(&(fileAttributeData.ftLastAccessTime)));
-
-        if (fileAttributeData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-            fileSystemItem->setFolder(true);
-        }
-
-        fileSystemItem->setHidden(fileAttributeData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN);
-
-        SFGAOF attributes {};
-        ULONG flags = SFGAO_CAPABILITYMASK;
-        if (getScope() == FileInfoRetriever::Tree && fileSystemItem->isFolder())
-            flags |= SFGAO_HASSUBFOLDER;
-
-        LPITEMIDLIST pidl;
-        if (SUCCEEDED(SHParseDisplayName(fileSystemItem->getPath().toStdWString().c_str(), nullptr, &pidl, flags, &attributes))) {
-
-            if (getScope() == FileInfoRetriever::Tree)
-                fileSystemItem->setHasSubFolders(attributes & SFGAO_HASSUBFOLDER);
-
-            setCapabilities(fileSystemItem, attributes);
-
-            // Refresh icon
-            fileSystemItem->setIcon(getIconFromPIDL(pidl, fileSystemItem->isHidden(), true));
-
-            ::ILFree(pidl);
-        }
-
-        // File Type
-        //if (!fileSystemItem->isFolder()) {
-            SFGAOF noAttributes {};
-            UINT sFlags = SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME;
-            SHFILEINFO info;
-            ::SHGetFileInfo(fileSystemItem->getPath().toStdWString().c_str(), noAttributes, &info, sizeof(SHFILEINFO), sFlags);
-            fileSystemItem->setType(QString::fromStdWString(info.szTypeName));
-        //} else {
-        //    fileSystemItem->setType(QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer"));
-        //}
-
-        emit itemUpdated(fileSystemItem);
-
-        return true;
-
-    } else {
-
-        qDebug() << "WinFileInfoRetriever::refreshItem item" << fileSystemItem->getPath() << "seems that it doesn't exist anymore";
+    if (fileSystemItem == nullptr)
         return false;
 
+    qDebug() << "WinFileInfoRetriever::refreshItem item" << fileSystemItem->getPath();
+
+    LPITEMIDLIST pidl;
+    LPCITEMIDLIST pidlChild;
+    bool ret {};
+
+    QString path = fileSystemItem->getPath();
+
+    // Get the PIDL for the item
+    HRESULT hr;
+    if (SUCCEEDED(hr = ::SHParseDisplayName(path.toStdWString().c_str(), nullptr, &pidl, 0, nullptr))) {
+
+        IShellFolder *psf;
+
+        // Get the IShellFolder interface for its parent
+        if (SUCCEEDED(::SHBindToParent(pidl, IID_IShellFolder, reinterpret_cast<void**>(&psf), &pidlChild))) {
+
+            getChildInfo(psf, const_cast<LPITEMIDLIST>(pidlChild), fileSystemItem);
+            // LPITEMIDLIST pidlAbsolute = ILCombine(pidl, pidlChild);
+            // getIconFromPIDL(pidlAbsolute, fileSystemItem->isHidden(), fileSystemItem);
+            qDebug() << "WinFileInfoRetriever::refreshItem item" << fileSystemItem->getPath() << "successfully refreshed";
+            psf->Release();
+            ret = true;
+            emit itemUpdated(fileSystemItem);
+
+        }
+        ::ILFree(pidl);
+    } else
+        qDebug() << "WinFileInfoRetriever::refreshItem item" << fileSystemItem->getPath() << "seems that it doesn't exist anymore" << "HRESULT" << hr;
+
+    return ret;
+
+
+    //------------------------------------------------------------------------------------------------------
+
+/*
+    ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    IShellFolder *spsfDesktop;
+    HRESULT hr = SHGetDesktopFolder(&spsfDesktop);
+    if (SUCCEEDED(hr))
+    {
+        qDebug() << "SHGetDesktopFolder";
+        IBindCtx *pbc;
+        hr = CreateBindCtx(0,&pbc);
+        std::wstring wStr = STR_PARSE_TRANSLATE_ALIASES;
+        //hr = pbc->RegisterObjectParam(const_cast<wchar_t *>(wStr.c_str()), NULL);
+
+        if (SUCCEEDED(hr))
+        {
+            qDebug() << "RegisterObjectParam";
+            ULONG cchEaten;
+            LPITEMIDLIST ppidl;
+            hr = spsfDesktop->ParseDisplayName(nullptr,nullptr, const_cast<wchar_t *>(fileSystemItem->getPath().toStdWString().c_str()), &cchEaten, &ppidl, NULL);
+
+            if (SUCCEEDED(hr))
+            {
+                qDebug() << "IT COULD PARSE THE SHIT";
+            }else qDebug() << hr;
+        } else qDebug() << hr;
     }
+    */
 }
 
 bool WinFileInfoRetriever::willRecycle(FileSystemItem *fileSystemItem)
@@ -457,7 +541,7 @@ QIcon WinFileInfoRetriever::getIconFromPIDL(LPITEMIDLIST pidl, bool isHidden, bo
 }
 
 /*!
- * \brief Returns a QIcon with the icon stored in a SHFILEINFOW from an specific cile
+ * \brief Returns a QIcon with the icon stored in a SHFILEINFOW from an specific file
  * \param sfi a SHFILEINFOW structure with an index or a handle to the icon
  * \param isHidden true if the file has the hidden attribute
  * \param ignoreDefault true if this function should return a valid QIcon even if it's a default one

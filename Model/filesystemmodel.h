@@ -142,6 +142,12 @@ public slots:
     void refresh(QString path);
     void refreshIndex(QModelIndex index);
 
+    // These slot are called by the filesystem, the user is not supposed to call them
+    void renamePath(QString oldFileName, QString newFileName);
+    void refreshPath(QString fileName);
+    void addPath(QString fileName);
+    void removePath(QString fileName);
+
 signals:
     void fetchStarted();
     void fetchFinished();
@@ -178,10 +184,7 @@ private:
     QString humanReadableSize(quint64 size) const;
 
 private slots:
-    void renamePath(QString oldFileName, QString newFileName);
-    void refreshPath(QString fileName);
-    void addPath(QString fileName);
-    void removePath(QString fileName);
+
 };
 
 #endif // FILESYSTEMMODEL_H

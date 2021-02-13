@@ -45,13 +45,14 @@ void CustomExplorer::initialize(AppWindow *mainWindow)
     FileSystemModel *fileSystemModel = new FileSystemModel(FileInfoRetriever::Tree, this);
     fileSystemModel->setDefaultRoot();
     treeView->setModel(fileSystemModel);
+    pathBar->setTreeModel(fileSystemModel);
 
     // Handling of single selections
     connect(treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CustomExplorer::treeViewSelectionChanged);
     connect(treeView, &CustomTreeView::clicked, tabWidget, &CustomTabWidget::setViewRootIndex);
 
     // Refresh in the Tree
-    connect(treeView, &CustomTreeView::refreshed, tabWidget, CustomTabWidget::refreshCurrentTab);
+    connect(treeView, &CustomTreeView::refreshed, tabWidget, &CustomTabWidget::refreshCurrentTab);
 
     // Focus change (application title update)
     connect(tabWidget, &CustomTabWidget::folderFocus, mainWindow, &AppWindow::updateTitle);
@@ -78,7 +79,7 @@ void CustomExplorer::initialize(AppWindow *mainWindow)
     connect(tabWidget, &CustomTabWidget::rootChangeFailed, this, &CustomExplorer::rootChangeFailed);
 
     // Path Bar
-    connect(tabWidget, &CustomTabWidget::viewModelChanged, pathBar, &PathBar::setModel);
+    connect(tabWidget, &CustomTabWidget::viewModelChanged, pathBar, &PathBar::setTabModel);
     connect(pathBar, &PathBar::rootChange, this, &CustomExplorer::expandAndSelectAbsolute);
 
 }
@@ -90,14 +91,17 @@ bool CustomExplorer::treeViewSelectionChanged(const QItemSelection &selected, co
     qDebug() << "CustomExplorer::treeViewSelectionChanged";
 
     QModelIndexList indexes = selected.indexes();
-    if (indexes.size() > 0)
-        return tabWidget->setViewRootIndex(indexes.at(0));
-    else {
+    if (indexes.size() > 0) {
+
+        pathBar->selectTreeIndex(indexes[0]);
+
+        return tabWidget->setViewRootIndex(indexes[0]);
+    } else {
         // We need to select something, the parent
 
         indexes = deselected.indexes();
         if (indexes.size() > 0) {
-            treeView->selectIndex(indexes.at(0).parent());
+            treeView->selectIndex(indexes[0].parent());
         } else {
             // Last resort: root
             treeView->selectIndex(treeView->getFileSystemModel()->index(0, 0, QModelIndex()));
@@ -152,6 +156,9 @@ void CustomExplorer::expandAndSelectRelative(QString path)
             else {
                 qDebug() << "CustomExplorer::expandAndSelectRelative can't find the index: the Tree View is not synchronized";
 
+                // Try to add it?
+                treeViewModel->addPath(path);
+
                 /*
 
                 // TODO: What can we do here?
@@ -162,11 +169,12 @@ void CustomExplorer::expandAndSelectRelative(QString path)
                 // Fetch again the children
                 parentItem->setHasSubFolders(true);
                 treeViewModel->fetchMore(parent);
+                */
 
                 // Call this function again when finished
                 // TODO This might create an infinite cycle
                 Once::connect(treeViewModel, &FileSystemModel::fetchFinished, this, [this, path]() { this->expandAndSelectRelative(path); });
-                */
+
             }
         }
     }
@@ -330,7 +338,7 @@ void CustomExplorer::tabChanged(int index)
     QString viewModelCurrentPath = viewModel->getRoot()->getPath();
     expandAndSelectAbsolute(viewModelCurrentPath);
 
-    pathBar->setModel(viewModel);
+    pathBar->setTabModel(viewModel);
 }
 
 void CustomExplorer::rootChangeFailed(QString path)

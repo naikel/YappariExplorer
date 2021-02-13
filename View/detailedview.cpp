@@ -39,16 +39,17 @@ void DetailedView::initialize()
 
 bool DetailedView::setRoot(QString root)
 {
-    // First ensure all processed signals have been processed
-    BaseTreeView::setRoot(root);
-
     if (!root.isEmpty()) {
 
         // This item is from the tree view model, not from the model of this view
         FileSystemModel *fileSystemModel = getFileSystemModel();
         if (!(fileSystemModel->getRoot()->getPath() == root)) {
             qDebug() << "DetailedView::setRoot" << root;
+
+            // First ensure all processed signals have been processed
+            BaseTreeView::setRoot(root);
             return fileSystemModel->setRoot(root);
+
         } else {
             qDebug() << "DetailedView::setRoot this view's root is already" << root;
         }
