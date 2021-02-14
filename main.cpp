@@ -31,6 +31,7 @@
 #include <QDebug>
 
 #include "Window/AppWindow.h"
+#include "Settings/Settings.h"
 
 #ifdef YAPPARI_CRASH_REPORT
 #include "ThirdParty/YappariCrashReport/src/YappariCrashReport.h"
@@ -66,5 +67,6 @@ int main(int argc, char *argv[])
 
     AppWindow w;
     w.show();
+
     return a.exec();
 }

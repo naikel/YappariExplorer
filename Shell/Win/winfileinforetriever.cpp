@@ -211,6 +211,7 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             return;
         }
 
+        qDebug() << "WinFileInfoRetriever::getChildrenBackground" << getScope() << "has subfolders?" << subFolders;
         parent->setHasSubFolders(subFolders);
         parent->setAllChildrenFetched(true);
         emit parentUpdated(parent, 0, QString());

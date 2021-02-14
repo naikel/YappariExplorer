@@ -7,6 +7,7 @@
 #include <QAbstractItemView>
 #include "Shell/contextmenu.h"
 #include "Shell/directorywatcher.h"
+#include "Settings/Settings.h"
 
 #ifdef WIN32_FRAMELESS
 #include "Win/WinFramelessWindow.h"
@@ -29,6 +30,7 @@ class AppWindow : public MAINWINDOW
     Q_OBJECT
 public:
     explicit AppWindow(QWidget *parent = nullptr);
+    ~AppWindow();
 
     QWidget *contentWidget();
 
@@ -61,6 +63,7 @@ private:
     static QMap<quint32, DirectoryWatcher *> watchers;
 
     void setupGui();
+    void saveSettings();
 
 private slots:
     void resizeOtherSplitter(QSplitter *splitter);

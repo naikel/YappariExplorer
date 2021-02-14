@@ -105,8 +105,8 @@ PathWidgetButton::PathWidgetButton(QModelIndex &index, QWidget *parent) : QWidge
 
     setStyleSheet("QPushButton { padding-right: 5px; padding-left: 5px; border-width: 1px; border-style: solid; background-color: transparent; } "
                   "QPushButton:hover { background-color: #500fbd46; border-color: #a00fbd46; } QPushButton:pressed { background-color: #800fbd46; } "
-                  "QPushButton::menu-indicator { image: url(:/icons/next.svg); width: 11px; position: relative; top: -5px; right: 6px; } } "
-                  "QPushButton::menu-indicator:pressed { image: url(:/icons/down.svg); } } ");
+                  "QPushButton::menu-indicator { image: url(:/icons/next.svg); width: 11px; position: relative; top: -5px; right: 6px; } "
+                  "QPushButton::menu-indicator:pressed { image: url(:/icons/down.svg); } ");
 
     pathButton = new CustomButton(index.data(Qt::DisplayRole).toString(), this);
     pathButton->setStyleSheet("QPushButton:pressed { background-color: #800fbd46; } ");
@@ -191,6 +191,10 @@ void CustomButton::mousePressEvent(QMouseEvent *e)
 
         if (!model->canFetchMore(index)) {
             populateMenu();
+            if (menu()->isEmpty()) {
+                hide();
+                return;
+            }
         } else {
             model->fetchMore(index);
             setDown(true);
@@ -223,15 +227,16 @@ void CustomButton::populateMenu()
             connect(action, &QAction::triggered, this, [this, child]() { this->actionTriggered(child); });
     }
     cMenu->setStyleSheet("QMenu { menu-scrollable: 1; }");
-
-
 }
 
 void CustomButton::fetchFinished()
 {
     fetchingMore = false;
     populateMenu();
-    showMenu();
+    if (menu()->isEmpty()) {
+        hide();
+    } else
+        showMenu();
 }
 
 void CustomButton::actionTriggered(const QModelIndex &index)

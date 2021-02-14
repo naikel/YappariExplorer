@@ -39,6 +39,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
     Model/filesystemhistory.cpp \
     Model/filesystemmodel.cpp \
+    Settings/Settings.cpp \
     Shell/contextmenu.cpp \
     Shell/directorywatcher.cpp \
     Shell/fileinforetriever.cpp \
@@ -64,6 +65,7 @@ SOURCES += \
 HEADERS += \
     Model/filesystemhistory.h \
     Model/filesystemmodel.h \
+    Settings/Settings.h \
     Shell/contextmenu.h \
     Shell/directorywatcher.h \
     Shell/fileinforetriever.h \

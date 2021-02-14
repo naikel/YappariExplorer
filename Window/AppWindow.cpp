@@ -1,3 +1,4 @@
+#include <QApplication>
 #include <QHeaderView>
 #include <QDebug>
 #include <QWindow>
@@ -31,6 +32,9 @@ QMap<quint32, DirectoryWatcher*> AppWindow::watchers   {};
 
 AppWindow::AppWindow(QWidget *parent) : MAINWINDOW(parent)
 {
+    Settings::settings = new Settings();
+    connect(QApplication::instance(), &QApplication::aboutToQuit, this, &AppWindow::saveSettings);
+
     setupGui();
 
     // Application settings
@@ -40,6 +44,11 @@ AppWindow::AppWindow(QWidget *parent) : MAINWINDOW(parent)
     contextMenu = new PlatformContextMenu(this);
 
     windowId = winId();
+}
+
+AppWindow::~AppWindow()
+{
+    qDebug() << "AppWindow::~AppWindow Destroyed";
 }
 
 WId AppWindow::getWinId()
@@ -170,14 +179,52 @@ void AppWindow::setupGui()
 
     // Default main window settings
     setMinimumWidth(getPhysicalPixels(250));
-    resize(getPhysicalPixels(1024), getPhysicalPixels(768));
 
+    qDebug() << "AppWindow::setupGui about to restore windows geometry" << this->windowHandle()->screen()->name();
+
+    QString screenName = Settings::settings->readGlobalSetting(SETTINGS_GLOBAL_SCREEN).toString();
+
+    for (QScreen *screen : QApplication::screens())
+        if (screen->name() == screenName)
+            this->windowHandle()->setScreen(screen);
+
+    int x = Settings::settings->readGlobalSetting(SETTINGS_GLOBAL_X).toInt();
+    int y = Settings::settings->readGlobalSetting(SETTINGS_GLOBAL_Y).toInt();
+    int height = Settings::settings->readGlobalSetting(SETTINGS_GLOBAL_HEIGHT).toInt();
+    int width = Settings::settings->readGlobalSetting(SETTINGS_GLOBAL_WIDTH).toInt();
+
+    if (x >= 0 && y >= 0)
+        move(x, y);
+    else {
 #ifdef WIN32_FRAMELESS
-    // Center the window in the screen
-    QRect ag = this->windowHandle()->screen()->availableGeometry();
-    QRect wg({}, frameSize().boundedTo(ag.size()));
-    move(ag.center() - wg.center());
+        // Center the window in the screen
+        QRect ag = this->windowHandle()->screen()->availableGeometry();
+        QRect wg({}, frameSize().boundedTo(ag.size()));
+        move(ag.center() - wg.center());
 #endif
+    }
+
+    if (height >= 0 && width >= 0)
+        resize(width, height);
+    else
+        resize(getPhysicalPixels(1024), getPhysicalPixels(768));
+
+    if (Settings::settings->readGlobalSetting(SETTINGS_GLOBAL_MAXIMIZED).toBool())
+        showMaximized();
+
+    qDebug() << "AppWindow::setupGui windows geometry restored";
+}
+
+void AppWindow::saveSettings()
+{
+    Settings::settings->saveGlobalSetting(SETTINGS_GLOBAL_X, x());
+    Settings::settings->saveGlobalSetting(SETTINGS_GLOBAL_Y, y());
+    Settings::settings->saveGlobalSetting(SETTINGS_GLOBAL_WIDTH, width());
+    Settings::settings->saveGlobalSetting(SETTINGS_GLOBAL_HEIGHT, height());
+    Settings::settings->saveGlobalSetting(SETTINGS_GLOBAL_MAXIMIZED, isMaximized());
+    Settings::settings->saveGlobalSetting(SETTINGS_GLOBAL_SCREEN, this->windowHandle()->screen()->name());
+
+    Settings::settings->save();
 }
 
 void AppWindow::resizeOtherSplitter(QSplitter *splitter)

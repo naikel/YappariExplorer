@@ -16,6 +16,9 @@ public:
 
     QWidget *contentWidget() const;
     void setContentWidget(QWidget *value);
+    int y();
+    int x();
+    bool isMaximized();
 
 protected:
     virtual bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;

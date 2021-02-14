@@ -1,4 +1,5 @@
 #include <QGuiApplication>
+#include <QResizeEvent>
 #include <QWindow>
 #include <QScreen>
 #include <QLayout>
@@ -220,6 +221,36 @@ QWidget *WinFramelessWindow::contentWidget() const
 void WinFramelessWindow::setContentWidget(QWidget *value)
 {
     _contentWidget = value;
+}
+
+int WinFramelessWindow::y()
+{
+    WINDOWPLACEMENT placement;
+    if (!::GetWindowPlacement(reinterpret_cast<HWND>(winId()), &placement)) {
+          return -1;
+    }
+
+    int y = placement.rcNormalPosition.top;
+
+    return (y - titleBarHeight) + 1;
+}
+
+int WinFramelessWindow::x()
+{
+    WINDOWPLACEMENT placement;
+    if (!::GetWindowPlacement(reinterpret_cast<HWND>(winId()), &placement)) {
+          return -1;
+    }
+
+    int x = placement.rcNormalPosition.left;
+
+    return x - 1;
+}
+
+
+bool WinFramelessWindow::isMaximized()
+{
+    return maximized;
 }
 
 void WinFramelessWindow::restoreOrMaximize()
