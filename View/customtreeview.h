@@ -18,8 +18,6 @@ signals:
     void refreshed();
 
 public slots:
-
-    void initialize() override;
     void selectIndex(QModelIndex index);
 
 protected:

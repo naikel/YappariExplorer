@@ -35,16 +35,25 @@
 #include "CustomExplorer.h"
 #include "once.h"
 
+#include <qt_windows.h>
+
 CustomExplorer::CustomExplorer(int nExplorer, QWidget *parent, Qt::WindowFlags f) : QFrame(parent, f)
 {
     setupGui(nExplorer);
-}
 
-void CustomExplorer::initialize(AppWindow *mainWindow)
-{
     FileSystemModel *fileSystemModel = new FileSystemModel(FileInfoRetriever::Tree, this);
+    Once::connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &CustomExplorer::initialize);
     fileSystemModel->setDefaultRoot();
     treeView->setModel(fileSystemModel);
+}
+
+void CustomExplorer::initialize()
+{
+    AppWindow *mainWindow = AppWindow::instance();
+
+    tabWidget->initialize();
+
+    FileSystemModel *fileSystemModel = reinterpret_cast<FileSystemModel *>(treeView->model());
     pathBar->setTreeModel(fileSystemModel);
 
     // Handling of single selections
@@ -82,6 +91,17 @@ void CustomExplorer::initialize(AppWindow *mainWindow)
     connect(tabWidget, &CustomTabWidget::viewModelChanged, pathBar, &PathBar::setTabModel);
     connect(pathBar, &PathBar::rootChange, this, &CustomExplorer::expandAndSelectAbsolute);
 
+    // Select current path in TreeView
+    DetailedView *detailedView = reinterpret_cast<DetailedView*>(tabWidget->currentWidget());
+    FileSystemModel *viewModel = reinterpret_cast<FileSystemModel *>(detailedView->model());
+    expandAndSelectAbsolute(viewModel->getRoot()->getPath());
+}
+
+void CustomExplorer::saveSettings() const
+{
+    tabWidget->saveSettings(nExplorer);
+
+    Settings::settings->savePaneSetting(nExplorer, SETTINGS_PANES_TREEWIDTH, treeView->size().width());
 }
 
 bool CustomExplorer::treeViewSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
@@ -211,6 +231,9 @@ void CustomExplorer::expandAndSelectAbsolute(QString path)
 
     if (path == treeViewModel->getRoot()->getPath()) {
         treeView->selectIndex(parentIndex);
+
+        // Always expand root
+        treeView->expand(parentIndex);
         return;
     }
 
@@ -258,7 +281,7 @@ void CustomExplorer::expandAndSelectAbsolute(QString path)
                 // This can happen if the item is in the List view but not yet in the Tree view *shrugs*
                 if (child == nullptr) {
                     qDebug() <<  "CustomExplorer::expandAndSelectAbsolute couldn't find the path" << absolutePath << "in the following list of children:";
-                    for (FileSystemItem *f : parent->getChildren())
+                    for (const FileSystemItem *f : parent->getChildren())
                         qDebug() << f->getPath();
                     return;
                 }
@@ -393,6 +416,8 @@ QSplitter *CustomExplorer::getSplitter() const
 
 void CustomExplorer::setupGui(int nExplorer)
 {
+    this->nExplorer = nExplorer;
+
     splitter = new QSplitter(this);
     splitter->setObjectName(QString::fromUtf8("explorerSplitter") + QString::number(nExplorer));
     splitter->setHandleWidth(1);
@@ -408,9 +433,10 @@ void CustomExplorer::setupGui(int nExplorer)
     sizePolicy1.setVerticalStretch(0);
     sizePolicy1.setHeightForWidth(treeView->sizePolicy().hasHeightForWidth());
 
+    int baseSize = AppWindow::instance()->getPhysicalPixels(100);
     treeView->setSizePolicy(sizePolicy1);
-    treeView->setMinimumSize(QSize(400, 0));
-    treeView->setBaseSize(QSize(400, 0));
+    treeView->setMinimumSize(QSize(baseSize, 0));
+    treeView->setBaseSize(QSize(baseSize, 0));
     treeView->setSizeAdjustPolicy(QAbstractScrollArea::AdjustIgnored);
 
     splitter->addWidget(treeView);
@@ -425,7 +451,7 @@ void CustomExplorer::setupGui(int nExplorer)
     pathBar = new PathBar(expWidget);
     expLayout->addWidget(pathBar);
 
-    tabWidget = new CustomTabWidget(expWidget);
+    tabWidget = new CustomTabWidget(nExplorer, expWidget);
     tabWidget->setObjectName(QString::fromUtf8("tabWidget") + QString::number(nExplorer));
     tabWidget->setStyleSheet("QTabWidget::pane { border: 0px; }");
 
@@ -445,4 +471,7 @@ void CustomExplorer::setupGui(int nExplorer)
     setLayout(new QVBoxLayout());
     layout()->setContentsMargins(0, 0, 0, 0);
     layout()->addWidget(splitter);
+
+    int width = Settings::settings->readPaneSetting(nExplorer, SETTINGS_PANES_TREEWIDTH).toInt();
+    treeView->resize(width, 0);
 }

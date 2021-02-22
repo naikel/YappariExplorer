@@ -11,8 +11,10 @@ class CustomTabWidget : public QTabWidget
     Q_OBJECT
 
 public:
-    CustomTabWidget(QWidget *parent = nullptr);
+    CustomTabWidget(int pane, QWidget *parent = nullptr);
+    void initialize();
     void addNewTab(const QString path);
+    void saveSettings(int pane);
 
 public slots:
     bool setViewRootIndex(const QModelIndex &index);
@@ -46,6 +48,9 @@ private slots:
     void emitContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
                          const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view);
     void rootChanged(QString path);
+
+private:
+    int pane;
 };
 
 #endif // CUSTOMTABWIDGET_H

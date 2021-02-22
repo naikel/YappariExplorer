@@ -19,7 +19,6 @@
 #else
 #define MAINWINDOW          QMainWindow
 #define CENTRALWIDGET       centralWidget()
-#define getPhysicalPixels(virtualPixels) (virtualPixels * (logicalDpiX() / 96.0))
 #endif
 
 // We can't include CustomExplorer.h here so we just declare it
@@ -33,9 +32,11 @@ public:
     ~AppWindow();
 
     QWidget *contentWidget();
+    int getPhysicalPixels(int virtualPixels) { return (virtualPixels * (logicalDpiX() / 96.0)); };
 
     static WId getWinId();
     static quint32 registerWatcher(DirectoryWatcher *watcher);
+    static AppWindow *instance();
 
 signals:
 
@@ -47,6 +48,7 @@ public slots:
 
 protected:
     bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
+    void resizeEvent(QResizeEvent *event) override;
 
 private:
     int  nExplorers   { 2 };
@@ -61,6 +63,10 @@ private:
     static quint32 nextId;
     static QMutex regMutex;
     static QMap<quint32, DirectoryWatcher *> watchers;
+    static AppWindow *appWindow;
+
+    bool wasMaximized {};
+    QSize prevSize;
 
     void setupGui();
     void saveSettings();

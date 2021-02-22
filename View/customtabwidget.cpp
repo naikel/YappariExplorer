@@ -6,16 +6,48 @@
 #include "customtabbar.h"
 #include "detailedview.h"
 
-CustomTabWidget::CustomTabWidget(QWidget *parent) : QTabWidget(parent)
+#include "Settings/Settings.h"
+
+CustomTabWidget::CustomTabWidget(int pane, QWidget *parent) : QTabWidget(parent)
 {
+    this->pane = pane;
     setAcceptDrops(true);
     CustomTabBar *customTabBar = new CustomTabBar(this);
     setTabBar(customTabBar);
 
     connect(customTabBar, &CustomTabBar::newTabClicked, this, &CustomTabWidget::newTabClicked);
     connect(customTabBar, &CustomTabBar::tabBarDoubleClicked, this, &CustomTabWidget::closeTab);
+}
 
-    addNewTab(QString());
+void CustomTabWidget::initialize()
+{
+    int tabsCount = Settings::settings->readPaneSetting(pane, SETTINGS_PANES_TABSCOUNT).toInt();
+    if (tabsCount > 0) {
+        for (int tab = 0; tab < tabsCount; tab++) {
+            QString path = Settings::settings->readTabSetting(pane, tab, SETTINGS_TABS_PATH).toString();
+            addNewTab(path);
+            int pos = count() - 2;
+            DetailedView *detailedView = reinterpret_cast<DetailedView *>(widget(pos));
+            QHeaderView *header = detailedView->header();
+
+            int indicatorSection = Settings::settings->readTabSetting(pane, tab, SETTINGS_TABS_SORTCOLUMN).toInt();
+            bool isAscending = Settings::settings->readTabSetting(pane, tab, SETTINGS_TABS_SORTASCENDING).toBool();
+            header->setSortIndicator(indicatorSection, isAscending ? Qt::AscendingOrder : Qt::DescendingOrder);
+
+            QJsonArray columns = Settings::settings->readTabSetting(pane, tab, SETTINGS_COLUMNS).toArray();
+            for (int section = 0; section < columns.size() ; section++) {
+                int sectionSize = Settings::settings->readColumnSetting(pane, tab, section, SETTINGS_COLUMNS_WIDTH).toInt();
+                header->resizeSection(section, sectionSize);
+
+                int visualIndex = Settings::settings->readColumnSetting(pane, tab, section, SETTINGS_COLUMNS_VISUALINDEX).toInt();
+                header->moveSection(section, visualIndex);
+            }
+        }
+
+        int currentTab = Settings::settings->readPaneSetting(pane, SETTINGS_PANES_CURRENTTAB).toInt();
+        setCurrentIndex(currentTab);
+    } else
+        addNewTab(QString());
 }
 
 void CustomTabWidget::addNewTab(const QString path)
@@ -38,10 +70,34 @@ void CustomTabWidget::addNewTab(const QString path)
     // Context menu
     connect(detailedView, &DetailedView::contextMenuRequestedForItems, this, &CustomTabWidget::emitContextMenu);
 
-    int pos = tabBar()->count() - 1;
+    int pos = count() - 1;
     insertTab(pos, detailedView, fileSystemModel->getRoot()->getDisplayName());
     setTabIcon(pos, fileSystemModel->getRoot()->getIcon());
     setCurrentIndex(pos);
+}
+
+void CustomTabWidget::saveSettings(int pane)
+{
+    Settings::settings->newTabSetting(pane);
+    int tabsCount = count() - 1;
+    Settings::settings->savePaneSetting(pane, SETTINGS_PANES_TABSCOUNT, tabsCount);
+    Settings::settings->savePaneSetting(pane, SETTINGS_PANES_CURRENTTAB, currentIndex());
+    for (int tab = 0; tab < tabsCount; tab++) {
+        const DetailedView *detailedView = static_cast<DetailedView *>(widget(tab));
+
+        FileSystemModel *fileSystemModel = static_cast<FileSystemModel *>(detailedView->model());
+        if (fileSystemModel != nullptr) {
+            Settings::settings->saveTabSetting(pane, tab, SETTINGS_TABS_PATH, fileSystemModel->getRoot()->getPath());
+            Settings::settings->saveTabSetting(pane, tab, SETTINGS_TABS_SORTCOLUMN, detailedView->header()->sortIndicatorSection());
+            Settings::settings->saveTabSetting(pane, tab, SETTINGS_TABS_SORTASCENDING, (detailedView->header()->sortIndicatorOrder() == Qt::AscendingOrder));
+
+            QHeaderView *header = detailedView->header();
+            for (int section = 0; section< header->count() ; section++) {
+                Settings::settings->saveColumnSetting(pane, tab, section, SETTINGS_COLUMNS_WIDTH, header->sectionSize(section));
+                Settings::settings->saveColumnSetting(pane, tab, section, SETTINGS_COLUMNS_VISUALINDEX, header->visualIndex(section));
+            }
+        }
+    }
 }
 
 bool CustomTabWidget::setViewRootIndex(const QModelIndex &index)

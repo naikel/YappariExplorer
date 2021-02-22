@@ -106,15 +106,15 @@ bool WinFramelessWindow::nativeEvent(const QByteArray &eventType, void *message,
 
                 clientRect = monitor_info.rcWork;
 
-                *result = WVR_REDRAW;
-                return true;
+            } else {
+
+                // This fixes the bottom border drawing
+                clientRect.bottom -= 1;
+
             }
 
-            // This fixes the flickering, I don't know why but it does
-            clientRect.bottom -= 1;
-
             // Redraw the window after the non client area changed
-            *result = WVR_REDRAW;
+            *result = 0;
             return true;
         }
 
@@ -246,7 +246,6 @@ int WinFramelessWindow::x()
 
     return x - 1;
 }
-
 
 bool WinFramelessWindow::isMaximized()
 {

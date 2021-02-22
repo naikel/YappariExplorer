@@ -3,11 +3,10 @@
 
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QString>
 
 // Settings
-
-#define SETTINGS_PANES                      "panes"
 
 // Global Settings
 #define SETTINGS_GLOBAL                     "global"
@@ -17,10 +16,25 @@
 #define SETTINGS_GLOBAL_HEIGHT              "height"
 #define SETTINGS_GLOBAL_MAXIMIZED           "maximized"
 #define SETTINGS_GLOBAL_SCREEN              "screen"
+#define SETTINGS_GLOBAL_SPLITTER_SIZES      "splittersizes"
+#define SETTINGS_GLOBAL_EXPLORERS           "explorers"
+
+// Panes settings
+#define SETTINGS_PANES                      "panes"
+#define SETTINGS_PANES_TREEWIDTH            "treewidth"
+#define SETTINGS_PANES_TABSCOUNT            "tabscount"
+#define SETTINGS_PANES_CURRENTTAB           "currenttab"
+
+// Tab Settings
+#define SETTINGS_TABS                       "tabs"
+#define SETTINGS_TABS_PATH                  "path"
+#define SETTINGS_TABS_SORTCOLUMN            "sortcolumn"
+#define SETTINGS_TABS_SORTASCENDING         "sortascending"
 
 // Columns settings
 #define SETTINGS_COLUMNS                    "columns"
 #define SETTINGS_COLUMNS_WIDTH              "width"
+#define SETTINGS_COLUMNS_VISUALINDEX        "visualindex"
 
 class Settings
 {
@@ -29,17 +43,33 @@ public:
 
     void saveGlobalSetting(QString setting, QJsonValue value);
     QJsonValue readGlobalSetting(QString setting);
-    int readIntGlobalSetting(QString setting);
-    bool readBoolGlobalSetting(QString setting);
+
+    void savePaneSetting(int pane, QString setting, QJsonValue value);
+    QJsonValue readPaneSetting(int pane, QString setting);
+
+    void newTabSetting(int pane);
+    void saveTabSetting(int pane, int tab, QString setting, QJsonValue value);
+    QJsonValue readTabSetting(int pane, int tab, QString setting);
+
+    void saveColumnSetting(int pane, int tab, int column, QString setting, QJsonValue value);
+    QJsonValue readColumnSetting(int pane, int tab, int column, QString setting);
+
     void save();
 
     static Settings *settings;
 
 private:
-    QJsonDocument settingsJson;
+    // Sections
+    QJsonObject global;
+    QJsonArray panes;
 
     QString getSettingsFilePath();
+    void readSettings(QJsonDocument settingsJson);
+    QByteArray getJsonDocument();
+
     void createDefaultSettings();
+    void createGlobalDefaultSettings();
+    void createPanesDefaultSettings();
 };
 
 #endif // SETTINGS_H

@@ -80,7 +80,8 @@ void PathWidget::selectIndex(QModelIndex index)
         while (index.isValid()) {
             PathWidgetButton *button = new PathWidgetButton(index, this);
             connect(button->getPathButton(), &CustomButton::clicked, this, [this, index]() { this->clickedOnIndex(index); });
-            connect(button->getMenuButton(), &CustomButton::menuIndexSelected, this, &PathWidget::clickedOnIndex);
+            if (button->getMenuButton() != nullptr)
+                connect(button->getMenuButton(), &CustomButton::menuIndexSelected, this, &PathWidget::clickedOnIndex);
             buttons.append(button);
             layout->insertWidget(0, button);
             index = index.parent();

@@ -33,6 +33,7 @@ private:
     qreal titleBarHeight;
     qreal pixelRatio        { 1.0 };
     bool maximized          {};
+    bool boolTest           {};
 
     QWidget *_contentWidget;
     TitleBar *titleBar;

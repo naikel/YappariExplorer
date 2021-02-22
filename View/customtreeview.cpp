@@ -74,19 +74,6 @@ QModelIndex CustomTreeView::selectedItem()
     return QModelIndex();
 }
 
-void CustomTreeView::initialize()
-{
-    qDebug() << "CustomTreeView::initialize";
-
-    FileSystemModel *fileSystemModel = getFileSystemModel();
-
-    QModelIndex root = fileSystemModel->index(0, 0, QModelIndex());
-
-    // Expand the root and select it
-    expand(root);
-    selectionModel()->select(root, QItemSelectionModel::SelectCurrent);
-}
-
 void CustomTreeView::selectIndex(QModelIndex index)
 {
     selectionModel()->select(index, QItemSelectionModel::ClearAndSelect);

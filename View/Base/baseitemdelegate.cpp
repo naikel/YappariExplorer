@@ -74,7 +74,6 @@ void BaseItemDelegate::initStyleOption(QStyleOptionViewItem *option, const QMode
 
 QWidget *BaseItemDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
-    Q_UNUSED(index)
     Q_UNUSED(option)
     ExpandingLineEdit *le = new ExpandingLineEdit(index, parent);
     return le;

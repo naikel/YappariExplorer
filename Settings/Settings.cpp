@@ -27,7 +27,7 @@ Settings::Settings()
     file.close();
 
     QJsonParseError error;
-    settingsJson = QJsonDocument::fromJson(contents, &error);
+    QJsonDocument settingsJson = QJsonDocument::fromJson(contents, &error);
 
     if (error.error != QJsonParseError::NoError) {
         qDebug() << "Settings::Settings Error parsing JSON settings file: " + QString::number(error.error);
@@ -35,37 +35,77 @@ Settings::Settings()
         return;
     }
 
+    readSettings(settingsJson);
     qDebug() << "Settings::Settings JSON settings file read successfully";
 
 }
 
 void Settings::saveGlobalSetting(QString setting, QJsonValue value)
 {
-    QJsonObject mainDocument = settingsJson.object();
-    QJsonObject global = mainDocument.value(SETTINGS_GLOBAL).toObject();
-
     global.insert(setting, value);
-    mainDocument.insert(SETTINGS_GLOBAL, global);
-
-    settingsJson.setObject(mainDocument);
 }
 
 QJsonValue Settings::readGlobalSetting(QString setting)
 {
-    QJsonObject mainDocument = settingsJson.object();
-    QJsonObject global = mainDocument.value(SETTINGS_GLOBAL).toObject();
-
     return global.value(setting);
 }
 
-int Settings::readIntGlobalSetting(QString setting)
+void Settings::savePaneSetting(int pane, QString setting, QJsonValue value)
 {
-    return readGlobalSetting(setting).toInt();
+    QJsonObject paneObject = panes[pane].toObject();
+    paneObject.insert(setting, value);
+    panes[pane] = paneObject;
 }
 
-bool Settings::readBoolGlobalSetting(QString setting)
+QJsonValue Settings::readPaneSetting(int pane, QString setting)
 {
-    return readGlobalSetting(setting).toBool();
+    return panes[pane].toObject().value(setting);
+}
+
+void Settings::newTabSetting(int pane)
+{
+    QJsonArray tabsArray;
+    savePaneSetting(pane, SETTINGS_TABS, tabsArray);
+}
+
+void Settings::saveTabSetting(int pane, int tab, QString setting, QJsonValue value)
+{
+    QJsonArray tabsArray = readPaneSetting(pane, SETTINGS_TABS).toArray();
+
+    while (tabsArray.size() <= tab)
+        tabsArray.append(QString());
+
+    QJsonObject tabObject = tabsArray[tab].toObject();
+    tabObject.insert(setting, value);
+    tabsArray[tab] = tabObject;
+    savePaneSetting(pane, SETTINGS_TABS, tabsArray);
+}
+
+QJsonValue Settings::readTabSetting(int pane, int tab, QString setting)
+{
+    QJsonArray tabsArray = readPaneSetting(pane, SETTINGS_TABS).toArray();
+
+    return tabsArray[tab].toObject().value(setting);
+}
+
+void Settings::saveColumnSetting(int pane, int tab, int column, QString setting, QJsonValue value)
+{
+    QJsonArray columnsArray = readTabSetting(pane, tab, SETTINGS_COLUMNS).toArray();
+
+    while (columnsArray.size() <= column)
+        columnsArray.append(QString());
+
+    QJsonObject columnObject = columnsArray[column].toObject();
+    columnObject.insert(setting, value);
+    columnsArray[column] = columnObject;
+    saveTabSetting(pane, tab, SETTINGS_COLUMNS, columnsArray);
+}
+
+QJsonValue Settings::readColumnSetting(int pane, int tab, int column, QString setting)
+{
+    QJsonArray columnsArray = readTabSetting(pane, tab, SETTINGS_COLUMNS).toArray();
+
+    return columnsArray[column].toObject().value(setting);
 }
 
 void Settings::save()
@@ -78,8 +118,7 @@ void Settings::save()
         return;
     }
 
-    QByteArray document = settingsJson.toJson(QJsonDocument::Indented);
-    file.write(document);
+    file.write(getJsonDocument());
     file.close();
 
     qDebug() << "Settings::Settings JSON settings saved successfully" << settingsPath;
@@ -104,20 +143,82 @@ QString Settings::getSettingsFilePath()
     return path;
 }
 
+void Settings::readSettings(QJsonDocument settingsJson)
+{
+    QJsonObject mainDocument = settingsJson.object();
+
+    global = mainDocument.value(SETTINGS_GLOBAL).toObject();
+
+    if (global.isEmpty())
+        createGlobalDefaultSettings();
+
+    panes = mainDocument.value(SETTINGS_PANES).toArray();
+
+    if (panes.isEmpty())
+        createPanesDefaultSettings();
+}
+
+QByteArray Settings::getJsonDocument()
+{
+    QJsonObject mainDocument;
+    mainDocument.insert(SETTINGS_GLOBAL, global);
+    mainDocument.insert(SETTINGS_PANES, panes);
+
+    QJsonDocument settingsJson;
+    settingsJson.setObject(mainDocument);
+
+    return settingsJson.toJson(QJsonDocument::Indented);
+}
+
 void  Settings::createDefaultSettings()
 {
     qDebug() << "Settings::createDefaultSettings";
 
-    QJsonObject mainDocument;
-    QJsonObject global;
+    createGlobalDefaultSettings();
+    createPanesDefaultSettings();
 
+    qDebug() << getJsonDocument().toStdString().c_str();
+}
+
+void Settings::createGlobalDefaultSettings()
+{
+    global.insert(SETTINGS_GLOBAL_EXPLORERS, 2);
     global.insert(SETTINGS_GLOBAL_X, -1);
     global.insert(SETTINGS_GLOBAL_Y, -1);
     global.insert(SETTINGS_GLOBAL_WIDTH, -1);
     global.insert(SETTINGS_GLOBAL_HEIGHT, -1);
 
-    mainDocument.insert(SETTINGS_GLOBAL, global);
+}
 
-    settingsJson.setObject(mainDocument);
+void Settings::createPanesDefaultSettings()
+{
+    QJsonObject defaultPane;
+    defaultPane.insert(SETTINGS_PANES_TREEWIDTH, 400);
 
+    QJsonObject defaultTab;
+    QJsonArray columns;
+    QJsonObject column;
+
+    column.insert(SETTINGS_COLUMNS_VISUALINDEX, 0);
+    column.insert(SETTINGS_COLUMNS_WIDTH, 600);
+    columns.append(column);
+    column.insert(SETTINGS_COLUMNS_VISUALINDEX, 1);
+    column.insert(SETTINGS_COLUMNS_WIDTH, 100);
+    columns.append(column);
+    column.insert(SETTINGS_COLUMNS_VISUALINDEX, 2);
+    column.insert(SETTINGS_COLUMNS_WIDTH, 230);
+    columns.append(column);
+
+    defaultTab.insert(SETTINGS_COLUMNS, columns);
+    defaultTab.insert(SETTINGS_TABS_SORTCOLUMN, 1);
+    defaultTab.insert(SETTINGS_TABS_SORTASCENDING, true);
+
+    QJsonArray tabs;
+    tabs.append(defaultTab);
+
+    defaultPane.insert(SETTINGS_PANES_TABSCOUNT, 1);
+    defaultPane.insert(SETTINGS_TABS, tabs);
+
+    panes.append(defaultPane);
+    panes.append(defaultPane);
 }

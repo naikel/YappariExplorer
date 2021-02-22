@@ -50,7 +50,8 @@ class CustomExplorer : public QFrame
 public:
     CustomExplorer(int nExplorer, QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags());
 
-    void initialize(AppWindow *mainWindow);
+    void initialize();
+    void saveSettings() const;
 
     QSplitter *getSplitter() const;
 
@@ -67,6 +68,7 @@ public slots:
     void rootChangeFailed(QString path);
 
 private:
+    int nExplorer;
     CustomTreeView *treeView;
     CustomTabWidget *tabWidget;
     PathBar *pathBar;
