@@ -155,7 +155,7 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             if (getScope() == FileInfoRetriever::List)
                 flags |= SHCONTF_NONFOLDERS;
 
-            if (SUCCEEDED(psf->EnumObjects(reinterpret_cast<HWND>(AppWindow::getWinId()), flags, reinterpret_cast<IEnumIDList**>(&ppenumIDList)))) {
+            if (SUCCEEDED(psf->EnumObjects(reinterpret_cast<HWND>(AppWindow::instance()->winId()), flags, reinterpret_cast<IEnumIDList**>(&ppenumIDList)))) {
 
                 qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "Children enumerated";
 
@@ -260,10 +260,10 @@ void WinFileInfoRetriever::getChildInfo(IShellFolder *psf, LPITEMIDLIST pidlChil
    if (getScope() == FileInfoRetriever::List) {
 
         DWORD attrib {};
+        WIN32_FIND_DATAW fileAttributeData {};
 
         // File Size - Method 3 - FASTEST
         if (!child->isDrive()) {
-            WIN32_FIND_DATAW fileAttributeData;
             if (SUCCEEDED(::SHGetDataFromIDListW(psf, pidlChild, SHGDFIL_FINDDATA, &fileAttributeData, sizeof(fileAttributeData)))) {
                 quint64 size = fileAttributeData.nFileSizeHigh;
                 size = (size << 32) + fileAttributeData.nFileSizeLow;
@@ -305,7 +305,16 @@ void WinFileInfoRetriever::getChildInfo(IShellFolder *psf, LPITEMIDLIST pidlChil
 
             }
         } else if (child->isFolder()) {
-            child->setType((attrib & FILE_ATTRIBUTE_REPARSE_POINT) ? tr("Junction") : QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer"));
+            if (attrib & FILE_ATTRIBUTE_REPARSE_POINT) {
+                switch (fileAttributeData.dwReserved0) {
+                    case IO_REPARSE_TAG_MOUNT_POINT:
+                        child->setType(tr("Junction"));
+                        break;
+                    default:
+                        child->setType(QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer"));
+                }
+            } else
+                child->setType(QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer"));
         }
     }
 

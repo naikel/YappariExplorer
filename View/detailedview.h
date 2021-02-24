@@ -12,8 +12,8 @@ class DetailedView : public BaseTreeView
 public:
     DetailedView(QWidget *parent = nullptr);
 
-    void initialize() override;
     bool setRoot(QString root) override;
+    void setModel(QAbstractItemModel *model) override;
 
 signals:
 

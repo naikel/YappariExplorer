@@ -24,20 +24,9 @@ DetailedView::DetailedView(QWidget *parent) : BaseTreeView(parent)
     setItemDelegateForColumn(FileSystemModel::Columns::Extension, baseDelegate);
     setItemDelegateForColumn(FileSystemModel::Columns::Size, baseDelegate);
     setItemDelegateForColumn(FileSystemModel::Columns::Type, baseDelegate);
-}
 
-void DetailedView::initialize()
-{
-    /*
     this->header()->setMinimumSectionSize(100);
-    this->header()->resizeSection(FileSystemModel::Columns::Name, 600);
-    this->header()->resizeSection(FileSystemModel::Columns::Extension, 100);
-    this->header()->resizeSection(FileSystemModel::Columns::LastChangeTime, 230);
-    this->header()->setSortIndicator(FileSystemModel::Columns::Extension, Qt::SortOrder::AscendingOrder);
-    */
-
     this->header()->setStretchLastSection(false);
-    BaseTreeView::initialize();
 }
 
 bool DetailedView::setRoot(QString root)
@@ -59,6 +48,15 @@ bool DetailedView::setRoot(QString root)
     }
 
     return false;
+}
+
+void DetailedView::setModel(QAbstractItemModel *model)
+{
+    BaseTreeView::setModel(model);
+    this->header()->resizeSection(FileSystemModel::Columns::Name, 600);
+    this->header()->resizeSection(FileSystemModel::Columns::Extension, 100);
+    this->header()->resizeSection(FileSystemModel::Columns::LastChangeTime, 230);
+    this->header()->setSortIndicator(FileSystemModel::Columns::Extension, Qt::SortOrder::AscendingOrder);
 }
 
 void DetailedView::selectEvent()

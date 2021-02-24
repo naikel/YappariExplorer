@@ -59,8 +59,6 @@ void CustomTabWidget::addNewTab(const QString path)
     else
         fileSystemModel->setRoot(path);
 
-    detailedView->setModel(fileSystemModel);
-
     connect(detailedView, &DetailedView::viewFocus, this, &CustomTabWidget::tabFocus);
     connect(detailedView, &DetailedView::doubleClicked, this, &CustomTabWidget::doubleClicked);
     connect(detailedView, &DetailedView::rootChanged, this, &CustomTabWidget::rootChanged);
@@ -69,6 +67,8 @@ void CustomTabWidget::addNewTab(const QString path)
 
     // Context menu
     connect(detailedView, &DetailedView::contextMenuRequestedForItems, this, &CustomTabWidget::emitContextMenu);
+
+    detailedView->setModel(fileSystemModel);
 
     int pos = count() - 1;
     insertTab(pos, detailedView, fileSystemModel->getRoot()->getDisplayName());

@@ -33,9 +33,8 @@ public:
 
     QWidget *contentWidget();
     int getPhysicalPixels(int virtualPixels) { return (virtualPixels * (logicalDpiX() / 96.0)); };
+    quint32 registerWatcher(DirectoryWatcher *watcher);
 
-    static WId getWinId();
-    static quint32 registerWatcher(DirectoryWatcher *watcher);
     static AppWindow *instance();
 
 signals:
@@ -58,11 +57,9 @@ private:
     QList<QSplitter *>      splitters;
 
     ContextMenu *contextMenu {};
-
-    static WId windowId;
-    static quint32 nextId;
-    static QMutex regMutex;
-    static QMap<quint32, DirectoryWatcher *> watchers;
+    quint32 nextId {};
+    QMutex regMutex;
+    QMap<quint32, DirectoryWatcher *> watchers;
     static AppWindow *appWindow;
 
     bool wasMaximized {};

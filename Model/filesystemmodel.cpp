@@ -372,6 +372,9 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
                     return QVariant(palette.text());
                 }
                 break;
+            case FileSystemModel::PathRole:
+                return QVariant(fileSystemItem->getPath());
+
         }
     }
     return QVariant();

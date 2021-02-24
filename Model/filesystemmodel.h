@@ -76,6 +76,10 @@ public:
         MaxColumns
     };
 
+    enum Role {
+        PathRole = Qt::UserRole,
+    };
+
     FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent = nullptr);
     ~FileSystemModel() override;
 
