@@ -1327,7 +1327,6 @@ void FileSystemModel::renamePath(QString oldFileName, QString newFileName)
                 return;
         }
 
-
         qDebug() << "FileSystemModel::renamePath" << fileInfoRetriever->getScope() << "couldn't find index for" << oldFileName << "in" << root->getPath() << " - Trying addPath";
         addPath(newFileName);
     }

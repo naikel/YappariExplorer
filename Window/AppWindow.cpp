@@ -54,6 +54,17 @@
 
 AppWindow *AppWindow::appWindow                        {};
 
+/*!
+ * \brief The constructor.
+ * \param parent The QObject parent.
+ *
+ * Constructs a new FileSystemModel object.
+ *
+ * This constructor sets up the window, creates the Context Menu object
+ * and the Settings::settings object.
+ *
+ * \sa saveSettings()
+ */
 AppWindow::AppWindow(QWidget *parent) : MAINWINDOW(parent)
 {
     appWindow = this;
@@ -74,11 +85,28 @@ AppWindow::AppWindow(QWidget *parent) : MAINWINDOW(parent)
     setupGui();
 }
 
+/*!
+ * \brief The denstructor.
+ *
+ */
 AppWindow::~AppWindow()
 {
     qDebug() << "AppWindow::~AppWindow Destroyed";
 }
 
+/*!
+ * \brief Registers the DirectoryWatcher \a watcher and returns the registration id.
+ * \param watcher a DirectoryWatcher object to be registered.
+ * \return an id as a quint32
+ *
+ * This registers a DirectoryWatcher with this window.
+ *
+ * Since Windows sends notifications through the main window, this window needs to know which DirectoryWatcher
+ * is watching that object, and then sends the notification to that DirectoryWatcher.  For this the
+ * DirectoryWatcher must be registered with this window first.
+ *
+ * \sa nativeEvent()
+ */
 quint32 AppWindow::registerWatcher(DirectoryWatcher *watcher)
 {
     regMutex.lock();
@@ -92,16 +120,49 @@ quint32 AppWindow::registerWatcher(DirectoryWatcher *watcher)
     return id;
 }
 
+/*!
+ * \brief Returns a pointer to this instance.
+ * \return an AppWindow pointer.
+ *
+ * Returns a pointer to this AppWindow object.
+ */
 AppWindow *AppWindow::instance()
 {
     return appWindow;
 }
 
+/*!
+ * \brief Returns the content widget of this window.
+ * \return a QWidget pointer.
+ *
+ * Returns a pointer to the content widget of this window.
+ *
+ * If this is a normal window, this is equivalent to the centralWidget() function.
+ * If this is a frameless window under Windows, it will return the content widget that
+ * defines the client area.
+ *
+ * \sa QMainWindow::centralWidget()
+ * \sa WinFramelessWindow::contentWidget()
+ */
 QWidget *AppWindow::contentWidget()
 {
     return CENTRALWIDGET;
 }
 
+/*!
+ * \brief Shows the Context Menu in the point \a pos.
+ * \param pos a QPoint indicating the top-left point where the menu will be shown.
+ * \param fileSystemItems a QList of FileSystemItem pointers of the files selected.
+ * \param viewAspect indicates if it's a background menu or a menu of selected items.
+ * \param view the view as a QAbstractItemView object that requested the menu.
+ *
+ * Shows the Context Menu in the point \a pos.
+ *
+ * If \a viewAspect is ContextMenu::SelectedItems then a menu of the \a fileSystemItems
+ * items will be shown, otherwise it is the background menu.
+ *
+ * \sa ContextMenu::show()
+ */
 void AppWindow::showContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view)
 {
     qDebug() << "AppWindow::showContextMenu";
@@ -109,6 +170,14 @@ void AppWindow::showContextMenu(const QPoint &pos, const QList<FileSystemItem *>
     contextMenu->show(winId(), pos, fileSystemItems, viewAspect, view);
 }
 
+/*!
+ * \brief Executes the default action for the FileSystemItem object \afileSystemItem
+ * \param fileSystemItem a FileSystemItem pointer.
+ *
+ * Executes the default action for a FileSystemItem object.
+ *
+ * \sa ContextMenu::defaultAction()
+ */
 void AppWindow::defaultAction(const FileSystemItem *fileSystemItem)
 {
     qDebug() << "AppWindow::defaultAction";
@@ -116,9 +185,18 @@ void AppWindow::defaultAction(const FileSystemItem *fileSystemItem)
     contextMenu->defaultAction(winId(), fileSystemItem);
 }
 
+/*!
+ * \brief Changes the window title in the title bar with the display name of a FileSystemItem object.
+ * \param a FileSystemItem pointer.
+ *
+ * This function changes the title of this window in the title bar with the display name of a
+ * FileSystemItem object and the application name.
+ *
+ * This only works if this window is not a Frameless Window.
+ */
 void AppWindow::updateTitle(FileSystemItem *item)
 {
-#ifdef WIN32_FRAMELESS
+#ifndef WIN32_FRAMELESS
     QString title = APPLICATION_TITLE;
     if (item != nullptr) {
         title = item->getDisplayName() + " - " + title;
@@ -129,6 +207,21 @@ void AppWindow::updateTitle(FileSystemItem *item)
 #endif
 }
 
+/*!
+ * \brief Handles a native event sent to this window.
+ * \param eventType a QByteArray that identifies the type of the event.
+ * \param message a void pointer to a native message.
+ * \param result a long pointer that will contain the result of the handling.
+ * \return true if the event was handled by this function.
+ *
+ * This function checks if the event is a notify event or if it's a context menu event
+ * under Windows.
+ *
+ * If it's a notify event then if will look from the DirectoryWatcher objects registered
+ * to this window which one this event belongs to and send it to the respective object.
+ *
+ * If it's a context menu event then it sends the event to the ContextMenu object.
+ */
 bool AppWindow::nativeEvent(const QByteArray &eventType, void *message, long *result)
 {
     quint32 id {};
@@ -149,6 +242,13 @@ bool AppWindow::nativeEvent(const QByteArray &eventType, void *message, long *re
     return MAINWINDOW::nativeEvent(eventType, message, result);
 }
 
+/*!
+ * \brief Handles a resize event.
+ * \param event a QResizeEvent pointer.
+ *
+ * This event handler stores the new size of the window in case that the user decides
+ * to maximize the window and then restore it, to restore to the original size.
+ */
 void AppWindow::resizeEvent(QResizeEvent *event)
 {
     MAINWINDOW::resizeEvent(event);
@@ -157,6 +257,13 @@ void AppWindow::resizeEvent(QResizeEvent *event)
         prevSize = event->size();
 }
 
+/*!
+ * \brief Sets up the GUI.
+ *
+ * This function sets up the whole window. It creates the CustomExplorer objects,
+ * the main QSplitter if needed, and restores everything like it was in the
+ * previous session.
+ */
 void AppWindow::setupGui()
 {
 #ifndef WIN32_FRAMELESS
@@ -170,6 +277,7 @@ void AppWindow::setupGui()
 #endif
 
     QWidget *w;
+    nExplorers = Settings::settings->readGlobalSetting(SETTINGS_GLOBAL_EXPLORERS).toInt();
     if (nExplorers > 1) {
         QSplitter *splitter = new QSplitter(contentWidget());
         splitter->setObjectName(QString::fromUtf8("splitter"));
@@ -266,6 +374,14 @@ void AppWindow::setupGui()
     qDebug() << "AppWindow::setupGui windows geometry restored";
 }
 
+/*!
+ * \brief Saves current settings.
+ *
+ * This function saves the state of every object in the window and deletes
+ * the Settings::settings object.
+ *
+ * \sa AppWindow::AppWindow()
+ */
 void AppWindow::saveSettings()
 {
     for (const CustomExplorer *cExplorer : explorers)
@@ -294,21 +410,29 @@ void AppWindow::saveSettings()
     }
 
     Settings::settings->save();
+
+    delete Settings::settings;
 }
 
+/*!
+ * \brief Resizes the splitter of the other CustomExplorer
+ *
+ * If a vertical splitter from a CustomExplorer object is resized, this function is called
+ * so the vertical splitter from the other CustomExplorer has the same size.
+ *
+ * This function only has meaning if the number of explorers is greater than one.
+ *
+ */
 void AppWindow::resizeOtherSplitter(QSplitter *splitter)
 {
     if (nExplorers > 1) {
 
-        QSplitter *otherSplitter {};
-        for (QSplitter *s : splitters)
-            if (splitter != s)
-                otherSplitter = s;
-
-        if (otherSplitter != nullptr) {
-            QList<int> currentSizes = splitter->sizes();
-            if (currentSizes.at(0) != otherSplitter->sizes().at(0))
-                otherSplitter->setSizes(currentSizes);
-        }
+        for (QSplitter *otherSplitter : splitters)
+            if (splitter != otherSplitter) {
+                QList<int> currentSizes = splitter->sizes();
+                if (currentSizes.at(0) != otherSplitter->sizes().at(0))
+                    otherSplitter->setSizes(currentSizes);
+                break;
+            }
     }
 }
