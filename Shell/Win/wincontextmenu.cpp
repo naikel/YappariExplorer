@@ -1,3 +1,4 @@
+#include <QSortFilterProxyModel>
 #include <QApplication>
 #include <QClipboard>
 #include <QMimeData>
@@ -31,25 +32,23 @@
 #define MENU_ID_PASTELINK           0x8001
 #define MENU_ID_SEPARATOR           0x8002
 
-#define getFileSystemModel(view)    static_cast<FileSystemModel *>(view->model());
-
 WinContextMenu::WinContextMenu(QObject *parent) : ContextMenu(parent)
 {
 
 }
 
-void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
+void WinContextMenu::show(const WId wId, const QPoint &pos, const QModelIndexList &indexList,
                           const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view)
 {
     qDebug() << "WinContextMenu::show";
 
     ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-    if (!fileSystemItems.size())
+    if (!indexList.size())
         return;
 
     HRESULT hr;
     LPITEMIDLIST pidl;
-    QString mPath = fileSystemItems.at(0)->getPath();
+    QString mPath = indexList.at(0).data(FileSystemModel::PathRole).toString();
 
     hr = (mPath == "/")
                 ? ::SHGetKnownFolderIDList(FOLDERID_ComputerFolder /* FOLDERID_Desktop */, KF_FLAG_DEFAULT, nullptr, &pidl)
@@ -59,14 +58,15 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
         IShellFolder *psf;
         LPCITEMIDLIST pidlChild {};
         PCUITEMID_CHILD_ARRAY pidlList {};
-        FileSystemModel *model = getFileSystemModel(view);
+        QSortFilterProxyModel *proxyModel = reinterpret_cast<QSortFilterProxyModel *>(view->model());
+        FileSystemModel *model = reinterpret_cast<FileSystemModel *>(proxyModel->sourceModel());
 
         // All items have the same parent we just need one to bind to the parent
         if (SUCCEEDED(hr = ::SHBindToParent(pidl, IID_IShellFolder, reinterpret_cast<void**>(&psf), &pidlChild))) {
 
             HWND hwnd = reinterpret_cast<HWND>(wId);
             IContextMenu *imenu;
-            FileSystemItem *parent {};
+            QModelIndex parent;
 
             if (viewAspect == ContextMenu::Background) {
                 // Context menu was requested on the background of the view
@@ -76,16 +76,16 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
                 IShellView* pShellView = nullptr;
                 psf->CreateViewObject(hwnd, IID_PPV_ARGS(&pShellView));
 
-                parent = fileSystemItems[0];
+                parent = indexList[0];
 
                 hr = pShellView->GetItemObject(SVGIO_BACKGROUND, IID_IContextMenu, reinterpret_cast<void**>(&imenu));
 
             } else {
                 // Context menu was requested on one or more selected items
 
-                pidlList = new LPCITEMIDLIST[static_cast<unsigned long long>(fileSystemItems.size())];
+                pidlList = new LPCITEMIDLIST[static_cast<unsigned long long>(indexList.size())];
                 UINT i = 0;
-                for (FileSystemItem *fileSystemItem : fileSystemItems) {
+                for (QModelIndex index : indexList) {
 
                     // We already have the first one
                     // Saving a couple of nanoseconds here by not calling ParseDisplayName on it :)
@@ -97,7 +97,7 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
                     LPITEMIDLIST pidlItem;
 
                     // Path should be relative to the folder, not absolute.  We'll use getDisplayName() for this
-                    std::wstring wstrDisplayName = fileSystemItem->getDisplayName().toStdWString();
+                    std::wstring wstrDisplayName = index.data(Qt::DisplayRole).toString().toStdWString();
                     LPWSTR path = const_cast<LPWSTR>(wstrDisplayName.c_str());
 
                     if (SUCCEEDED(psf->ParseDisplayName(nullptr, nullptr, path, nullptr, &pidlItem, nullptr))) {
@@ -105,7 +105,7 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
                     }
                 }
 
-                parent = fileSystemItems[0]->getParent();
+                parent = indexList[0].parent();
 
                 hr = psf->GetUIObjectOf(hwnd, i, pidlList, IID_IContextMenu, nullptr, reinterpret_cast<void**>(&imenu));
 
@@ -153,9 +153,11 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
 
                         QString strVerb = QString::fromWCharArray(reinterpret_cast<wchar_t *>(cBuffer));
 
-                        if (strVerb == VERB_RENAME && view != nullptr && fileSystemItems.size() == 1) {
+                        if (strVerb == VERB_RENAME && view != nullptr && indexList.size() == 1) {
 
-                            view->edit(model->index(fileSystemItems[0]));
+                            QModelIndex proxyIndex = proxyModel->mapFromSource(indexList[0]);
+
+                            view->edit(proxyIndex);
 
                         } else if (strVerb == VERB_DELETE && view != nullptr) {
 
@@ -167,8 +169,7 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
 
                         } else if (strVerb == VERB_REFRESH && view != nullptr) {
 
-                            FileSystemModel *model = getFileSystemModel(view);
-                            model->refresh(parent->getPath());
+                            model->refreshIndex(parent);
 
                         } else {
 
@@ -198,8 +199,10 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
             }
             psf->Release();
             if (pidlList) {
-                // We can't free the first one.  Read ::SHBindToParent documentation for more information.
-                for (int i = 1; i < fileSystemItems.size(); i++)
+                // We can't free the first one.  The SHBindToParent documentation says:
+                //      Note: SHBindToParent does not allocate a new PIDL; it simply receives a pointer through this parameter.
+                //      Therefore, you are not responsible for freeing this resource.
+                for (int i = 1; i < indexList.size(); i++)
                     ::CoTaskMemFree(const_cast<LPITEMIDLIST>(pidlList[i]));
 
                 delete pidlList;
@@ -212,7 +215,7 @@ void WinContextMenu::show(const WId wId, const QPoint &pos, const QList<FileSyst
     }
 }
 
-void WinContextMenu::defaultAction(const WId wId, const FileSystemItem *fileSystemItem)
+void WinContextMenu::defaultActionForIndex(const WId wId, const QModelIndex &index)
 {
     qDebug() << "WinContextMenu::defaultAction";
 
@@ -220,7 +223,7 @@ void WinContextMenu::defaultAction(const WId wId, const FileSystemItem *fileSyst
 
     HRESULT hr;
     LPITEMIDLIST pidl;
-    QString mPath = fileSystemItem->getPath();
+    QString mPath = index.data(FileSystemModel::PathRole).toString();
     if (SUCCEEDED(hr = ::SHParseDisplayName(mPath.toStdWString().c_str(), nullptr, &pidl, 0, nullptr))) {
       IShellFolder *psf;
       LPCITEMIDLIST pidlChild;
@@ -237,7 +240,7 @@ void WinContextMenu::defaultAction(const WId wId, const FileSystemItem *fileSyst
 
                 if (iCmd != static_cast<UINT>(-1)) {
 
-                    invokeCommand(hwnd, iCmd, imenu, QPoint(), fileSystemItem->getParent(), nullptr);
+                    invokeCommand(hwnd, iCmd, imenu, QPoint(), index.parent(), nullptr);
                 }
             }
             ::DestroyMenu(hmenu);
@@ -251,7 +254,7 @@ void WinContextMenu::defaultAction(const WId wId, const FileSystemItem *fileSyst
     ::CoUninitialize();
 }
 
-void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QPoint pos, FileSystemItem *parent, FileSystemModel *model)
+void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QPoint pos, const QModelIndex &parent, FileSystemModel *model)
 {
     UINT command = iCmd - SCRATCH_QCM_FIRST;
 
@@ -274,9 +277,10 @@ void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QP
     info.lpVerbW  = MAKEINTRESOURCEW(command);
     info.nShow = SW_SHOWNORMAL;
 
-    if (parent != nullptr) {
-        wstrWrkDir = parent->getPath().toStdWString();
-        strWrkDir = parent->getPath().toStdString();
+    if (parent.isValid()) {
+        QString parentPath = parent.data(FileSystemModel::PathRole).toString();
+        wstrWrkDir = parentPath.toStdWString();
+        strWrkDir = parentPath.toStdString();
 
         // Pointers to wstrWrkDir (std::wstring) and strWrkDir (std::string) have to be valid until the InvokeCommand call
 
@@ -327,7 +331,7 @@ bool WinContextMenu::handleNativeEvent(const QByteArray &eventType, void *messag
     return false;
 }
 
-void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const ContextMenu::ContextViewAspect viewAspect, FileSystemItem *parent)
+void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const ContextMenu::ContextViewAspect viewAspect, const QModelIndex &parent)
 {
     // Browse the explorer menu
     UINT count = GetMenuItemCount(hmenu);
@@ -424,7 +428,7 @@ void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const
 
         qDebug() << mimeData->formats();
 
-        if (!mimeData->hasUrls() || !(parent->getCapabilities() & FSI_DROP_TARGET)) {
+        if (!mimeData->hasUrls() || !(parent.data(FileSystemModel::CapabilitiesRole).toUInt() & FSI_DROP_TARGET)) {
             info.fMask |= MIIM_STATE;
             info.fState = MFS_GRAYED;
         }
@@ -448,7 +452,7 @@ void WinContextMenu::customizeMenu(IContextMenu *imenu, const HMENU hmenu, const
 }
 
 
-void WinContextMenu::paste(FileSystemItem *parent, FileSystemModel *model, bool createLink)
+void WinContextMenu::paste(const QModelIndex &parent, FileSystemModel *model, bool createLink)
 {
     FORMATETC pfmtetc;
     STGMEDIUM pmedium;
@@ -469,18 +473,15 @@ void WinContextMenu::paste(FileSystemItem *parent, FileSystemModel *model, bool 
             DWORD *pdwEffect;
             pdwEffect = (DWORD *)GlobalLock(pmedium.hGlobal);
 
-            GlobalUnlock(pmedium.hGlobal);
+            Qt::DropAction action = createLink ? Qt::LinkAction : ((*pdwEffect & DROPEFFECT_MOVE) ? Qt::MoveAction : Qt::CopyAction);
 
+            GlobalUnlock(pmedium.hGlobal);
             ReleaseStgMedium(&pmedium);
 
             QClipboard *clipboard = QGuiApplication::clipboard();
             const QMimeData *mimeData = clipboard->mimeData();
 
-            Qt::DropAction action = createLink ? Qt::LinkAction : ((*pdwEffect & DROPEFFECT_MOVE) ? Qt::MoveAction : Qt::CopyAction);
-
-            QModelIndex parentIndex = model->index(parent);
-
-            model->dropMimeData(mimeData, action, -1, -1, parentIndex);
+            model->dropMimeData(mimeData, action, -1, -1, parent);
         }
 
         clipBoardData->Release();

@@ -38,8 +38,6 @@
 #include "Shell/shellactions.h"
 #include "Shell/directorywatcher.h"
 
-#include "Model/filesystemhistory.h"
-
 /*!
  * \brief FileSystemModel class.
  *
@@ -78,6 +76,16 @@ public:
 
     enum Role {
         PathRole = Qt::UserRole,
+        ExtensionRole,
+        FileRole,
+        DriveRole,
+        FolderRole,
+        HasSubFoldersRole,
+        AllChildrenFetchedRole,
+        CapabilitiesRole,
+        ShouldEditRole,
+        ErrorCodeRole,
+        ErrorMessageRole
     };
 
     FileSystemModel(FileInfoRetriever::Scope scope, QObject *parent = nullptr);
@@ -107,6 +115,7 @@ public:
     // Custom functions
     void setDefaultRoot();
     QModelIndex index (FileSystemItem *item) const;
+    QModelIndex index (QString path) const;
     QString getDropPath(QModelIndex index) const;
     Qt::DropActions supportedDragActionsForIndexes(QModelIndexList indexes);
     Qt::DropAction defaultDropActionForIndex(QModelIndex index, const QMimeData *data, Qt::DropActions possibleActions);
@@ -118,20 +127,9 @@ public:
     QModelIndex parent(QString path) const;
     void sort(int column, Qt::SortOrder order, QModelIndex parentIndex);
     void removeIndexes(QModelIndexList indexList, bool permanent);
-    void startWatch(FileSystemItem *parent, QString verb);
-    bool willRecycle(FileSystemItem *item);
-
-    // History
-    void goForward();
-    void goBack();
-    void goUp();
-    void goToPos(int pos);
-    bool canGoForward();
-    bool canGoBack();
-    bool canGoUp();
-
-    QList<HistoryEntry *> &getHistory(int *cursor) const;
-
+    void startWatch(const QModelIndex &parent, QString verb);
+    bool willRecycle(const QModelIndex &index);
+    QIcon getFolderIcon() const;
 
     // Inline functions
     inline FileSystemItem *getFileSystemItem(QModelIndex index) const {
@@ -139,32 +137,21 @@ public:
     }
 
 public slots:
-    void parentUpdated(FileSystemItem *parent, qint32 err, QString errMessage);
-    void itemUpdated(FileSystemItem *item);
-    void extendedInfoUpdated(FileSystemItem *parent);
     void freeChildren(const QModelIndex &parent);
-    void refresh(QString path);
+    void refreshFolder(QString path);
     void refreshIndex(QModelIndex index);
-
-    // These slot are called by the filesystem, the user is not supposed to call them
-    void renamePath(QString oldFileName, QString newFileName);
-    void refreshPath(QString fileName);
-    void addPath(QString fileName);
-    void removePath(QString fileName);
 
 signals:
     void fetchStarted();
     void fetchFinished();
     void fetchFailed(qint32 err, QString errMessage);
-    void displayNameChanged(QString oldPath, FileSystemItem *item);
     void renameIndex(QModelIndex index);
     void shouldEdit(QModelIndex index);
 
 private:
 
     DirectoryWatcher *watcher               {};
-    DirectoryWatcher *directoryWatcher         {};
-    FileSystemHistory *history              {};
+    DirectoryWatcher *directoryWatcher      {};
     bool watch                              {};
     FileSystemItem *parentBeingWatched      {};
     QString extensionBeingWatched           {};
@@ -184,11 +171,23 @@ private:
 
     QThreadPool pool;
 
+    QModelIndex tempParent;
+
     void getIcon(const QModelIndex &index);
     QString humanReadableSize(quint64 size) const;
 
 private slots:
 
+    // These slots are called by the FileInfoRetriever object
+    void parentUpdated(FileSystemItem *parent, qint32 err, QString errMessage);
+    void itemUpdated(FileSystemItem *item);
+    void extendedInfoUpdated(FileSystemItem *parent);
+
+    // These slots are called by the DirectoryWatcher object
+    void renamePath(QString oldFileName, QString newFileName);
+    void refreshPath(QString fileName);
+    void addPath(QString fileName);
+    void removePath(QString fileName);
 };
 
 #endif // FILESYSTEMMODEL_H

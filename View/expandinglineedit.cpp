@@ -2,12 +2,13 @@
 
 #include "expandinglineedit.h"
 
-ExpandingLineEdit::ExpandingLineEdit(const QModelIndex &index, QWidget *parent) : QLineEdit(parent)
+#include "Model/filesystemmodel.h"
+
+ExpandingLineEdit::ExpandingLineEdit(const QModelIndex &index, QWidget *parent) : QLineEdit(parent), index(index)
 {
     connect(this, &ExpandingLineEdit::textChanged, this, &ExpandingLineEdit::resizeToContents);
 #ifdef Q_OS_WIN
     connect(this, &ExpandingLineEdit::selectionChanged, this, &ExpandingLineEdit::fixInitialSelection);
-    this->item = reinterpret_cast<FileSystemItem *>(index.internalPointer());
 #endif
 
 }
@@ -31,15 +32,20 @@ void ExpandingLineEdit::resizeToContents()
 #ifdef Q_OS_WIN
 void ExpandingLineEdit::fixInitialSelection()
 {
-    if (initialSelection) {
+    if (initialSelection && index.isValid()) {
+
+        qDebug() << "HERE" << index.data(Qt::DisplayRole).toString() << index.data(FileSystemModel::ExtensionRole).toString();
+
+
         initialSelection = false;
-        int extWidth = item->getExtension().size();
+        int extWidth = index.data(FileSystemModel::ExtensionRole).toString().size();
 
         // Exclude the dot from the selection if there was an extension
         if (extWidth)
             extWidth++;
 
-        setSelection(0, item->getDisplayName().size() - extWidth);
+        setSelection(0, index.data(Qt::DisplayRole).toString().size() - extWidth);
     }
+
 }
 #endif

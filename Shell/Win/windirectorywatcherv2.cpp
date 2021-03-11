@@ -33,7 +33,7 @@ void WinDirectoryWatcherv2::addPath(QString path)
 
         if (SUCCEEDED(hr)) {
 
-            HWND hwnd = reinterpret_cast<HWND>(AppWindow::instance()->winId());
+            HWND hwnd = reinterpret_cast<HWND>(AppWindow::instance()->getWindowId());
 
             SHChangeNotifyEntry const entries[] = { { pidl, false } };
 

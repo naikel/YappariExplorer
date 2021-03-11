@@ -104,10 +104,16 @@ void FileSystemItem::removeChildren()
             item->removeChildren();
 
     qDeleteAll(indexedChildren);
-    children.clear();
-    indexedChildren.clear();
-    setAllChildrenFetched(false);
-    setHasSubFolders(false);
+    clear();
+}
+
+void FileSystemItem::updateChildPath(FileSystemItem *child, QString path)
+{
+    QString oldPath = child->getPath();
+    child->setPath(path);
+
+    children.remove(oldPath);
+    children.insert(path, child);
 }
 
 int FileSystemItem::childrenCount()
@@ -119,6 +125,9 @@ int FileSystemItem::childRow(FileSystemItem *child) {
     return indexedChildren.indexOf(child);
 }
 
+/*
+ * TODO: DELETE
+ */
 bool fileSystemItemCompare(const QCollator& collator, FileSystemItem *i, FileSystemItem *j, int column, Qt::SortOrder order)
 {
     bool comparison;
@@ -161,6 +170,9 @@ bool fileSystemItemCompare(const QCollator& collator, FileSystemItem *i, FileSys
     return false;
 }
 
+/*
+ * TODO: DELETE
+ */
 bool fileSystemItemCompareicu(icu::Collator *coll, FileSystemItem *i, FileSystemItem *j, int column, Qt::SortOrder order)
 {
     bool comparison;
@@ -211,6 +223,9 @@ bool fileSystemItemCompareicu(icu::Collator *coll, FileSystemItem *i, FileSystem
     return false;
 }
 
+/*
+ * TODO: DELETE
+ */
 void FileSystemItem::sortChildren(int column, Qt::SortOrder order)
 {
     QTime start;
@@ -387,6 +402,8 @@ FileSystemItem *FileSystemItem::clone()
     item->setCreationTime(creationTime);
     item->setLastAccessTime(lastAccessTime);
     item->setLastChangeTime(lastChangeTime);
+    item->setCapabilities(capabilities);
+    item->setMediaType(mediaType);
 
     item->setFolder(folder);
     item->setHidden(hidden);
@@ -417,6 +434,33 @@ FileSystemItem::MediaType FileSystemItem::getMediaType() const
 void FileSystemItem::setMediaType(const MediaType &value)
 {
     mediaType = value;
+}
+
+void FileSystemItem::clear()
+{
+    indexedChildren.clear();
+    children.clear();
+    setAllChildrenFetched(false);
+}
+
+quint16 FileSystemItem::getErrorCode() const
+{
+    return errorCode;
+}
+
+void FileSystemItem::setErrorCode(const quint16 &value)
+{
+    errorCode = value;
+}
+
+QString FileSystemItem::getErrorMessage() const
+{
+    return errorMessage;
+}
+
+void FileSystemItem::setErrorMessage(const QString &value)
+{
+    errorMessage = value;
 }
 
 QVariant FileSystemItem::getData(int column)

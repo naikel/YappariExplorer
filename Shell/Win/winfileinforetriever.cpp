@@ -8,6 +8,7 @@
 #include "Window/AppWindow.h"
 
 #include <ntquery.h>
+#include <comdef.h>
 
 #define COMPUTER_FOLDER_GUID          "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"
 #define CONTROL_PANEL_GUID            "::{26EE0668-A00A-44D7-9371-BEB064C98683}"
@@ -84,10 +85,9 @@ bool WinFileInfoRetriever::getParentInfo(FileSystemItem *parent)
 
         return true;
     } else {
-        WCHAR buffer[256];
-        FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, hr, 0, buffer, sizeof(buffer), nullptr);
-
-        QString errMessage = QString::fromWCharArray(buffer);
+        _com_error err(hr);
+        LPCTSTR errMsg = err.ErrorMessage();
+        QString errMessage = QString::fromWCharArray(errMsg);
 
         qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << "Couldn't access" << parent->getPath() << "HRESULT" << hr << "(" << errMessage << ")";
         emit parentUpdated(parent, hr, errMessage);
@@ -139,7 +139,7 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             }
 
             parent->setMediaType(mediaType);
-            qDebug() << "WinFileInfoRetriever::getParentInfo " << getScope() << " mediaType" << drive << mediaType;
+            qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "mediaType" << drive << mediaType;
         }
 
         // Get the IShellFolder interface for it
@@ -152,10 +152,10 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
             SHCONTF flags = SHCONTF_FOLDERS | SHCONTF_INCLUDEHIDDEN | SHCONTF_INCLUDESUPERHIDDEN | SHCONTF_ENABLE_ASYNC | SHCONTF_FASTITEMS;
 
-            if (getScope() == FileInfoRetriever::List)
+           // if (getScope() == FileInfoRetriever::List)
                 flags |= SHCONTF_NONFOLDERS;
 
-            if (SUCCEEDED(psf->EnumObjects(reinterpret_cast<HWND>(AppWindow::instance()->winId()), flags, reinterpret_cast<IEnumIDList**>(&ppenumIDList)))) {
+            if (SUCCEEDED(hr = psf->EnumObjects(reinterpret_cast<HWND>(AppWindow::instance()->getWindowId()), flags, reinterpret_cast<IEnumIDList**>(&ppenumIDList)))) {
 
                 qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "Children enumerated";
 
@@ -171,7 +171,7 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
                     // Compressed files will have SFGAO_FOLDER and SFGAO_STREAM attributes
                     // We want to skip those for the Tree scope
-                    if (getScope() == FileInfoRetriever::List || !(attributes & SFGAO_STREAM)) {
+                    //if (getScope() == FileInfoRetriever::List || !(attributes & SFGAO_STREAM)) {
 
                         STRRET strRet;
 
@@ -193,10 +193,19 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
                             parent->addChild(child);
                         }
-                    }
+                    //}
                     ::ILFree(pidlChild);
                 }
                 ppenumIDList->Release();
+            } else {
+                _com_error err(hr);
+                LPCTSTR errMsg = err.ErrorMessage();
+
+                parent->setErrorCode(hr);
+                parent->setErrorMessage(QString::fromWCharArray(errMsg));
+
+                qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "got error while trying to enumerate children: "
+                         << QString::number(parent->getErrorCode(), 16) << parent->getErrorMessage();
             }
             psf->Release();
         }
@@ -211,21 +220,19 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             return;
         }
 
-        qDebug() << "WinFileInfoRetriever::getChildrenBackground" << getScope() << "has subfolders?" << subFolders;
+        qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "has subfolders?" << subFolders;
         parent->setHasSubFolders(subFolders);
-        parent->setAllChildrenFetched(true);
-        emit parentUpdated(parent, 0, QString());
 
-        //if (getScope() == FileInfoRetriever::List)
-        //     getExtendedInfo(parent);
+        if (!parent->getErrorCode())
+            parent->setAllChildrenFetched(true);
 
-        running.store(false);
+        // This will emit the parentUpdated signal
+        FileInfoRetriever::getChildrenBackground(parent);
     }
 
+    qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "Parent path" << parent->getPath() << "finished successfully";
 
     ::CoUninitialize();
-
-    qDebug() << "WinFileInfoRetriever::getChildrenBackground " << getScope() << "Parent path" << parent->getPath() << "finished successfully";
 }
 
 void WinFileInfoRetriever::getChildInfo(IShellFolder *psf, LPITEMIDLIST pidlChild, FileSystemItem *child)
@@ -257,7 +264,7 @@ void WinFileInfoRetriever::getChildInfo(IShellFolder *psf, LPITEMIDLIST pidlChil
     } else
         child->setHasSubFolders(child->isDrive() ? true : false);
 
-   if (getScope() == FileInfoRetriever::List) {
+   //if (getScope() == FileInfoRetriever::List) {
 
         DWORD attrib {};
         WIN32_FIND_DATAW fileAttributeData {};
@@ -316,7 +323,7 @@ void WinFileInfoRetriever::getChildInfo(IShellFolder *psf, LPITEMIDLIST pidlChil
             } else
                 child->setType(QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer"));
         }
-    }
+    //}
 
     // Capabilites
     setCapabilities(child, attributes);

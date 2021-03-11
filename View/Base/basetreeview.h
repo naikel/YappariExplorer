@@ -60,14 +60,10 @@ public:
     void setModel(QAbstractItemModel *model) override;
     bool isDragging() const;
 
-    // inline functions
-    inline FileSystemModel *getFileSystemModel() const {
-        return static_cast<FileSystemModel *>(model());
-    }
-
     void dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles = QVector<int>()) override;
     QModelIndex indexAt(const QPoint &point) const override;
     QRect visualRect(const QModelIndex &index) const override;
+    void storeCurrentSettings();
 
     QPoint mapToViewport(QPoint pos);
     QPoint mapFromViewport(QPoint pos);
@@ -79,10 +75,25 @@ public:
 
     void deleteSelectedItems();
 
+    void setPath(const QString &value);
+    QString getPath() const;
+
+    QList<int> getColumnsWidth() const;
+    void setColumnsWidth(const QList<int> &value);
+
+    int getSortingColumn() const;
+    void setSortingColumn(int value);
+
+    Qt::SortOrder getSortOrder() const;
+    void setSortOrder(const Qt::SortOrder &value);
+
+    QList<int> getVisualIndexes() const;
+    void setVisualIndexes(const QList<int> &value);
+
 signals:
-    void contextMenuRequestedForItems(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
+    void contextMenuRequestedForItems(const QPoint &pos, const QModelIndexList &indexList,
                                       const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view);
-    void viewFocus(FileSystemItem *item);
+    void viewFocusIndex(const QModelIndex &index);
 
 public slots:
     virtual void initialize();
@@ -93,7 +104,7 @@ public slots:
     virtual bool setRoot(QString path);
     void processQueuedSignals();
     void editorClosed();
-    void shouldEdit(QModelIndex index);
+    void shouldEdit(QModelIndex sourceIndex);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -113,6 +124,13 @@ private:
 
     int defaultRowHeight;
     QMutex mutex;
+    QString path;
+
+    // Loaded Settings
+    QList<int> columnsWidth;
+    QList<int> visualIndexes;
+    int sortingColumn;
+    Qt::SortOrder sortOrder;
 
     // Signals queue for delayed processing
     // It's basically a list of parents that have children that must be updated.

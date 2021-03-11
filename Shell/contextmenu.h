@@ -17,9 +17,9 @@ public:
 
     explicit ContextMenu(QObject *parent = nullptr);
 
-    virtual void show(const WId wId, const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
+    virtual void show(const WId wId, const QPoint &pos, const QModelIndexList &indexList,
                       const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view);
-    virtual void defaultAction(const WId wId, const FileSystemItem *fileSystemItem);
+    virtual void defaultActionForIndex(const WId wId, const QModelIndex &index);
     virtual bool handleNativeEvent(const QByteArray &eventType, void *message, long *result);
 
 signals:

@@ -36,8 +36,8 @@ private:
 
 private slots:
     void populateMenu();
-    void fetchFinished();
     void actionTriggered(const QModelIndex &index);
+    void checkIfFetchFinished(const QModelIndex &topLeft, const QModelIndex &, const QVector<int>& roles);
 
 };
 

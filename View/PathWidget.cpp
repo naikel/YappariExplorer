@@ -2,6 +2,7 @@
 #include <QApplication>
 #include <QPushButton>
 #include <QHBoxLayout>
+#include <QMouseEvent>
 #include <QLabel>
 #include <QMenu>
 #include <QDebug>
@@ -23,32 +24,6 @@ PathWidget::PathWidget(QWidget *parent) : QFrame(parent)
     setFrameShadow(QFrame::Plain);
     setStyleSheet("#pathWidget { background: white; border: 1px solid #dfdfdf; } QLabel { border: 0px; }");
     setObjectName(QString::fromUtf8("pathWidget"));
-
-    // Test button
-    /*
-    QPushButton *testButton = new QPushButton(this);
-    //testButton->setFlat(true);
-    testButton->setText("This PC");
-    testButton->setStyleSheet("QPushButton { padding-right: 5px; padding-left: 5px; border-width: 1px; border-style: solid; background-color: transparent; } "
-                              "QPushButton:hover { background-color: #500fbd46; border-color: #a00fbd46; } QPushButton:pressed { background-color: #800fbd46; } "
-                              "QPushButton::menu-indicator { image: url(:/icons/next.svg); width: 11px; position: relative; top: -5px; } } "
-                              "QPushButton::menu-indicator:pressed { image: url(:/icons/down.svg); } } ");
-    testButton->setMinimumHeight(38);
-
-    QMenu *testMenu = new QMenu(testButton);
-    testMenu->addAction("Local Disk (C:)");
-    testMenu->addAction("About to Die Data (D:)");
-    testMenu->addAction("Naikel Ext (F:)");
-    testButton->setMenu(new QMenu(testButton));
-
-
-    QHBoxLayout *layout = new QHBoxLayout;
-    setLayout(layout);
-    layout->setContentsMargins(5, 0, 5, 0);
-    layout->addWidget(testButton);
-    layout->addStretch(1);
-    layout->setSpacing(0);
-    */
 }
 
 void PathWidget::setModel(FileSystemModel *model)
@@ -113,7 +88,7 @@ PathWidgetButton::PathWidgetButton(QModelIndex &index, QWidget *parent) : QWidge
     pathButton->setStyleSheet("QPushButton:pressed { background-color: #800fbd46; } ");
     pathButton->setIndex(index);
 
-    if (index.model()->hasChildren(index)) {
+    if (index.data(FileSystemModel::HasSubFoldersRole).toBool()) {
         menuButton = new CustomButton(this);
         menuButton->setIndex(index);
         menuButton->setMenu(new QMenu(menuButton));
@@ -188,7 +163,7 @@ void CustomButton::mousePressEvent(QMouseEvent *e)
     // Check if we have a menu
     if (menu() != nullptr && e->button() == Qt::LeftButton) {
 
-        FileSystemModel *model = const_cast<FileSystemModel *>(reinterpret_cast<const FileSystemModel *>(index.model()));
+        QAbstractItemModel *model = const_cast<QAbstractItemModel *>(index.model());
 
         if (!model->canFetchMore(index)) {
             populateMenu();
@@ -200,7 +175,7 @@ void CustomButton::mousePressEvent(QMouseEvent *e)
             model->fetchMore(index);
             setDown(true);
             fetchingMore = true;
-            Once::connect(model, &FileSystemModel::fetchFinished, this, &CustomButton::fetchFinished);
+            connect(model, &QAbstractItemModel::dataChanged, this, &CustomButton::checkIfFetchFinished);
             return;
         }
     }
@@ -218,29 +193,43 @@ void CustomButton::mouseReleaseEvent(QMouseEvent *e)
 
 void CustomButton::populateMenu()
 {
-    FileSystemModel *model = const_cast<FileSystemModel *>(reinterpret_cast<const FileSystemModel *>(index.model()));
+    const QAbstractItemModel *model = index.model();
     QMenu *cMenu = menu();
     cMenu->clear();
     for (int i = 0 ; i < model->rowCount(index) ; i++) {
         const QModelIndex child = model->index(i, 0, index);
-        QAction *action = cMenu->addAction(child.data(Qt::DecorationRole).value<QIcon>(), child.data(Qt::DisplayRole).toString());
-        if (action != nullptr)
-            connect(action, &QAction::triggered, this, [this, child]() { this->actionTriggered(child); });
+
+        if (!child.data(FileSystemModel::FileRole).toBool()) {
+            QAction *action = cMenu->addAction(child.data(Qt::DecorationRole).value<QIcon>(), child.data(Qt::DisplayRole).toString());
+            if (action != nullptr)
+                connect(action, &QAction::triggered, this, [this, child]() { this->actionTriggered(child); });
+        }
     }
     cMenu->setStyleSheet("QMenu { menu-scrollable: 1; }");
-}
-
-void CustomButton::fetchFinished()
-{
-    fetchingMore = false;
-    populateMenu();
-    if (menu()->isEmpty()) {
-        hide();
-    } else
-        showMenu();
 }
 
 void CustomButton::actionTriggered(const QModelIndex &index)
 {
     emit menuIndexSelected(index);
+}
+
+void CustomButton::checkIfFetchFinished(const QModelIndex &topLeft, const QModelIndex &, const QVector<int> &roles)
+{
+    if (topLeft == index && (roles.contains(FileSystemModel::AllChildrenFetchedRole) || roles.contains(FileSystemModel::ErrorCodeRole))) {
+
+        bool fetchFinished = topLeft.data(FileSystemModel::AllChildrenFetchedRole).toBool();
+
+        if (roles.contains(FileSystemModel::ErrorCodeRole) || fetchFinished)
+            disconnect(index.model(), &QAbstractItemModel::dataChanged, this, &CustomButton::checkIfFetchFinished);
+
+        fetchingMore = false;
+
+        if (fetchFinished) {
+            populateMenu();
+            if (menu()->isEmpty()) {
+                hide();
+            } else
+                showMenu();
+        }
+    }
 }

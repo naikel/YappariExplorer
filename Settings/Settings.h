@@ -30,6 +30,8 @@
 #define SETTINGS_TABS_PATH                  "path"
 #define SETTINGS_TABS_SORTCOLUMN            "sortcolumn"
 #define SETTINGS_TABS_SORTASCENDING         "sortascending"
+#define SETTINGS_TABS_DISPLAYNAME           "displayname"
+#define SETTINGS_TABS_ICON                  "icon"
 
 // Columns settings
 #define SETTINGS_COLUMNS                    "columns"

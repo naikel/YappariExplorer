@@ -1,4 +1,6 @@
+#include <QSortFilterProxyModel>
 #include <QHBoxLayout>
+#include <QDebug>
 #include <QMenu>
 
 #include "PathBar.h"
@@ -6,12 +8,6 @@
 #define BASESTYLESHEET      "QFrame { background: white; border-bottom: 1px solid #9fcdb3; } " \
                             "QPushButton { border-style: none; background-color: transparent; } "
 #define BUTTONSTYLESHEET    "QPushButton:hover { background-color: #500fbd46; } QPushButton:pressed { background-color: #800fbd46; }"
-
-#ifdef Q_OS_WIN
-#define getText(entry) ((entry->path.size() > 3 && entry->path.left(3) == "::{") || (!entry->path.isNull() && entry->path.length() == 3 && entry->path.right(2) == ":\\")) ? entry->displayName : entry->path
-#else
-#define getText(entry) entry->path
-#endif
 
 PathBar::PathBar(QWidget *parent) : QFrame(parent)
 {
@@ -49,77 +45,75 @@ PathBar::PathBar(QWidget *parent) : QFrame(parent)
     hLayout->setContentsMargins(5, 0, 5, 0);
 }
 
-void PathBar::setTabModel(FileSystemModel *model)
+void PathBar::selectTreeIndex(const QModelIndex& selectedIndex)
 {
-    int cursor;
+    pathWidget->selectIndex(selectedIndex);
+}
 
-    this->tabModel = model;
+void PathBar::setHistory(FileSystemHistory *history)
+{
+    this->history = history;
 
-    QList<HistoryEntry *> &history = model->getHistory(&cursor);
+    QModelIndexList historyList = history->getIndexList();
+    int cursor = history->getCursor();
 
     QMenu *backMenu = new QMenu(backButton);
     for (int i = cursor - 1; i >= 0; --i) {
 
-        HistoryEntry *entry = history.at(i);
-        QAction *action = backMenu->addAction(entry->icon, getText(entry));
+        QModelIndex entry = historyList[i];
+        QAction *action = backMenu->addAction(entry.data(Qt::DecorationRole).value<QIcon>(), getDisplayName(entry));
         action->setData(QVariant(i));
     }
 
     QMenu *nextMenu = new QMenu(nextButton);
-    for (int i = cursor + 1; i < history.size(); i++) {
+    for (int i = cursor + 1; i < historyList.size(); i++) {
 
-        HistoryEntry *entry = history.at(i);
-        QAction *action = nextMenu->addAction(entry->icon, getText(entry));
+        QModelIndex entry = historyList[i];
+        QAction *action = nextMenu->addAction(entry.data(Qt::DecorationRole).value<QIcon>(), getDisplayName(entry));
         action->setData(QVariant(i));
     }
 
-    backButton->setIcon(model->canGoBack() ? QIcon(":/icons/back.svg") : QIcon(":/icons/back_inactive.svg"));
-    backButton->setStyleSheet(model->canGoBack() ? BUTTONSTYLESHEET : QString());
-    backButton->setActive(model->canGoBack());
+    backButton->setIcon(history->canGoBack() ? QIcon(":/icons/back.svg") : QIcon(":/icons/back_inactive.svg"));
+    backButton->setStyleSheet(history->canGoBack() ? BUTTONSTYLESHEET : QString());
+    backButton->setActive(history->canGoBack());
     backButton->setMenu(backMenu);
 
-    nextButton->setIcon(model->canGoForward() ? QIcon(":/icons/next.svg") : QIcon(":/icons/next_inactive.svg"));
-    nextButton->setStyleSheet(model->canGoForward() ? BUTTONSTYLESHEET : QString());
-    nextButton->setActive(model->canGoForward());
+    nextButton->setIcon(history->canGoForward() ? QIcon(":/icons/next.svg") : QIcon(":/icons/next_inactive.svg"));
+    nextButton->setStyleSheet(history->canGoForward() ? BUTTONSTYLESHEET : QString());
+    nextButton->setActive(history->canGoForward());
     nextButton->setMenu(nextMenu);
 
-    upButton->setIcon(model->canGoUp() ? QIcon(":/icons/up.svg") : QIcon(":/icons/up_inactive.svg"));
-    upButton->setStyleSheet(model->canGoUp() ? BUTTONSTYLESHEET : QString());
-    upButton->setActive(model->canGoUp());
-
+    upButton->setIcon(history->canGoUp() ? QIcon(":/icons/up.svg") : QIcon(":/icons/up_inactive.svg"));
+    upButton->setStyleSheet(history->canGoUp() ? BUTTONSTYLESHEET : QString());
+    upButton->setActive(history->canGoUp());
 }
 
-void PathBar::setTreeModel(FileSystemModel *treeModel)
+void PathBar::mousePressEvent(QMouseEvent *event)
 {
-    this->treeModel = treeModel;
-    pathWidget->setModel(treeModel);
-}
+    qDebug() << "PathBar::mousePressEvent";
 
-void PathBar::selectTreeIndex(QModelIndex& selectedIndex)
-{
-    pathWidget->selectIndex(selectedIndex);
+    QFrame::mousePressEvent(event);
 }
 
 void PathBar::menuSelected(QAction *action)
 {
     if (action != nullptr) {
-        int pos;
 
         QVariant actionData = action->data();
-        if (actionData.isValid()) {
-            pos = actionData.toInt();
-            tabModel->goToPos(pos);
-            emit rootChange(tabModel->getRoot()->getPath());
-        }
+        if (actionData.isValid())
+            emit rootIndexChangeRequested(history->getItemAtPos(actionData.toInt()));
     }
 }
 
 void PathBar::selectedIndex(const QModelIndex &index)
 {
-    if (index.isValid() && index.internalPointer() != nullptr) {
-        QString path = reinterpret_cast<FileSystemItem *>(index.internalPointer())->getPath();
-        tabModel->setRoot(path);
-        emit rootChange(path);
+    if (index.isValid()) {
+
+        const QSortFilterProxyModel *treeModel = reinterpret_cast<const QSortFilterProxyModel *>(index.model());
+
+        qDebug() << "GONNA SEND THIS INDEX" << treeModel->mapToSource(index);
+
+        emit rootIndexChangeRequested(treeModel->mapToSource(index));
     }
 }
 
@@ -144,21 +138,26 @@ PathBarButton *PathBar::createButton(QIcon icon, QString objectName)
 
 }
 
+QString PathBar::getDisplayName(const QModelIndex &index)
+{
+    QString path = index.data(FileSystemModel::PathRole).toString();
+
+#ifdef Q_OS_WIN
+    if ((path.size() > 3 && path.left(3) == "::{") || (!path.isNull() && path.length() == 3 && path.right(2) == ":\\"))
+        return index.data(Qt::DisplayRole).toString();
+#endif
+
+    return path;
+}
+
 void PathBar::buttonClicked()
 {
-    if (tabModel == nullptr)
-        return;
-
     PathBarButton *button = reinterpret_cast<PathBarButton *>(sender());
 
-    if (button == nextButton && tabModel->canGoForward())
-        tabModel->goForward();
-    else if (button == backButton && tabModel->canGoBack()) {
-        tabModel->goBack();
-    } else if (button == upButton && tabModel->canGoUp())
-        tabModel->goUp();
-    else
-        return;
-
-    emit rootChange(tabModel->getRoot()->getPath());
+    if (button == nextButton && history->canGoForward())
+        emit rootIndexChangeRequested(history->getNextItem());
+    else if (button == backButton && history->canGoBack()) {
+        emit rootIndexChangeRequested(history->getLastItem());
+    } else if (button == upButton && history->canGoUp())
+        emit rootIndexChangeRequested(history->getParentItem());
 }

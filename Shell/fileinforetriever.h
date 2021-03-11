@@ -50,6 +50,8 @@ protected:
 private:
     QThreadPool pool;
     Scope scope;
+
+    FileSystemItem *currentParent {};
 };
 
 #endif // FILEINFORETRIEVER_H

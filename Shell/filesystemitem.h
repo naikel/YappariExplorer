@@ -9,6 +9,7 @@
 
 #include <limits>
 
+// Capabilities
 #define FSI_CAN_COPY    0x0001
 #define FSI_CAN_MOVE    0x0002
 #define FSI_CAN_LINK    0x0004
@@ -50,11 +51,14 @@ public:
     void removeChild(QString path);
     QList<FileSystemItem *> getChildren();
     void removeChildren();
+    void updateChildPath(FileSystemItem *child, QString path);
 
     int childrenCount();
     int childRow(FileSystemItem *child);
 
     void sortChildren(int column, Qt::SortOrder order);
+
+    void clear();
 
     FileSystemItem *getParent() const;
     void setParent(FileSystemItem *value);
@@ -110,6 +114,12 @@ public:
     MediaType getMediaType() const;
     void setMediaType(const MediaType &value);
 
+    quint16 getErrorCode() const;
+    void setErrorCode(const quint16 &value);
+
+    QString getErrorMessage() const;
+    void setErrorMessage(const QString &value);
+
 private:
 
     QString     path                {};
@@ -123,6 +133,8 @@ private:
     QDateTime   lastChangeTime      {};
     quint16     capabilities        {};
     MediaType   mediaType           {};
+    quint32     errorCode           {};
+    QString     errorMessage        {};
 
     bool folder                 {false};
     bool hidden                 {false};

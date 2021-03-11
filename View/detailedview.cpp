@@ -1,3 +1,4 @@
+#include <QSortFilterProxyModel>
 #include <QHeaderView>
 #include <QMouseEvent>
 #include <QDebug>
@@ -12,6 +13,8 @@ DetailedView::DetailedView(QWidget *parent) : BaseTreeView(parent)
     setFrameShape(QFrame::NoFrame);
     setSortingEnabled(true);
     setSelectionMode(QAbstractItemView::ExtendedSelection);
+    setExpandsOnDoubleClick(false);
+    setItemsExpandable(false);
 
     // This should be configurable: row selection or item selection
     setSelectionBehavior(QAbstractItemView::SelectItems);
@@ -27,20 +30,25 @@ DetailedView::DetailedView(QWidget *parent) : BaseTreeView(parent)
 
     this->header()->setMinimumSectionSize(100);
     this->header()->setStretchLastSection(false);
+
+    history = new FileSystemHistory(this);
 }
 
+/*
+ * TO DELETE
+ */
 bool DetailedView::setRoot(QString root)
 {
     if (!root.isEmpty()) {
 
         // This item is from the tree view model, not from the model of this view
-        FileSystemModel *fileSystemModel = getFileSystemModel();
-        if (!(fileSystemModel->getRoot()->getPath() == root)) {
-            qDebug() << "DetailedView::setRoot" << root;
+        QString path = rootIndex().data(FileSystemModel::PathRole).toString();
+        if (path != root) {
+            qDebug() << "DetailedView::setRoot" << path;
 
             // First ensure all processed signals have been processed
             BaseTreeView::setRoot(root);
-            return fileSystemModel->setRoot(root);
+            return true;
 
         } else {
             qDebug() << "DetailedView::setRoot this view's root is already" << root;
@@ -59,13 +67,25 @@ void DetailedView::setModel(QAbstractItemModel *model)
     this->header()->setSortIndicator(FileSystemModel::Columns::Extension, Qt::SortOrder::AscendingOrder);
 }
 
+FileSystemHistory *DetailedView::getHistory()
+{
+    return history;
+}
+
+void DetailedView::setRootIndex(const QModelIndex &index)
+{
+    BaseTreeView::setRootIndex(index);
+
+    QSortFilterProxyModel *proxyModel = reinterpret_cast<QSortFilterProxyModel *>(model());
+    history->insert(proxyModel->mapToSource(index));
+}
+
 void DetailedView::selectEvent()
 {
     qDebug() << "DetailedView::selectEvent";
     for (QModelIndex& selectedIndex : selectedIndexes()) {
         if (selectedIndex.column() == 0 && selectedIndex.internalPointer() != nullptr) {
-            FileSystemItem *fileSystemItem = getFileSystemModel()->getFileSystemItem(selectedIndex);
-            qDebug() << "DetailedView::selectEvent selected for " << fileSystemItem->getPath();
+            qDebug() << "DetailedView::selectEvent selected for " << selectedIndex.data(FileSystemModel::PathRole).toString();
             emit doubleClicked(selectedIndex);
             return;
         }
@@ -83,7 +103,7 @@ void DetailedView::mouseDoubleClickEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton) {
         qDebug() << "DetailedView::mouseDoubleClickEvent";
         const QPersistentModelIndex persistent = indexAt(event->pos());
-        if (persistent.isValid()) {
+        if (persistent.isValid() && persistent.column() == 0) {
             event->accept();
             emit doubleClicked(persistent);
         }
@@ -96,11 +116,10 @@ void DetailedView::mousePressEvent(QMouseEvent *event)
 
     if (event->button() == Qt::LeftButton) {
 
-        FileSystemModel *fileSystemModel = getFileSystemModel();
-        if (fileSystemModel != nullptr && fileSystemModel->getRoot() != nullptr)
-            emit viewFocus(fileSystemModel->getRoot());
+        // If there was a click in this view tell AppWindow to update the titleBar
+        emit viewFocusIndex(rootIndex());
 
-        if(!index.isValid() || index.column() > 0) {
+        if (!index.isValid() || index.column() > 0) {
 
             if (event->modifiers() & Qt::ControlModifier) {
                 command = QItemSelectionModel::Toggle;
@@ -200,15 +219,28 @@ void DetailedView::mouseReleaseEvent(QMouseEvent *event)
 
 void DetailedView::backEvent()
 {
-    getFileSystemModel()->goBack();
-    emit rootChanged(getFileSystemModel()->getRoot()->getPath());
+    if (history->canGoBack()) {
+        QModelIndex index = history->getLastItem();
+        QSortFilterProxyModel *proxyModel = reinterpret_cast<QSortFilterProxyModel *>(model());
+        setRootIndex(proxyModel->mapFromSource(index));
+        emit rootIndexChanged(index);
+    }
+
+    //getFileSystemModel()->goBack();
+    //emit rootChanged(getFileSystemModel()->getRoot()->getPath());
 }
 
 void DetailedView::forwardEvent()
 {
-    getFileSystemModel()->goForward();
-    emit rootChanged(getFileSystemModel()->getRoot()->getPath());
+    if (history->canGoForward()) {
+        QModelIndex index = history->getNextItem();
+        QSortFilterProxyModel *proxyModel = reinterpret_cast<QSortFilterProxyModel *>(model());
+        setRootIndex(proxyModel->mapFromSource(index));
+        emit rootIndexChanged(index);
+    }
 
+    //getFileSystemModel()->goForward();
+    //emit rootChanged(getFileSystemModel()->getRoot()->getPath());
 }
 
 /*!
@@ -251,13 +283,15 @@ void DetailedView::setSelectionFromViewportRect(const QRect &rect, QItemSelectio
     if (topRow < 0)
         topRow = 0;
 
-    int maxRow = model()->rowCount(QModelIndex()) - 1;
+    int maxRow = model()->rowCount(rootIndex()) - 1;
     if (bottomRow > maxRow)
         bottomRow = maxRow;
 
+    qDebug() << topRow << bottomRow;
+
     QVector<QModelIndex> selectedIndexes;
     for (int row = topRow; row <= bottomRow; row++) {
-        const QModelIndex& index = model()->index(row, 0, QModelIndex());
+        const QModelIndex& index = model()->index(row, 0, rootIndex());
         QRect indexRect = visualRect(index);
         QPoint topLeft = (isRightToLeft()) ? indexRect.topRight() : indexRect.topLeft();
         QPoint pos = mapToViewport(topLeft);

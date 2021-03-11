@@ -13,12 +13,8 @@ public:
     QModelIndex selectedItem();
 
 signals:
-
+    // TODO: DELETE
     void resized();
-    void refreshed();
-
-public slots:
-    void selectIndex(QModelIndex index);
 
 protected:
 
@@ -38,7 +34,6 @@ private:
     QModelIndex hoverIndex;
     bool draggingNothing {};
 
-    void viewFocusChanged();
     void setDropAction(QDropEvent *event);
 };
 

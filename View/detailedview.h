@@ -1,6 +1,7 @@
 #ifndef DETAILEDVIEW_H
 #define DETAILEDVIEW_H
 
+#include "Util/FileSystemHistory.h"
 #include "Model/filesystemmodel.h"
 #include "Shell/contextmenu.h"
 #include "Base/basetreeview.h"
@@ -14,10 +15,20 @@ public:
 
     bool setRoot(QString root) override;
     void setModel(QAbstractItemModel *model) override;
+    FileSystemHistory *getHistory();
+
+public slots:
+    void setRootIndex(const QModelIndex &index) override;
+
 
 signals:
 
+    // TODO: DELETE
     void rootChanged(QString path);
+
+    // New ones
+    void rootIndexChanged(const QModelIndex &index);
+
 
 protected:
     void selectEvent() override;
@@ -36,6 +47,7 @@ private:
     QPoint origin                                   {};
     QItemSelection currentSelection                 {};
     QItemSelectionModel::SelectionFlags command     {};
+    FileSystemHistory *history                      {};
 
 };
 

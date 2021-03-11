@@ -37,7 +37,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    Model/filesystemhistory.cpp \
+    Model/SortModel.cpp \
+    Model/TreeModel.cpp \
     Model/filesystemmodel.cpp \
     Settings/Settings.cpp \
     Shell/contextmenu.cpp \
@@ -51,6 +52,7 @@ SOURCES += \
     View/PathBar.cpp \
     View/PathBarButton.cpp \
     View/PathWidget.cpp \
+    View/Util/FileSystemHistory.cpp \
     View/customtabbar.cpp \
     View/customtabbarstyle.cpp \
     View/customtabwidget.cpp \
@@ -63,7 +65,8 @@ SOURCES += \
     main.cpp
 
 HEADERS += \
-    Model/filesystemhistory.h \
+    Model/SortModel.h \
+    Model/TreeModel.h \
     Model/filesystemmodel.h \
     Settings/Settings.h \
     Shell/contextmenu.h \
@@ -77,6 +80,7 @@ HEADERS += \
     View/PathBar.h \
     View/PathBarButton.h \
     View/PathWidget.h \
+    View/Util/FileSystemHistory.h \
     View/customtabbar.h \
     View/customtabbarstyle.h \
     View/customtabwidget.h \
@@ -102,7 +106,7 @@ win32 {
     LIBS += -L$$PWD/ThirdParty/Win/icu4c-68/bin -licuin68 -licuuc68
 
     #QT += gui-private
-    DEFINES += WIN32_FRAMELESS
+    # DEFINES += WIN32_FRAMELESS
     DEFINES += _WIN32_IE=0x700 _WIN32_WINNT=0x0A00
     SOURCES += \
         Window/Win/WinFramelessWindow.cpp \

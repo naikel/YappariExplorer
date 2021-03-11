@@ -13,6 +13,7 @@
 
 #include "once.h"
 #include "Model/filesystemmodel.h"
+#include "Model/TreeModel.h"
 
 /*!
  * \brief The constructor.
@@ -52,26 +53,20 @@ BaseTreeView::BaseTreeView(QWidget *parent) : QTreeView(parent)
  */
 void BaseTreeView::setModel(QAbstractItemModel *model)
 {
-    FileSystemModel *oldModel = getFileSystemModel();
-    if (oldModel == model)
-        return;
+    QAbstractItemModel *newModel {};
 
-    if (oldModel != nullptr) {
-        disconnect(oldModel, &FileSystemModel::fetchStarted, this, &BaseTreeView::setBusyCursor);
-        disconnect(oldModel, &FileSystemModel::fetchFinished, this, &BaseTreeView::setNormalCursor);
-        disconnect(oldModel, &FileSystemModel::fetchFailed, this, &BaseTreeView::showError);
-        disconnect(oldModel, &FileSystemModel::shouldEdit, this, &BaseTreeView::shouldEdit);
-    }
+    QSortFilterProxyModel *proxyModel = reinterpret_cast<QSortFilterProxyModel *>(model);
+    newModel = proxyModel->sourceModel();
 
-    FileSystemModel *fileSystemModel = static_cast<FileSystemModel *>(model);
-    Once::connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &BaseTreeView::initialize);
+    qDebug() << "BaseTreeView::setModel";
 
-    connect(fileSystemModel, &FileSystemModel::fetchStarted, this, &BaseTreeView::setBusyCursor);
-    connect(fileSystemModel, &FileSystemModel::fetchFinished, this, &BaseTreeView::setNormalCursor);
-    connect(fileSystemModel, &FileSystemModel::fetchFailed, this, &BaseTreeView::showError);
-    connect(fileSystemModel, &FileSystemModel::shouldEdit, this, &BaseTreeView::shouldEdit);
+    QTreeView::setModel(model);
 
-    QTreeView::setModel(fileSystemModel);
+    QModelIndex root = model->index(0, 0, QModelIndex());
+    if (model->canFetchMore(root))
+        Once::connect(model, &QAbstractItemModel::modelReset, this, &BaseTreeView::initialize);
+    else
+        initialize();
 }
 
 /*!
@@ -138,7 +133,12 @@ void BaseTreeView::keyPressEvent(QKeyEvent *event)
             break;
 
         case Qt::Key_F5:
-            getFileSystemModel()->refresh(getFileSystemModel()->getRoot()->getPath());
+            //getFileSystemModel()->refresh(getFileSystemModel()->getRoot()->getPath());
+            model()->setData(rootIndex(), false, FileSystemModel::AllChildrenFetchedRole);
+            break;
+
+        // Disable expand all
+        case Qt::Key_Asterisk:
             break;
 
         default:
@@ -175,7 +175,23 @@ void BaseTreeView::startDrag(Qt::DropActions supportedActions)
 
     qDebug() << "BaseTreeView:startDrag";
 
-    Qt::DropActions dropActions = getFileSystemModel()->supportedDragActionsForIndexes(selectedIndexes());
+#ifdef Q_OS_WIN
+    Qt::DropActions dropActions = Qt::ActionMask;
+
+    QModelIndexList selection = selectedIndexes();
+    for (const QModelIndex &index : selection) {
+        if (index.isValid() && (index.flags() & Qt::ItemIsDragEnabled) && index.data(FileSystemModel::DriveRole).toBool()) {
+            dropActions = Qt::LinkAction;
+            break;
+        }
+    }
+
+    if (dropActions == Qt::ActionMask)
+        dropActions = model()->supportedDragActions();
+#else
+    Qt::DropActions dropActions = model()->supportedDragActions();
+#endif
+
     QTreeView::startDrag(dropActions);
 }
 
@@ -202,7 +218,8 @@ void BaseTreeView::dragMoveEvent(QDragMoveEvent *event)
 
     // If no keyboard modifiers are being pressed, select the default action for the drop target
     if (event->isAccepted() && !event->keyboardModifiers()) {
-        event->setDropAction(getFileSystemModel()->defaultDropActionForIndex(indexAt(event->pos()), event->mimeData(), event->possibleActions()));
+        SortModel *sortModel = reinterpret_cast<SortModel *>(model());
+        event->setDropAction(sortModel->defaultDropActionForIndex(indexAt(event->pos()), event->mimeData(), event->possibleActions()));
     }
 }
 
@@ -212,7 +229,8 @@ void BaseTreeView::dropEvent(QDropEvent *event)
 
     // If no keyboard modifiers are being pressed, select the default action for the drop target
     if (!event->keyboardModifiers()) {
-        event->setDropAction(getFileSystemModel()->defaultDropActionForIndex(indexAt(event->pos()), event->mimeData(), event->possibleActions()));
+        SortModel *sortModel = reinterpret_cast<SortModel *>(model());
+        event->setDropAction(sortModel->defaultDropActionForIndex(indexAt(event->pos()), event->mimeData(), event->possibleActions()));
     }
     QTreeView::dropEvent(event);
 }
@@ -316,7 +334,8 @@ void BaseTreeView::editorClosed()
 
 void BaseTreeView::shouldEdit(QModelIndex index)
 {
-    selectionModel()->select(index, QItemSelectionModel::ClearAndSelect);
+    qDebug() << "BaseTreeView::shouldEdit";
+    setCurrentIndex(index);
     QAbstractItemView::edit(index);
 }
 
@@ -350,6 +369,56 @@ void BaseTreeView::forwardEvent()
     qDebug() << "BaseTreeView::forwardEvent";
 }
 
+QList<int> BaseTreeView::getVisualIndexes() const
+{
+    return visualIndexes;
+}
+
+void BaseTreeView::setVisualIndexes(const QList<int> &value)
+{
+    visualIndexes = value;
+}
+
+Qt::SortOrder BaseTreeView::getSortOrder() const
+{
+    return sortOrder;
+}
+
+void BaseTreeView::setSortOrder(const Qt::SortOrder &value)
+{
+    sortOrder = value;
+}
+
+int BaseTreeView::getSortingColumn() const
+{
+    return sortingColumn;
+}
+
+void BaseTreeView::setSortingColumn(int value)
+{
+    sortingColumn = value;
+}
+
+QList<int> BaseTreeView::getColumnsWidth() const
+{
+    return columnsWidth;
+}
+
+void BaseTreeView::setColumnsWidth(const QList<int> &value)
+{
+    columnsWidth = value;
+}
+
+QString BaseTreeView::getPath() const
+{
+    return path;
+}
+
+void BaseTreeView::setPath(const QString &value)
+{
+    path = value;
+}
+
 int BaseTreeView::getDefaultRowHeight() const
 {
     return defaultRowHeight;
@@ -368,13 +437,11 @@ void BaseTreeView::deleteSelectedItems()
 
     if (list.size() > 0) {
 
-        FileSystemItem *item {};
         QModelIndex selectedIndex = list.at(0);
         if (selectedIndex.isValid()) {
-            item = getFileSystemModel()->getFileSystemItem(selectedIndex);
 
             if (list.size() == 1) {
-                dest = "\"" + item->getDisplayName() + "\"";
+                dest = "\"" + selectedIndex.data(Qt::DisplayRole).toString() + "\"";
             } else {
                 dest = QString::number(list.size()) + " "+ tr("items");
             }
@@ -383,9 +450,11 @@ void BaseTreeView::deleteSelectedItems()
 
             QString action;
             bool perm;
+            SortModel *sortModel = reinterpret_cast<SortModel *>(model());
+
 
             // Recycle bin is at least per folder so we only need to check one item to see if the Recycle Bin is enabled
-            if (!getFileSystemModel()->willRecycle(item) || QApplication::keyboardModifiers() & Qt::ShiftModifier) {
+            if (!sortModel->willRecycle(selectedIndex) || QApplication::keyboardModifiers() & Qt::ShiftModifier) {
                 perm = true;
                 action = tr("permanently delete") + " " + dest;
             } else {
@@ -397,7 +466,7 @@ void BaseTreeView::deleteSelectedItems()
 
             // TODO: Better icon for this
             if (QMessageBox::question(this, tr("Confirm File Delete"), text) == QMessageBox::Yes) {
-                getFileSystemModel()->removeIndexes(list, perm);
+                sortModel->removeIndexes(list, perm);
             }
         }
     }
@@ -417,27 +486,53 @@ bool BaseTreeView::isDragging() const
  * This function will queue signals with role Qt:DecorationRole (icons) for delayed processing as a bundle.
  * For all other signals, they are sent to the QTreeView base implementation.
  *
+ * This function also tracks when the model starts a new fetch and changes the cursor accordingly.
+ *
  * \see processQueuedSignals()
  */
 void BaseTreeView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
 {
-    if (topLeft == bottomRight && topLeft.isValid() && roles.contains(Qt::DecorationRole)) {
+    if (topLeft == bottomRight && topLeft.isValid()) {
 
-        QModelIndex parent = topLeft.parent();
-
-        // We need exlusive access to the signalsQueue object
-        mutex.lock();
-        if (signalsQueue.contains(parent)) {
-            QMap<int, QModelIndex> *queue = signalsQueue.value(parent);
-            queue->insert(topLeft.row(), topLeft);
-        } else {
-            QMap<int, QModelIndex> *queue = new QMap<int, QModelIndex>();
-            queue->insert(topLeft.row(), topLeft);
-            signalsQueue.insert(parent, queue);
+        if (roles.contains(FileSystemModel::ErrorCodeRole)) {
+            setNormalCursor();
+            return;
         }
-        mutex.unlock();
-    } else
-        QTreeView::dataChanged(topLeft, bottomRight, roles);
+
+        // TODO: Should we wait 1 second to show the busy cursor?
+        if (roles.contains(FileSystemModel::AllChildrenFetchedRole)) {
+
+            if (!topLeft.data(FileSystemModel::AllChildrenFetchedRole).toBool()) {
+                setBusyCursor();
+            } else {
+                setNormalCursor();
+            }
+        }
+
+        if (roles.contains(FileSystemModel::ShouldEditRole)) {
+            shouldEdit(topLeft);
+            return;
+        }
+
+        if (roles.contains(Qt::DecorationRole)) {
+
+            QModelIndex parent = topLeft.parent();
+
+            // We need exlusive access to the signalsQueue object
+            mutex.lock();
+            if (signalsQueue.contains(parent)) {
+                QMap<int, QModelIndex> *queue = signalsQueue.value(parent);
+                queue->insert(topLeft.row(), topLeft);
+            } else {
+                QMap<int, QModelIndex> *queue = new QMap<int, QModelIndex>();
+                queue->insert(topLeft.row(), topLeft);
+                signalsQueue.insert(parent, queue);
+            }
+            mutex.unlock();
+            return;
+        }
+    }
+    QTreeView::dataChanged(topLeft, bottomRight, roles);
 }
 
 
@@ -485,35 +580,44 @@ QRect BaseTreeView::visualRect(const QModelIndex &index) const
         // Fix visual rectangle
         QFontMetrics fm = QFontMetrics(font());
         int x1 = 1;
-        int x2 = fm.size(0, index.data().toString()).width();
+        int x2 = fm.size(0, " " + index.data().toString() + " ").width();
         int iconSize = QApplication::style()->pixelMetric(QStyle::PM_SmallIconSize);
 
-        // TODO Where is this magic number from??
-        x2 += iconSize + 11;
+        x2 += iconSize;
 
-        FileSystemItem *parent = getFileSystemModel()->getFileSystemItem(index)->getParent();
-        int level = (rootIsDecorated()) ? 0 : -1;
-        while (parent != nullptr) {
-            level++;
-            parent = parent->getParent();
-        }
-        int padding = level * indentation();
-        x1 += padding;
-        x2 += padding;
-
-        // This disables the decoration hovering: not good
-        // But positions correctly the editor...
         if (rootIsDecorated()) {
-            x1 += indentation();
-            x2 += indentation();
+            QModelIndex parent = index.parent();
+            int level = 1;
+            while (parent.isValid()) {
+                level++;
+                parent = parent.parent();
+            }
+            int padding = level * indentation();
+            x1 += padding;
+            x2 += padding;
         }
 
-        int width = qMin(x2 - x1 + 1, columnWidth(0) - 1);
+        int width = qMin(x2 - x1, columnWidth(0) - 1);
 
         return QRect(x1, rect.y(), width, rect.height());
-
     }
     return rect;
+}
+
+void BaseTreeView::storeCurrentSettings()
+{
+    QHeaderView *viewHeader = header();
+    setSortingColumn(viewHeader->sortIndicatorSection());
+    setSortOrder(viewHeader->sortIndicatorOrder());
+
+    columnsWidth.clear();
+    visualIndexes.clear();
+
+    int count = viewHeader->count();
+    for (int section = 0; section < count ; section++) {
+        columnsWidth.append(viewHeader->sectionSize(section));
+        visualIndexes.append(viewHeader->visualIndex(section));
+    }
 }
 
 QPoint BaseTreeView::mapToViewport(QPoint pos)
@@ -562,54 +666,58 @@ void BaseTreeView::contextMenuRequested(const QPoint &pos)
 {
     qDebug() << "BaseTreeView::contextMenuRequested";
 
-    QList<FileSystemItem *> fileSystemItems;
+    QModelIndexList sourceIndexList;
     ContextMenu::ContextViewAspect viewAspect;
+
+    QSortFilterProxyModel *proxyModel = reinterpret_cast<QSortFilterProxyModel *>(model());
 
     // Get current selected item if any
     QModelIndex index = indexAt(pos);
-    if (index.isValid() && index.column() == 0 && index.internalPointer() != nullptr) {
+    if (index.isValid() && index.column() == 0) {
 
         // If the index is not selected, we should select it
         // and clear the previous selection
 
         QModelIndexList indexes = selectedIndexes();
         if (!indexes.contains(index)) {
-            selectionModel()->select(index, QItemSelectionModel::ClearAndSelect);
+           selectionModel()->select(index, QItemSelectionModel::ClearAndSelect);
         }
 
         viewAspect = ContextMenu::Selection;
-        for (const QModelIndex selectedIndex : selectedIndexes()) {
-            if (selectedIndex.column() == 0 && selectedIndex.internalPointer() != nullptr) {
-                FileSystemItem *fileSystemItem = getFileSystemModel()->getFileSystemItem(selectedIndex);
-                fileSystemItems.append(fileSystemItem);
-                qDebug() << "BaseTreeView::contextMenuRequested selected for " << fileSystemItem->getPath();
+        for (const QModelIndex &selectedIndex : selectedIndexes()) {
+            if (selectedIndex.column() == 0) {
+                sourceIndexList.append(proxyModel->mapToSource(selectedIndex));
+                qDebug() << "BaseTreeView::contextMenuRequested for item" << selectedIndex.data(FileSystemModel::PathRole).toString();
             }
         }
     } else {
         viewAspect = ContextMenu::Background;
-        FileSystemItem *fileSystemItem = getFileSystemModel()->getRoot();
-        fileSystemItems.append(fileSystemItem);
-        qDebug() << "BaseTreeView::contextMenuRequested selected for the background on " << fileSystemItem->getPath();
+        sourceIndexList.append(proxyModel->mapToSource(rootIndex()));
+        qDebug() << "BaseTreeView::contextMenuRequested selected for the background on " << rootIndex().data(FileSystemModel::PathRole).toString();
     }
 
     // If there's a header in this view, position would include it. We have to skip it.
     QPoint destination = pos;
     destination.setY(destination.y() + header()->height());
-    emit contextMenuRequestedForItems(mapToGlobal(destination), fileSystemItems, viewAspect, this);
+    emit contextMenuRequestedForItems(mapToGlobal(destination), sourceIndexList, viewAspect, this);
 }
 
-
+/*
+ * TODO: DELETE
+ */
 void BaseTreeView::showError(qint32 err, QString errMessage)
 {
     Q_UNUSED(err)
+    Q_UNUSED(errMessage)
 
     setNormalCursor();
 
-    FileSystemModel *fileSystemModel = getFileSystemModel();
-    QString path = fileSystemModel->getRoot()->getPath();
-    QMessageBox::critical(this, tr("Error"), errMessage + "\n" + path);
+    // QMessageBox::critical(this, tr("Error"), errMessage + "\n" + rootIndex().data(Qt::DisplayRole).toString());
 }
 
+/*
+ * TODO: DELETE
+ */
 bool BaseTreeView::setRoot(QString path)
 {
     Q_UNUSED(path)
@@ -637,7 +745,8 @@ void BaseTreeView::processQueuedSignals()
         return;
 
     mutex.lock();
-    for (QModelIndex parent : signalsQueue.keys()) {
+    QList<QModelIndex> indexList = signalsQueue.keys();
+    for (const QModelIndex &parent : indexList) {
         QMap<int, QModelIndex> *queue = signalsQueue.value(parent);
 
         QModelIndex topIndex     {};
@@ -649,7 +758,8 @@ void BaseTreeView::processQueuedSignals()
         QVector<int> roles;
         roles.append(Qt::DecorationRole);
 
-        for (int row : queue->keys()) {
+        QList<int> keys = queue->keys();
+        for (int row : keys) {
 
             if (topRow < 0) {
                 topRow = row;

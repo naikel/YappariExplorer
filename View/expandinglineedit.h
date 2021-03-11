@@ -5,8 +5,6 @@
 #include <QLineEdit>
 #include <QObject>
 
-#include "Shell/filesystemitem.h"
-
 class ExpandingLineEdit : public QLineEdit
 {
     Q_OBJECT
@@ -21,7 +19,7 @@ public slots:
     void fixInitialSelection();
 
 private:
-    FileSystemItem *item;
+    const QModelIndex &index;
     bool initialSelection = true;
 
 #endif

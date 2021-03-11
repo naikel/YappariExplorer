@@ -30,6 +30,7 @@
 #include <QApplication>
 #include <QHeaderView>
 #include <QJsonArray>
+#include <QResizeEvent>
 #include <QDebug>
 #include <QWindow>
 #include <QScreen>
@@ -81,6 +82,8 @@ AppWindow::AppWindow(QWidget *parent) : MAINWINDOW(parent)
     setWindowTitle(APPLICATION_TITLE);
 
     contextMenu = new PlatformContextMenu(this);
+
+    windowId = winId();
 
     setupGui();
 }
@@ -163,11 +166,11 @@ QWidget *AppWindow::contentWidget()
  *
  * \sa ContextMenu::show()
  */
-void AppWindow::showContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems, const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view)
+void AppWindow::showContextMenu(const QPoint &pos, const QModelIndexList &indexList, const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view)
 {
     qDebug() << "AppWindow::showContextMenu";
 
-    contextMenu->show(winId(), pos, fileSystemItems, viewAspect, view);
+    contextMenu->show(winId(), pos, indexList, viewAspect, view);
 }
 
 /*!
@@ -176,13 +179,13 @@ void AppWindow::showContextMenu(const QPoint &pos, const QList<FileSystemItem *>
  *
  * Executes the default action for a FileSystemItem object.
  *
- * \sa ContextMenu::defaultAction()
+ * \sa ContextMenu::defaultActionForIndex()
  */
-void AppWindow::defaultAction(const FileSystemItem *fileSystemItem)
+void AppWindow::defaultActionForIndex(const QModelIndex &index)
 {
     qDebug() << "AppWindow::defaultAction";
 
-    contextMenu->defaultAction(winId(), fileSystemItem);
+    contextMenu->defaultActionForIndex(winId(), index);
 }
 
 /*!
@@ -194,16 +197,16 @@ void AppWindow::defaultAction(const FileSystemItem *fileSystemItem)
  *
  * This only works if this window is not a Frameless Window.
  */
-void AppWindow::updateTitle(FileSystemItem *item)
+void AppWindow::updateTitle(const QModelIndex &index)
 {
 #ifndef WIN32_FRAMELESS
     QString title = APPLICATION_TITLE;
-    if (item != nullptr) {
-        title = item->getDisplayName() + " - " + title;
+    if (index.isValid()) {
+        title = index.data(Qt::DisplayRole).toString() + " - " + title;
     }
     setWindowTitle(title);
 #else
-    Q_UNUSED(item)
+    Q_UNUSED(index)
 #endif
 }
 
@@ -258,6 +261,20 @@ void AppWindow::resizeEvent(QResizeEvent *event)
 }
 
 /*!
+ * \brief Gets the winId.
+ * \return the WId of this window.
+ *
+ * This function allows different threads to get the WId of this window. If other threads
+ * call AppWindow::instance()->winId() they would crash with the error:
+ *
+ * QCoreApplication::sendEvent: "Cannot send events to objects owned by a different thread."
+ */
+WId AppWindow::getWindowId() const
+{
+    return windowId;
+}
+
+/*!
  * \brief Sets up the GUI.
  *
  * This function sets up the whole window. It creates the CustomExplorer objects,
@@ -273,6 +290,17 @@ void AppWindow::setupGui()
     verticalLayout->setSpacing(0);
     verticalLayout->setObjectName(QString::fromUtf8("verticalLayout"));
     verticalLayout->setContentsMargins(0, 0, 0, 0);
+
+#ifdef Q_OS_WIN
+    QFrame *line = new QFrame(cWidget);
+    QSizePolicy linePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
+    line->setSizePolicy(linePolicy);
+    line->setMinimumSize(QSize(1, 1));
+    line->setObjectName(QString::fromUtf8("topLine"));
+    line->setStyleSheet("#topLine { background: #9fcdb3;  }");
+    verticalLayout->addWidget(line);
+#endif
+
     setCentralWidget(cWidget);
 #endif
 
@@ -283,6 +311,7 @@ void AppWindow::setupGui()
         splitter->setObjectName(QString::fromUtf8("splitter"));
         splitter->setOrientation(verticalMode ? Qt::Vertical : Qt::Horizontal);
         splitter->setStyleSheet("QSplitter::handle { background: #9fcdb3;  } QSplitter::handle:vertical { height: 1px; }");
+        verticalLayout->addWidget(w);
         w = splitter;
     } else
         w = contentWidget();
@@ -402,11 +431,20 @@ void AppWindow::saveSettings()
 
     Settings::settings->saveGlobalSetting(SETTINGS_GLOBAL_EXPLORERS, nExplorers);
     if (nExplorers > 1) {
-        QSplitter *splitter = dynamic_cast<QSplitter *>(contentWidget()->layout()->itemAt(0)->widget());
-        QJsonArray sizes;
-        for (int size : splitter->sizes())
-            sizes.append(size);
-        Settings::settings->saveGlobalSetting(SETTINGS_GLOBAL_SPLITTER_SIZES, sizes);
+
+        QLayout *layout = contentWidget()->layout();
+        for (int i = 0; i < layout->count(); i++) {
+            QWidget *w = layout->itemAt(i)->widget();
+
+            if (QString(w->metaObject()->className()) == "QSplitter") {
+
+                QSplitter *splitter = dynamic_cast<QSplitter *>(w);
+                QJsonArray sizes;
+                for (int size : splitter->sizes())
+                    sizes.append(size);
+                Settings::settings->saveGlobalSetting(SETTINGS_GLOBAL_SPLITTER_SIZES, sizes);
+            }
+        }
     }
 
     Settings::settings->save();

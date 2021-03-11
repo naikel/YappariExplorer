@@ -37,6 +37,8 @@
 #include "View/customtabwidget.h"
 #include "View/PathBar.h"
 
+#include "Model/TreeModel.h"
+
 #include "Window/AppWindow.h"
 
 /*!
@@ -48,7 +50,7 @@
 class CustomExplorer : public QFrame
 {
 public:
-    CustomExplorer(int nExplorer, QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags());
+    CustomExplorer(int nExplorer, QWidget *parent = nullptr);
 
     void initialize();
     void saveSettings() const;
@@ -59,6 +61,7 @@ public:
     CustomTabWidget *getTabWidget() const;
 
 public slots:
+    bool setViewRootIndex(const QModelIndex &index);
     bool treeViewSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected);
     void expandAndSelectRelative(QString path);
     void expandAndSelectAbsolute(QString path);
@@ -67,6 +70,9 @@ public slots:
     void tabChanged(int index);
     void rootChangeFailed(QString path);
 
+    // New Ones
+    void showError(const QModelIndex &index);
+
 private:
     int nExplorer;
     CustomTreeView *treeView;
@@ -74,7 +80,13 @@ private:
     PathBar *pathBar;
     QSplitter *splitter;
 
+    QAbstractItemModel *model;
+    TreeModel *treeModel;
+
     void setupGui(int nExplorer);
+
+private slots:
+    void viewIndexChanged(const QModelIndex &sourceIndex);
 };
 
 #endif // CUSTOMEXPLORER_H

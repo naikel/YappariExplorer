@@ -27,7 +27,7 @@ void PathBarButton::mouseReleaseEvent(QMouseEvent *e)
     if (active) {
         if (e->button() == Qt::RightButton)
             showMenu();
-        else  if (!menuRequested)
+        else if (!menuRequested)
             QPushButton::mouseReleaseEvent(e);
         else {
             menuRequested = false;

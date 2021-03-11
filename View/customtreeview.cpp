@@ -1,12 +1,14 @@
 #include <QApplication>
 #include <QHeaderView>
 #include <QKeyEvent>
+#include <QPainter>
 #include <QMimeData>
 #include <QDebug>
+#include <QDir>
 
 #include "once.h"
 #include "customtreeview.h"
-#include "Model/filesystemmodel.h"
+#include "Model/SortModel.h"
 #include "Base/baseitemdelegate.h"
 
 #include <QProxyStyle>
@@ -22,7 +24,7 @@ class ProxyStyle : public QProxyStyle {
 
     void drawPrimitive(QStyle::PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget = nullptr) const override {
 
-        QStyleOptionViewItem *opt = const_cast<QStyleOptionViewItem *>(reinterpret_cast<const QStyleOptionViewItem *>(option));
+        QStyleOption *opt = const_cast<QStyleOption *>(reinterpret_cast<const QStyleOption *>(option));
 
         if (element == QStyle::PE_IndicatorBranch) {
 
@@ -49,6 +51,9 @@ CustomTreeView::CustomTreeView(QWidget *parent) : BaseTreeView(parent)
     setSelectionBehavior(QAbstractItemView::SelectItems);
     setSelectionMode(QAbstractItemView::SingleSelection);
     setFrameShape(QFrame::NoFrame);
+    setSortingEnabled(true);
+
+    header()->setSortIndicator(0, Qt::AscendingOrder);
 
     header()->setSectionResizeMode(QHeaderView::ResizeToContents);
 
@@ -74,15 +79,12 @@ QModelIndex CustomTreeView::selectedItem()
     return QModelIndex();
 }
 
-void CustomTreeView::selectIndex(QModelIndex index)
-{
-    selectionModel()->select(index, QItemSelectionModel::ClearAndSelect);
-    scrollTo(index);
-}
-
+/*
+ * TODO: DELETE
+ */
 void CustomTreeView::selectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
 {
-    viewFocusChanged();
+    //viewFocusChanged();
     BaseTreeView::selectionChanged(selected, deselected);
 }
 
@@ -91,10 +93,9 @@ void CustomTreeView::keyPressEvent(QKeyEvent *event)
     switch (event->key()) {
 
         case Qt::Key_F5: {
-            QModelIndexList list = selectedIndexes();
-            if (list.size() > 0)
-                getFileSystemModel()->refreshIndex(list[0]);
-                emit refreshed();
+                QModelIndexList list = selectedIndexes();
+                if (list.size() > 0)
+                    model()->setData(list[0], false, FileSystemModel::AllChildrenFetchedRole);
             }
             break;
 
@@ -102,17 +103,6 @@ void CustomTreeView::keyPressEvent(QKeyEvent *event)
             BaseTreeView::keyPressEvent(event);
     }
 }
-
-void CustomTreeView::viewFocusChanged()
-{
-    QModelIndex index = selectedItem();
-    if (index.isValid() && index.internalPointer() != nullptr) {
-
-        FileSystemItem *item = static_cast<FileSystemItem *>(index.internalPointer());
-        emit viewFocus(item);
-    }
-}
-
 
 QModelIndex CustomTreeView::moveCursor(QAbstractItemView::CursorAction cursorAction, Qt::KeyboardModifiers modifiers)
 {
@@ -135,18 +125,18 @@ void CustomTreeView::setDropAction(QDropEvent *event)
         return;
     }
 
-    // Ignore the action if the drop is coming from another view and is moving objects to the same folder
+    // Ignore the action if the drop is coming from another view and is moving objects to the same
     if (event->possibleActions() & Qt::CopyAction && event->mimeData()->urls().size() > 0) {
         QUrl url = event->mimeData()->urls().at(0);
         QString srcPath = url.toLocalFile();
 
 #ifdef Q_OS_WIN
-        srcPath = srcPath.replace('/', getFileSystemModel()->separator());
+        srcPath = srcPath.replace('/', QDir::separator());
 #endif
 
-        QString dstPath = getFileSystemModel()->getFileSystemItem(index)->getPath();
+        QString dstPath = index.data(FileSystemModel::PathRole).toString();
 
-        int i = srcPath.lastIndexOf(getFileSystemModel()->separator());
+        int i = srcPath.lastIndexOf(QDir::separator());
         if (i > 0 && srcPath.left(i) == dstPath)
             event->setDropAction(Qt::CopyAction);
     }
@@ -164,7 +154,8 @@ void CustomTreeView::dropEvent(QDropEvent *event)
 {
     // If no keyboard modifiers are being pressed, select the default action for the drop target
     if (!event->keyboardModifiers()) {
-        event->setDropAction(getFileSystemModel()->defaultDropActionForIndex(indexAt(event->pos()), event->mimeData(), event->possibleActions()));
+        SortModel *sortModel = reinterpret_cast<SortModel *>(model());
+        event->setDropAction(sortModel->defaultDropActionForIndex(indexAt(event->pos()), event->mimeData(), event->possibleActions()));
     }
 
     setDropAction(event);
@@ -172,6 +163,9 @@ void CustomTreeView::dropEvent(QDropEvent *event)
     QTreeView::dropEvent(event);
 }
 
+/*
+ * TODO: DELETE
+ */
 void CustomTreeView::resizeEvent(QResizeEvent *event)
 {
     emit resized();
@@ -210,17 +204,18 @@ void CustomTreeView::mousePressEvent(QMouseEvent *event)
                 QModelIndex index = indexAt(pos);
 
                 // Only allow context menu on an item, and ignore background context menu requests
-                if (index.isValid() && index.internalPointer() != nullptr) {
+                if (index.isValid()) {
 
                     // Save current selection
                     QModelIndex lastSelection = selectedItem();
 
-                    // Select temporarily the index and request context menu
-                    selectIndex(index);
+                    // This will select the index
                     contextMenuRequested(event->pos());
 
                     // Restore previous selection
-                    selectIndex(lastSelection);
+                    if (index.isValid())
+                        setCurrentIndex(lastSelection);
+
                     event->accept();
                     return;
                 }
@@ -234,7 +229,6 @@ void CustomTreeView::mousePressEvent(QMouseEvent *event)
                 if (!index.isValid())
                     draggingNothing = true;
 
-                viewFocusChanged();
                 BaseTreeView::mousePressEvent(event);
 
                 break;

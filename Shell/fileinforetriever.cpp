@@ -9,6 +9,8 @@ FileInfoRetriever::FileInfoRetriever(QObject *parent) : QObject(parent)
 {
     // Default scope is Tree
     scope = Scope::Tree;
+
+    pool.setMaxThreadCount(1);
 }
 
 FileInfoRetriever::~FileInfoRetriever()
@@ -85,24 +87,40 @@ bool FileInfoRetriever::willRecycle(FileSystemItem *fileSystemItem)
  */
 void FileInfoRetriever::getChildren(FileSystemItem *parent)
 {
-    qDebug() << "FileInfoRetriever::getChildren" << getScope();
+    qDebug() << "FileInfoRetriever::getChildren" << getScope() << parent->getPath();
 
     // This function might get called several times for the same parent
     // Why? Because QTreeView somehow calls fetchMore twice
     // So let's try to serialize it
-    // Right now this is not happening since fetchMore() is checking the QAtomicInt fecthingMore
+
+    // Ignore multiple fetches to the same parent
+    if (currentParent != nullptr && parent != nullptr && currentParent->getPath() == parent->getPath())
+        return;
 
     // TODO: This check should be in a different thread to not block the GUI
     if (running.load()) {
+
+        // Abort current fetch
+        qDebug() << "FileInfoRetriever::getChildren" << getScope() << "aborting current fetch!";
+        running.store(false);
+
         qDebug() << "FileInfoRetriever::getChildren" << getScope() << "waiting for previous threads to finish" << pool.activeThreadCount();
         pool.waitForDone();
         qDebug() << "FileInfoRetriever::getChildren" << getScope() << "all threads finished";
+
+        // Clean current fetch
+        if (currentParent != nullptr) {
+            qDebug() << "FileInfoRetriever::getChildren" << getScope() << "cleaning aborted parent";
+            currentParent->removeChildren();
+            currentParent = nullptr;
+        }
     }
 
     // Let's double check the children haven't been fetched
     if (!parent->areAllChildrenFetched()) {
         qDebug() << "FileInfoRetriever::getChildren" << getScope() << "about to go on the background to fetch the children";
         running.store(true);
+        currentParent = parent;
         QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileInfoRetriever *>(this), &FileInfoRetriever::getChildrenBackground, parent);
     } else
         qDebug() << "FileInfoRetriever::getChildren" << getScope() << "all children were already fetched";
@@ -110,11 +128,12 @@ void FileInfoRetriever::getChildren(FileSystemItem *parent)
 
 void FileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 {
-    emit parentUpdated(parent, 0, QString());
+    emit parentUpdated(parent, parent->getErrorCode(), parent->getErrorMessage());
 
     if (getScope() == FileInfoRetriever::List)
          getExtendedInfo(parent);
 
+    currentParent = nullptr;
     running.store(false);
 }
 

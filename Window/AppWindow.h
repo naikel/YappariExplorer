@@ -73,19 +73,22 @@ public:
 
     static AppWindow *instance();
 
+    WId getWindowId() const;
+
 signals:
 
 public slots:
-    void showContextMenu(const QPoint &pos, const QList<FileSystemItem *> fileSystemItems,
+    void showContextMenu(const QPoint &pos, const QModelIndexList &indexList,
                          const ContextMenu::ContextViewAspect viewAspect, QAbstractItemView *view);
-    void defaultAction(const FileSystemItem *fileSystemItem);
-    void updateTitle(FileSystemItem *item);
+    void defaultActionForIndex(const QModelIndex &index);
+    void updateTitle(const QModelIndex &index);
 
 protected:
     bool nativeEvent(const QByteArray &eventType, void *message, long *result) override;
     void resizeEvent(QResizeEvent *event) override;
 
 private:
+    WId windowId      {};
     int  nExplorers   { 2 };
     bool verticalMode { true };
 
