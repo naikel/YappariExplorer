@@ -34,7 +34,7 @@
 #include <QSplitter>
 #include <QMutex>
 #include <QAbstractItemView>
-#include "Shell/contextmenu.h"
+#include "Shell/ContextMenu.h"
 #include "Shell/directorywatcher.h"
 #include "Settings/Settings.h"
 

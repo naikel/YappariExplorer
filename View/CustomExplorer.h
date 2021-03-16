@@ -33,8 +33,8 @@
 #include <QSplitter>
 #include <QFrame>
 
-#include "View/customtreeview.h"
-#include "View/customtabwidget.h"
+#include "View/CustomTreeView.h"
+#include "View/CustomTabWidget.h"
 #include "View/PathBar.h"
 
 #include "Model/TreeModel.h"
@@ -62,15 +62,9 @@ public:
 
 public slots:
     bool setViewRootIndex(const QModelIndex &index);
-    bool treeViewSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected);
-    void expandAndSelectRelative(QString path);
     void expandAndSelectAbsolute(QString path);
     void collapseAndSelect(QModelIndex index);
-    void newTabRequested();
     void tabChanged(int index);
-    void rootChangeFailed(QString path);
-
-    // New Ones
     void showError(const QModelIndex &index);
 
 private:

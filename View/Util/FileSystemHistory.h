@@ -4,7 +4,7 @@
 #include <QList>
 #include <QIcon>
 
-#include "Model/filesystemmodel.h"
+#include "Model/FileSystemModel.h"
 
 class FileSystemHistory : QObject
 {

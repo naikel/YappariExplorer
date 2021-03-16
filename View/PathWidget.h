@@ -6,7 +6,7 @@
 #include <QFrame>
 #include <QWidget>
 
-#include "Model/filesystemmodel.h"
+#include "Model/FileSystemModel.h"
 
 class CustomButton : public QPushButton
 {

@@ -304,15 +304,15 @@ void AppWindow::setupGui()
     setCentralWidget(cWidget);
 #endif
 
-    QWidget *w;
+    QWidget *w {};
     nExplorers = Settings::settings->readGlobalSetting(SETTINGS_GLOBAL_EXPLORERS).toInt();
     if (nExplorers > 1) {
         QSplitter *splitter = new QSplitter(contentWidget());
         splitter->setObjectName(QString::fromUtf8("splitter"));
         splitter->setOrientation(verticalMode ? Qt::Vertical : Qt::Horizontal);
         splitter->setStyleSheet("QSplitter::handle { background: #9fcdb3;  } QSplitter::handle:vertical { height: 1px; }");
-        verticalLayout->addWidget(w);
         w = splitter;
+        verticalLayout->addWidget(w);
     } else
         w = contentWidget();
 
@@ -337,7 +337,7 @@ void AppWindow::setupGui()
         explorers.append(cExplorer);
 
         if (verticalMode)
-            connect(cExplorer->getTreeView(), &CustomTreeView::resized, this, [this, cSplitter]() { this->resizeOtherSplitter(cSplitter); } );
+            connect(cSplitter, &QSplitter::splitterMoved, this, [this, cSplitter](int, int) { this->resizeOtherSplitter(cSplitter); } );
     }
 
     if (nExplorers == 1) {

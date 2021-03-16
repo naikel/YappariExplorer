@@ -43,7 +43,7 @@ CustomExplorer::CustomExplorer(int nExplorer, QWidget *parent) : QFrame(parent)
 {
     setupGui(nExplorer);
 
-    FileSystemModel *fileSystemModel = new FileSystemModel(FileInfoRetriever::Tree, this);
+    FileSystemModel *fileSystemModel = new FileSystemModel(this);
     fileSystemModel->setDefaultRoot();
 
     treeModel = new TreeModel(this);
@@ -72,7 +72,7 @@ void CustomExplorer::initialize()
     connect(tabWidget, &CustomTabWidget::defaultActionRequestedForIndex, mainWindow, &AppWindow::defaultActionForIndex);
 
     // Context Menu
-    connect(tabWidget, &CustomTabWidget::contextMenuRequestedForItems, mainWindow, &AppWindow::showContextMenu);
+    connect(tabWidget, &CustomTabWidget::contextMenuRequestedForIndexes, mainWindow, &AppWindow::showContextMenu);
     connect(treeView, &CustomTreeView::contextMenuRequestedForItems, mainWindow, &AppWindow::showContextMenu);
 
     // Focus change (application title update)
@@ -104,53 +104,6 @@ void CustomExplorer::initialize()
     } else {
         expandAndSelectAbsolute(view->getPath());
     }
-
-    /*
-     * TODO: DELETE
-     */
-
-    /*
-    FileSystemModel *fileSystemModel = reinterpret_cast<FileSystemModel *>(model);
-    pathBar->setTreeModel(fileSystemModel);
-    */
-
-    // Handling of single selections
-    //connect(treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CustomExplorer::treeViewSelectionChanged);
-    //connect(treeView, &CustomTreeView::clicked, this, &CustomExplorer::setViewRootIndex);
-
-    /*
-    // Refresh in the Tree
-    connect(treeView, &CustomTreeView::refreshed, tabWidget, &CustomTabWidget::refreshCurrentTab);
-
-    // Focus change (application title update)
-    connect(tabWidget, &CustomTabWidget::folderFocus, mainWindow, &AppWindow::updateTitle);
-    connect(treeView, &CustomTreeView::viewFocus, mainWindow, &AppWindow::updateTitle);
-
-    // Auto expand & select on view select / Auto tree select and view change on collapse
-    connect(tabWidget, &CustomTabWidget::rootRelativeChange, this, &CustomExplorer::expandAndSelectRelative);
-    connect(tabWidget, &CustomTabWidget::rootAbsoluteChange, this, &CustomExplorer::expandAndSelectAbsolute);
-    connect(treeView, &CustomTreeView::collapsed, this, &CustomExplorer::collapseAndSelect);
-
-    // Tab handling
-    connect(tabWidget, &CustomTabWidget::newTabRequested, this, &CustomExplorer::newTabRequested);
-    connect(tabWidget, &CustomTabWidget::currentChanged, this, &CustomExplorer::tabChanged);
-    connect(fileSystemModel, &FileSystemModel::displayNameChanged, tabWidget, &CustomTabWidget::displayNameChanged);
-
-    // Context Menu
-    connect(tabWidget, &CustomTabWidget::contextMenuRequestedForItems, mainWindow, &AppWindow::showContextMenu);
-    connect(treeView, &CustomTreeView::contextMenuRequestedForItems, mainWindow, &AppWindow::showContextMenu);
-
-    // Actions
-    connect(tabWidget, &CustomTabWidget::defaultActionRequestedForItem, mainWindow, &AppWindow::defaultAction);
-
-    // Errors
-    connect(tabWidget, &CustomTabWidget::rootChangeFailed, this, &CustomExplorer::rootChangeFailed);
-
-    // Path Bar
-    connect(tabWidget, &CustomTabWidget::viewModelChanged, pathBar, &PathBar::setTabModel);
-    connect(pathBar, &PathBar::rootChange, this, &CustomExplorer::expandAndSelectAbsolute);
-
-    */
 }
 
 void CustomExplorer::saveSettings() const
@@ -158,112 +111,6 @@ void CustomExplorer::saveSettings() const
     tabWidget->saveSettings(nExplorer);
 
     Settings::settings->savePaneSetting(nExplorer, SETTINGS_PANES_TREEWIDTH, treeView->size().width());
-}
-
-bool CustomExplorer::treeViewSelectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
-{
-    Q_UNUSED(deselected)
-
-    qDebug() << "CustomExplorer::treeViewSelectionChanged";
-
-    QModelIndexList indexes = selected.indexes();
-    if (indexes.size() > 0) {
-
-        const QModelIndex &treeIndex = indexes[0];
-
-        const QModelIndex& source = treeModel->mapToSource(treeIndex);
-
-        // TODO: PathBar would definitely prefer a FilterModel
-        pathBar->selectTreeIndex(treeIndex);
-
-        return tabWidget->setViewRootIndex(source);
-    } else {
-        // We need to select something, the parent
-
-        indexes = deselected.indexes();
-        if (indexes.size() > 0) {
-            const QModelIndex& source = treeModel->mapToSource(indexes[0]).parent();
-            treeView->setCurrentIndex(source);
-        } else {
-            // Last resort: root
-            treeView->setCurrentIndex(treeModel->index(0, 0, QModelIndex()));
-        }
-
-        return false;
-    }
-}
-
-/*
- * TODO: DELETE
- */
-
-/*!
- * \brief Expands current tree item and selects the subfolder item with the new path.
- * \param path a new path that is a subfolder of the current path.
- *
- * Expands the current tree item and looks for the item with the new path inside of it and selects it.
- *
- * For this to work the new path has to be a subfolder of the current path, in other words
- * it has to be a relative of the current path.
- *
- * If the subfolder items have not been fetched yet, this function triggers a new fetch in
- * the background and it's called again after it finishes.
- *
- *  \sa CustomExplorer::expandAndSelectAbsolute
- */
-void CustomExplorer::expandAndSelectRelative(QString path)
-{
-    qDebug() << "CustomExplorer::expandAndSelectRelative" << path;
-    FileSystemModel *treeViewModel = reinterpret_cast<FileSystemModel *>(treeView->model());
-    QModelIndex parent = treeView->selectedItem();
-    if (parent.isValid()) {
-        FileSystemItem *parentItem = static_cast<FileSystemItem*>(parent.internalPointer());
-        qDebug() << "CustomExplorer::expandAndSelectRelative parent" << parentItem->getPath();
-        if (!parentItem->areAllChildrenFetched()) {
-
-            // Call this function again after all items are fetched
-            qDebug() << "CustomExplorer::expandAndSelectRelative will be called again after fetch";
-            Once::connect(treeViewModel, &FileSystemModel::fetchFinished, this, [this, path]() { this->expandAndSelectRelative(path); });
-
-            // This will trigger the background fetching
-            treeView->expand(parent);
-
-        } else {
-
-            qDebug() << "CustomExplorer::expandAndSelectRelative all children of" << parentItem->getPath() << "are fetched";
-
-            if (!treeView->isExpanded(parent)) {
-                treeView->expand(parent);
-            }
-            QModelIndex index = treeViewModel->relativeIndex(path, parent);
-
-            if (index.isValid())
-                treeView->setCurrentIndex(index);
-            else {
-                qDebug() << "CustomExplorer::expandAndSelectRelative can't find the index: the Tree View is not synchronized";
-
-                // Try to add it?
-                // treeViewModel->addPath(path);
-
-                /*
-
-                // TODO: What can we do here?
-
-                // Remove all children from the Tree View
-                treeViewModel->removeAllRows(parent);
-
-                // Fetch again the children
-                parentItem->setHasSubFolders(true);
-                treeViewModel->fetchMore(parent);
-                */
-
-                // Call this function again when finished
-                // TODO This might create an infinite cycle
-                Once::connect(treeViewModel, &FileSystemModel::fetchFinished, this, [this, path]() { this->expandAndSelectRelative(path); });
-
-            }
-        }
-    }
 }
 
 /*!
@@ -407,22 +254,6 @@ void CustomExplorer::collapseAndSelect(QModelIndex index)
     }
 }
 
-/*
- * TO DELETE
- */
-
-/*!
- * \brief Creates a new tab after a user's request.
- *
- * Creates a new tab after a request was received usually because the user clicked on the add new tab icon.
- */
-void CustomExplorer::newTabRequested()
-{
-    QModelIndex index = treeView->selectedItem();
-    if (index.isValid())
-        tabWidget->addNewTab(treeModel->mapToSource(index));
-}
-
 /*!
  * \brief Selects the new folder after the user changed to a different tab
  * \param index index of the newly tab selected
@@ -455,52 +286,19 @@ void CustomExplorer::tabChanged(int index)
         expandAndSelectAbsolute(detailedView->getPath());
 }
 
-void CustomExplorer::rootChangeFailed(QString path)
-{
-    qDebug() << "CustomExplorer::rootChangeFailed" << path;
-
-    // Change back current tab to last selected index in Tree View
-    QModelIndex index = treeView->selectedItem();
-    if (index.isValid()) {
-        FileSystemModel *treeViewModel = reinterpret_cast<FileSystemModel *>(treeView->model());
-        FileSystemItem *indexItem = static_cast<FileSystemItem*>(index.internalPointer());
-
-        if (indexItem != nullptr && indexItem->getPath() == path) {
-            index = index.parent();
-            treeView->setCurrentIndex(index);
-            indexItem = static_cast<FileSystemItem*>(index.internalPointer());
-            qDebug() << index.row() << index.column() << indexItem->getPath();
-        }
-
-        tabWidget->setViewRootIndex(index);
-
-        // Refresh
-
-        treeViewModel->removeAllRows(index);
-
-        // Fetch again the children
-        indexItem->setHasSubFolders(true);
-        treeViewModel->fetchMore(index);
-
-    } else {
-        FileSystemModel *treeViewModel = reinterpret_cast<FileSystemModel *>(treeView->model());
-        index = treeViewModel->index(0, 0);
-        treeView->setCurrentIndex(index);
-        tabWidget->setViewRootIndex(index);
-    }
-}
-
 void CustomExplorer::showError(const QModelIndex &index)
 {
     QMessageBox::critical(this, tr("Error"), index.data(FileSystemModel::ErrorMessageRole).toString() + "\n\n" + index.data(FileSystemModel::PathRole).toString());
 
-    // Go back
-    DetailedView *detailedView = static_cast<DetailedView *>(tabWidget->currentWidget());
-    QModelIndex lastIndex = detailedView->getHistory()->getLastItem();
+    if (treeView->selectedItem() == index) {
+        // Go back
+        DetailedView *detailedView = static_cast<DetailedView *>(tabWidget->currentWidget());
+        QModelIndex lastIndex = detailedView->getHistory()->getLastItem();
 
-    if (lastIndex.isValid()) {
-        treeView->setCurrentIndex(lastIndex);
-        tabWidget->setViewRootIndex(lastIndex);
+        if (lastIndex.isValid()) {
+            treeView->setCurrentIndex(lastIndex);
+            tabWidget->setViewRootIndex(lastIndex);
+        }
     }
 }
 

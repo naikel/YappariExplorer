@@ -2,7 +2,7 @@
 
 #include "SortModel.h"
 
-#include "Model/filesystemmodel.h"
+#include "Model/FileSystemModel.h"
 
 SortModel::SortModel(QObject *parent) : QSortFilterProxyModel(parent)
 {

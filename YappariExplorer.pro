@@ -37,57 +37,57 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    Model/FileSystemModel.cpp \
     Model/SortModel.cpp \
     Model/TreeModel.cpp \
-    Model/filesystemmodel.cpp \
     Settings/Settings.cpp \
-    Shell/contextmenu.cpp \
-    Shell/directorywatcher.cpp \
-    Shell/fileinforetriever.cpp \
-    Shell/filesystemitem.cpp \
-    Shell/shellactions.cpp \
-    View/Base/baseitemdelegate.cpp \
-    View/Base/basetreeview.cpp \
+    Shell/ContextMenu.cpp \
+    Shell/DirectoryWatcher.cpp \
+    Shell/FileInfoRetriever.cpp \
+    Shell/FileSystemItem.cpp \
+    Shell/ShellActions.cpp \
+    View/Base/BaseItemDelegate.cpp \
+    View/Base/BaseTreeView.cpp \
     View/CustomExplorer.cpp \
+    View/CustomTabBar.cpp \
+    View/CustomTabBarStyle.cpp \
+    View/CustomTabWidget.cpp \
+    View/CustomTreeView.cpp \
+    View/DateItemDelegate.cpp \
+    View/DetailedView.cpp \
+    View/ExpandingLineEdit.cpp \
     View/PathBar.cpp \
     View/PathBarButton.cpp \
     View/PathWidget.cpp \
     View/Util/FileSystemHistory.cpp \
-    View/customtabbar.cpp \
-    View/customtabbarstyle.cpp \
-    View/customtabwidget.cpp \
-    View/customtreeview.cpp \
-    View/dateitemdelegate.cpp \
-    View/detailedview.cpp \
-    View/expandinglineedit.cpp \
     Window/AppWindow.cpp \
     Window/TitleBar.cpp \
     main.cpp
 
 HEADERS += \
+    Model/FileSystemModel.h \
     Model/SortModel.h \
     Model/TreeModel.h \
-    Model/filesystemmodel.h \
     Settings/Settings.h \
-    Shell/contextmenu.h \
-    Shell/directorywatcher.h \
-    Shell/fileinforetriever.h \
-    Shell/filesystemitem.h \
-    Shell/shellactions.h \
-    View/Base/baseitemdelegate.h \
-    View/Base/basetreeview.h \
+    Shell/ContextMenu.h \
+    Shell/DirectoryWatcher.h \
+    Shell/FileInfoRetriever.h \
+    Shell/FileSystemItem.h \
+    Shell/ShellActions.h \
+    View/Base/BaseItemDelegate.h \
+    View/Base/BaseTreeView.h \
     View/CustomExplorer.h \
+    View/CustomTabBar.h \
+    View/CustomTabBarStyle.h \
+    View/CustomTabWidget.h \
+    View/CustomTreeView.h \
+    View/DateItemDelegate.h \
+    View/DetailedView.h \
+    View/ExpandingLineEdit.h \
     View/PathBar.h \
     View/PathBarButton.h \
     View/PathWidget.h \
     View/Util/FileSystemHistory.h \
-    View/customtabbar.h \
-    View/customtabbarstyle.h \
-    View/customtabwidget.h \
-    View/customtreeview.h \
-    View/dateitemdelegate.h \
-    View/detailedview.h \
-    View/expandinglineedit.h \
     Window/AppWindow.h \
     Window/TitleBar.h \
     once.h \
@@ -95,9 +95,9 @@ HEADERS += \
 
 unix {
     SOURCES += \
-        Shell/Unix/unixfileinforetriever.cpp
+    Shell/Unix/UnixFileInfoRetriever.cpp
     HEADERS += \
-        Shell/Unix/unixfileinforetriever.h
+    Shell/Unix/UnixFileInfoRetriever.h
     LIBS += -lstdc++fs -licui18n -licuuc
 }
 
@@ -109,19 +109,19 @@ win32 {
     # DEFINES += WIN32_FRAMELESS
     DEFINES += _WIN32_IE=0x700 _WIN32_WINNT=0x0A00
     SOURCES += \
-        Window/Win/WinFramelessWindow.cpp \
-        Shell/Win/wincontextmenu.cpp \
-        Shell/Win/winfileinforetriever.cpp \
-        Shell/Win/windirectorywatcher.cpp \
-        Shell/Win/windirectorywatcherv2.cpp \
-        Shell/Win/winshellactions.cpp
+    Shell/Win/WinContextMenu.cpp \
+    Shell/Win/WinDirectoryWatcher.cpp \
+    Shell/Win/WinDirectoryWatcherV2.cpp \
+    Shell/Win/WinFileInfoRetriever.cpp \
+    Shell/Win/WinShellActions.cpp \
+        Window/Win/WinFramelessWindow.cpp
     HEADERS += \
-        Window/Win/WinFramelessWindow.h \
-        Shell/Win/windirectorywatcher.h \
-        Shell/Win/windirectorywatcherv2.h \
-        Shell/Win/winshellactions.h \
-        Shell/Win/wincontextmenu.h \
-        Shell/Win/winfileinforetriever.h
+    Shell/Win/WinContextMenu.h \
+    Shell/Win/WinDirectoryWatcher.h \
+    Shell/Win/WinDirectoryWatcherV2.h \
+    Shell/Win/WinFileInfoRetriever.h \
+    Shell/Win/WinShellActions.h \
+        Window/Win/WinFramelessWindow.h
     LIBS += -lole32 -lgdi32 -luuid -ldwmapi -loleaut32 -luxtheme
 }
 

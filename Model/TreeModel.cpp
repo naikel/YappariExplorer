@@ -2,7 +2,7 @@
 
 #include "TreeModel.h"
 
-#include "Model/filesystemmodel.h"
+#include "Model/FileSystemModel.h"
 
 TreeModel::TreeModel(QObject *parent) : SortModel(parent)
 {

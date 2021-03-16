@@ -13,7 +13,6 @@ FileSystemHistory::~FileSystemHistory()
 
 bool FileSystemHistory::isCursorAtTheEnd() const
 {
-    qDebug() << "FileSystemHistory::isCursorAtTheEnd" << cursor << indexList.size();
     return (cursor == (indexList.size() - 1));
 }
 
