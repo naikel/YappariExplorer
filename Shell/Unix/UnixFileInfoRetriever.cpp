@@ -27,7 +27,7 @@ UnixFileInfoRetriever::UnixFileInfoRetriever(QObject *parent) : FileInfoRetrieve
 {
 }
 
-bool UnixFileInfoRetriever::getParentInfo(FileSystemItem *parent)
+bool UnixFileInfoRetriever::getParentBackground(FileSystemItem *parent)
 {
     QFileIconProvider iconProvider;
 

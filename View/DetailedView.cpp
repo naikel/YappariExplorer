@@ -201,9 +201,6 @@ void DetailedView::backEvent()
         setRootIndex(proxyModel->mapFromSource(index));
         emit rootIndexChanged(index);
     }
-
-    //getFileSystemModel()->goBack();
-    //emit rootChanged(getFileSystemModel()->getRoot()->getPath());
 }
 
 void DetailedView::forwardEvent()
@@ -214,9 +211,6 @@ void DetailedView::forwardEvent()
         setRootIndex(proxyModel->mapFromSource(index));
         emit rootIndexChanged(index);
     }
-
-    //getFileSystemModel()->goForward();
-    //emit rootChanged(getFileSystemModel()->getRoot()->getPath());
 }
 
 /*!
@@ -262,8 +256,6 @@ void DetailedView::setSelectionFromViewportRect(const QRect &rect, QItemSelectio
     int maxRow = model()->rowCount(rootIndex()) - 1;
     if (bottomRow > maxRow)
         bottomRow = maxRow;
-
-    qDebug() << topRow << bottomRow;
 
     QVector<QModelIndex> selectedIndexes;
     for (int row = topRow; row <= bottomRow; row++) {

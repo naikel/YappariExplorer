@@ -1,12 +1,14 @@
 #ifndef FILEINFORETRIEVER_H
 #define FILEINFORETRIEVER_H
 
-#include <QThreadPool>
+#include <QWaitCondition>
 #include <QAtomicInt>
+#include <QThread>
+#include <QMutex>
 
 #include "FileSystemItem.h"
 
-class FileInfoRetriever : public QObject
+class FileInfoRetriever : public QThread
 {
     Q_OBJECT
 
@@ -17,32 +19,73 @@ public:
 
     virtual QString getRootPath() const;
 
-    bool getInfo(FileSystemItem *root);
-
+    // These functions are executed in a separate thread
+    void getInfo(FileSystemItem *parent);
     void getChildren(FileSystemItem *parent);
-    virtual QIcon getIcon(FileSystemItem *fileSystemItem) const;
-    virtual void setDisplayNameOf(FileSystemItem *fileSystemItem);
-    virtual bool refreshItem(FileSystemItem *fileSystemItem) = 0;
+    void getIcon(FileSystemItem *parent);
 
-    virtual bool willRecycle(FileSystemItem *fileSystemItem);
+    // These functions are not executed in a separated thread
+    virtual void setDisplayNameOf(FileSystemItem *fileSystemItem) = 0;
+    virtual bool refreshItem(FileSystemItem *fileSystemItem) = 0;
+    virtual bool willRecycle(FileSystemItem *fileSystemItem) = 0;
 
 signals:
     void parentUpdated(FileSystemItem *parent);
     void itemUpdated(FileSystemItem *item);
-    void extendedInfoUpdated(FileSystemItem *parent);
 
+    // New ones
+    void parentInfoUpdated(FileSystemItem *parent);
+    void parentChildrenUpdated(FileSystemItem *parent);
+    void iconUpdated(FileSystemItem *item);
+
+
+public slots:
+    void quit();
 
 protected:
     QAtomicInt running;
 
-    virtual void getChildrenBackground(FileSystemItem *parent);
-    virtual bool getParentInfo(FileSystemItem *parent);
-    virtual void getExtendedInfo(FileSystemItem *parent);
+    void run() override;
+
+    virtual void getChildrenBackground(FileSystemItem *parent) = 0;
+    virtual bool getParentBackground(FileSystemItem *parent) = 0;
+    virtual void getIconBackground(FileSystemItem *parent) = 0;
 
 private:
-    QThreadPool pool;
 
-    FileSystemItem *currentParent {};
+    QAtomicInt threadRunning;
+    QMutex jobMutex;
+
+    // In Windows if you have several threads calling shell function the functionality is impaired.
+    // So all the threads are initialized as COINIT_APARTMENTTHREAD and we have to serialize all threads
+    // accessing the filesystem.
+    // We do this using a static QMutex
+    // https://docs.microsoft.com/en-us/troubleshoot/windows/win32/shell-functions-multithreaded-apartment
+
+#ifdef Q_OS_WIN
+    static QMutex threadMutex;
+#endif
+
+    enum JobType {
+
+        Parent,
+        Children,
+        Icon
+    };
+
+    typedef struct _job {
+
+        FileSystemItem *item;
+        JobType type;
+
+    } Job;
+
+    QList<Job> jobsQueue;
+    QWaitCondition jobAvailable;
+    Job currentJob;
+
+    void addJob(FileSystemItem *item, FileInfoRetriever::JobType type, bool insertAtFront = false);
+
 };
 
 #endif // FILEINFORETRIEVER_H

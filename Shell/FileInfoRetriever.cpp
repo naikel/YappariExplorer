@@ -1,13 +1,17 @@
 #include <QtConcurrent/QtConcurrentRun>
 #include <QApplication>
+#include <QModelIndex>
 #include <QTimer>
 #include <QDebug>
 
 #include "FileInfoRetriever.h"
 
-FileInfoRetriever::FileInfoRetriever(QObject *parent) : QObject(parent)
+#ifdef Q_OS_WIN
+QMutex FileInfoRetriever::threadMutex;
+#endif
+
+FileInfoRetriever::FileInfoRetriever(QObject *parent) : QThread(parent)
 {
-    pool.setMaxThreadCount(1);
 }
 
 FileInfoRetriever::~FileInfoRetriever()
@@ -15,10 +19,9 @@ FileInfoRetriever::~FileInfoRetriever()
     qDebug() << "FileInfoRetriever::~FileInfoRetriever About to destroy";
 
     if (running.load()) {
+
         // Abort all the pending threads
         running.store(false);
-        pool.clear();
-        pool.waitForDone();
     }
 
     qDebug() << "FileInfoRetriever::~FileInfoRetriever Destroyed";
@@ -29,49 +32,84 @@ QString FileInfoRetriever::getRootPath() const
     return "/";
 }
 
-bool FileInfoRetriever::getInfo(FileSystemItem *root)
+void FileInfoRetriever::getInfo(FileSystemItem *parent)
 {
-    if (root != nullptr && !root->getPath().isEmpty()) {
+    addJob(parent, Parent);
+}
 
-        // TODO Use a QMutex here
+void FileInfoRetriever::addJob(FileSystemItem *item, FileInfoRetriever::JobType type, bool insertAtFront)
+{
+    Job job;
+    job.item = item;
+    job.type = type;
+    if (!insertAtFront)
+        jobsQueue.append(job);
+    else
+        jobsQueue.insert(0, job);
 
-        // If this thread is still doing a previous task we have to abort it and wait until it finishes
-        if (running.load()) {
-            // Abort all the pending threads
-            qDebug() << "FileInfoRetriever::getInfo" << "Stopping all threads";
-            running.store(false);
-            pool.clear();
-            qDebug() << "FileInfoRetriever::getInfo" << "Waiting for all threads to finish";
-            pool.waitForDone();
-            qDebug() << "FileInfoRetriever::getInfo" << "All threads finished";
+    jobAvailable.wakeAll();
+}
+
+void FileInfoRetriever::run()
+{
+    QMutex mutex;
+
+    threadRunning.store(true);
+
+    forever {
+
+        if (!threadRunning.load())
+            break;
+
+        mutex.lock();
+
+        if (jobsQueue.isEmpty())
+            jobAvailable.wait(&mutex);
+
+        if (!threadRunning.load()) {
+            mutex.unlock();
+            break;
         }
 
-       if (getParentInfo(root)) {
-            getChildren(root);
-            return true;
-       }
-   }
+        if (!jobsQueue.isEmpty()) {
 
-   return false;
-}
+            running.store(true);
+            jobMutex.lock();
+            currentJob = jobsQueue.takeFirst();
+            jobMutex.unlock();
 
-bool FileInfoRetriever::getParentInfo(FileSystemItem *parent)
-{
-    Q_UNUSED(parent)
+            if (currentJob.item != nullptr) {
 
-    return true;
-}
+#ifdef Q_OS_WIN
+                threadMutex.lock();
+#endif
 
-void FileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
-{
-    Q_UNUSED(parent)
-}
+                switch(currentJob.type) {
 
-bool FileInfoRetriever::willRecycle(FileSystemItem *fileSystemItem)
-{
-    Q_UNUSED(fileSystemItem)
+                    case Parent:
+                        getParentBackground(currentJob.item);
+                        break;
+                    case Children:
+                        if (!currentJob.item->areAllChildrenFetched())
+                            getChildrenBackground(currentJob.item);
+                        break;
+                    case Icon:
+                        getIconBackground(currentJob.item);
+                        break;
+                }
 
-    return false;
+#ifdef Q_OS_WIN
+                threadMutex.unlock();
+#endif
+
+                running.store(false);
+                currentJob.item = nullptr;
+
+            }
+        }
+
+        mutex.unlock();
+    }
 }
 
 /*!
@@ -84,64 +122,36 @@ bool FileInfoRetriever::willRecycle(FileSystemItem *fileSystemItem)
  */
 void FileInfoRetriever::getChildren(FileSystemItem *parent)
 {
-    qDebug() << "FileInfoRetriever::getChildren" << parent->getPath();
+    if (parent != nullptr) {
 
-    // This function might get called several times for the same parent
-    // Why? Because QTreeView somehow calls fetchMore twice
-    // So let's try to serialize it
+        qDebug() << "FileInfoRetriever::getChildren" << parent->getPath();
 
-    // Ignore multiple fetches to the same parent
-    if (currentParent != nullptr && parent != nullptr && currentParent->getPath() == parent->getPath())
-        return;
+        // Cancel everything for this model
+        jobMutex.lock();
 
-    // TODO: This check should be in a different thread to not block the GUI
-    if (running.load()) {
-
-        // Abort current fetch
-        qDebug() << "FileInfoRetriever::getChildren" << "aborting current fetch!";
-        running.store(false);
-
-        qDebug() << "FileInfoRetriever::getChildren" << "waiting for previous threads to finish" << pool.activeThreadCount();
-        pool.waitForDone();
-        qDebug() << "FileInfoRetriever::getChildren" << "all threads finished";
-
-        // Clean current fetch
-        if (currentParent != nullptr) {
-            qDebug() << "FileInfoRetriever::getChildren" << "cleaning aborted parent";
-            currentParent->removeChildren();
-            currentParent = nullptr;
+        if (currentJob.item != nullptr && currentJob.type == Children && currentJob.item->getPath() != parent->getPath()) {
+            qDebug() << "FileInfoRetriever::getChildren cancelling current fetch of" << currentJob.item->getPath();
+            running.store(false);
         }
+
+        // Let's double check the children haven't been fetched
+        if (!parent->areAllChildrenFetched()) {
+            addJob(parent, Children, true);
+        } else
+            qDebug() << "FileInfoRetriever::getChildren" << "all children were already fetched";
+
+        jobMutex.unlock();
     }
-
-    // Let's double check the children haven't been fetched
-    if (!parent->areAllChildrenFetched()) {
-        qDebug() << "FileInfoRetriever::getChildren" << "about to go on the background to fetch the children";
-        running.store(true);
-        currentParent = parent;
-        QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileInfoRetriever *>(this), &FileInfoRetriever::getChildrenBackground, parent);
-    } else
-        qDebug() << "FileInfoRetriever::getChildren" << "all children were already fetched";
 }
 
-void FileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
+void FileInfoRetriever::getIcon(FileSystemItem *parent)
 {
-    emit parentUpdated(parent);
-
-    // getExtendedInfo(parent);
-
-    currentParent = nullptr;
-    running.store(false);
+    addJob(parent, Icon);
 }
 
-// TODO: Everything here should have a different thread
-QIcon FileInfoRetriever::getIcon(FileSystemItem *item) const
+void FileInfoRetriever::quit()
 {
-    Q_UNUSED(item)
-    return QIcon();
-}
-
-void FileInfoRetriever::setDisplayNameOf(FileSystemItem *item)
-{
-    Q_UNUSED(item)
+    threadRunning.store(false);
+    jobAvailable.wakeAll();
 }
 

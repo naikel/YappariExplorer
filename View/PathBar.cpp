@@ -111,8 +111,6 @@ void PathBar::selectedIndex(const QModelIndex &index)
 
         const QSortFilterProxyModel *treeModel = reinterpret_cast<const QSortFilterProxyModel *>(index.model());
 
-        qDebug() << "GONNA SEND THIS INDEX" << treeModel->mapToSource(index);
-
         emit rootIndexChangeRequested(treeModel->mapToSource(index));
     }
 }

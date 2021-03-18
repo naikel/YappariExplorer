@@ -38,11 +38,13 @@ QString WinFileInfoRetriever::getRootPath() const
     return COMPUTER_FOLDER_GUID;
 }
 
-bool WinFileInfoRetriever::getParentInfo(FileSystemItem *parent)
+bool WinFileInfoRetriever::getParentBackground(FileSystemItem *parent)
 {
     LPITEMIDLIST pidl;
     HRESULT hr;
     qDebug() << "WinFileInfoRetriever::getParentInfo " << " Parent path " << parent->getPath();
+
+    ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
     hr = ::SHParseDisplayName(parent->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
 
@@ -80,10 +82,17 @@ bool WinFileInfoRetriever::getParentInfo(FileSystemItem *parent)
 
         ::CoTaskMemFree(pwstrName);
         ::ILFree(pidl);
+        ::CoUninitialize();
 
         qDebug() << "WinFileInfoRetriever::getParentInfo " << " CoTaskFreeMem" << start.elapsed();
 
+        // Little test here
+        parent->setHasSubFolders(true);
+
+        emit parentInfoUpdated(parent);
+
         return true;
+
     } else {
         _com_error err(hr);
         LPCTSTR errMsg = err.ErrorMessage();
@@ -94,7 +103,9 @@ bool WinFileInfoRetriever::getParentInfo(FileSystemItem *parent)
         parent->setErrorCode(hr);
         parent->setErrorMessage(errMessage);
 
-        emit parentUpdated(parent);
+        emit parentInfoUpdated(parent);
+
+        ::CoUninitialize();
 
         return false;
     }
@@ -109,7 +120,10 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
     bool subFolders         {};
     LPITEMIDLIST pidl;
     HRESULT hr;
+
     qDebug() << "WinFileInfoRetriever::getChildrenBackground " << "Parent path " << parent->getPath();
+    parent->setErrorCode(0);
+
     hr = ::SHParseDisplayName(parent->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
 
     // Get the PIDL for the parent
@@ -220,21 +234,20 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
         if (!running.load()) {
             qDebug() << "WinFileInfoRetriever::getChildrenBackground " << "Parent path " << parent->getPath() << " aborted!";
-            ::CoUninitialize();
-            return;
-        }
+            parent->setErrorCode(-1);
+        } else {
+            qDebug() << "WinFileInfoRetriever::getChildrenBackground " << "has subfolders?" << subFolders;
+            parent->setHasSubFolders(subFolders);
 
-        qDebug() << "WinFileInfoRetriever::getChildrenBackground " << "has subfolders?" << subFolders;
-        parent->setHasSubFolders(subFolders);
+            qDebug() << "WinFileInfoRetriever::getChildrenBackground " << "Parent path" << parent->getPath() << "finished successfully";
+        }
 
         if (!parent->getErrorCode())
             parent->setAllChildrenFetched(true);
 
-        // This will emit the parentUpdated signal
-        FileInfoRetriever::getChildrenBackground(parent);
+        // Emit the parentChildrenUpdated signal
+        emit parentChildrenUpdated(parent);
     }
-
-    qDebug() << "WinFileInfoRetriever::getChildrenBackground " << "Parent path" << parent->getPath() << "finished successfully";
 
     ::CoUninitialize();
 }
@@ -325,69 +338,6 @@ void WinFileInfoRetriever::getChildInfo(IShellFolder *psf, LPITEMIDLIST pidlChil
 
     // Capabilites
     setCapabilities(child, attributes);
-}
-
-void WinFileInfoRetriever::getExtendedInfo(FileSystemItem *parent)
-{
-    qDebug() << "WinFileInfoRetriever::getExtendedInfo " << " Parent path " << parent->getPath();
-
-    QTime start;
-    start.start();
-
-    if (parent != nullptr && parent->areAllChildrenFetched()) {
-
-        SFGAOF attributes {};
-        UINT flags = SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME;
-
-        for (auto item : parent->getChildren()) {
-
-            if (!running.load())
-                break;
-
-            QString strType;
-            if (!item->isFolder()) {
-                /*
-                if (!item->isDrive()) {
-                    // File Size - Method 1 - VERY SLOW
-                    WIN32_FILE_ATTRIBUTE_DATA fileAttributeData;
-                    if (GetFileAttributesExW(item->getPath().toStdWString().c_str(), GetFileExInfoStandard, &fileAttributeData)) {
-                        quint64 size = fileAttributeData.nFileSizeHigh;
-                        size = (size << 32) + fileAttributeData.nFileSizeLow;
-                        item->setSize(size);
-                    }
-
-                    // File Size - Method 2 - FASTER
-                    WIN32_FIND_DATAW fileAttributeData;
-                    HANDLE h = FindFirstFileW(item->getPath().toStdWString().c_str(), &fileAttributeData);
-                    if (h != INVALID_HANDLE_VALUE) {
-                        FindClose(h);
-                        quint64 size = fileAttributeData.nFileSizeHigh;
-                        size = (size << 32) + fileAttributeData.nFileSizeLow;
-                        item->setSize(size);
-                    }
-
-                }
-                */
-
-                // File Type
-                SHFILEINFO info;
-                ::SHGetFileInfo(item->getPath().toStdWString().c_str(), attributes, &info, sizeof(SHFILEINFO), flags);
-                strType = QString::fromStdWString(info.szTypeName);
-                item->setType(strType);
-                emit itemUpdated(item);
-            }
-        }
-
-        if (!running.load()) {
-            qDebug() << "WinFileInfoRetriever::getExtendedInfo " << "Parent path " << parent->getPath() << " aborted!";
-            return;
-        }
-
-        // We need to signal the model that all the children need to be re-sorted
-        emit (extendedInfoUpdated(parent));
-    }
-
-    qDebug() << "WinFileInfoRetriever::getExtendedInfo Finished in" << start.elapsed() << "milliseconds";
 }
 
 void WinFileInfoRetriever::setDisplayNameOf(FileSystemItem *fileSystemItem)
@@ -522,7 +472,7 @@ bool WinFileInfoRetriever::willRecycle(FileSystemItem *fileSystemItem)
     return false;
 }
 
-QIcon WinFileInfoRetriever::getIcon(FileSystemItem *item) const
+void WinFileInfoRetriever::getIconBackground(FileSystemItem *item)
 {
     ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     // qDebug() << "WinFileInfoRetriever::getIcon " << item->getPath();
@@ -530,15 +480,16 @@ QIcon WinFileInfoRetriever::getIcon(FileSystemItem *item) const
     HRESULT hr;
     if (SUCCEEDED(hr = ::SHParseDisplayName(item->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr))) {
         QIcon icon = getIconFromPIDL(pidl, item->isHidden());
+        if (!icon.isNull())
+            item->setIcon(icon);
+
         ::ILFree(pidl);
-        ::CoUninitialize();
-        return icon;
-    }
-    else
+    } else
         qDebug() << "WinFileInfoRetriever::getIcon failed " << QString::number(hr, 16) << item->getPath();
 
     ::CoUninitialize();
-    return QIcon();
+
+    emit iconUpdated(item);
 }
 
 QIcon WinFileInfoRetriever::getIconFromPath(QString path, bool isHidden, bool ignoreDefault) const

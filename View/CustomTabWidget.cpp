@@ -25,7 +25,11 @@ CustomTabWidget::CustomTabWidget(int pane, QWidget *parent) : QTabWidget(parent)
 
 void CustomTabWidget::initialize(QAbstractItemModel *model)
 {
+    qDebug() << "CustomTabWidget::initialize";
+
     this->model = reinterpret_cast<FileSystemModel *>(model);
+
+    QModelIndex root = model->index(0, 0, QModelIndex());
 
     connect(this->model, &FileSystemModel::dataChanged, this, &CustomTabWidget::modelDataChanged);
 
@@ -36,6 +40,9 @@ void CustomTabWidget::initialize(QAbstractItemModel *model)
             QString displayName = Settings::settings->readTabSetting(pane, tab, SETTINGS_TABS_DISPLAYNAME).toString();
             QIcon icon = base64ToIcon(Settings::settings->readTabSetting(pane, tab, SETTINGS_TABS_ICON).toString());
             addNewTab(path, displayName, icon);
+            if (path.isEmpty())
+                setUpTab(tab, root);
+
             DetailedView *detailedView = reinterpret_cast<DetailedView *>(widget(tab));
 
             detailedView->setSortingColumn(Settings::settings->readTabSetting(pane, tab, SETTINGS_TABS_SORTCOLUMN).toInt());
@@ -57,7 +64,6 @@ void CustomTabWidget::initialize(QAbstractItemModel *model)
         int currentTab = Settings::settings->readPaneSetting(pane, SETTINGS_PANES_CURRENTTAB).toInt();
         setCurrentIndex(currentTab);
     } else {
-        QModelIndex root = model->index(0, 0, QModelIndex());
         addNewTab(QString(), QString(), QIcon());
         setUpTab(count() - 1, root);
     }

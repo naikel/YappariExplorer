@@ -308,12 +308,12 @@ void FileSystemItem::clear()
     setAllChildrenFetched(false);
 }
 
-quint16 FileSystemItem::getErrorCode() const
+int FileSystemItem::getErrorCode() const
 {
     return errorCode;
 }
 
-void FileSystemItem::setErrorCode(const quint16 &value)
+void FileSystemItem::setErrorCode(const int &value)
 {
     errorCode = value;
 }
@@ -326,6 +326,16 @@ QString FileSystemItem::getErrorMessage() const
 void FileSystemItem::setErrorMessage(const QString &value)
 {
     errorMessage = value;
+}
+
+bool FileSystemItem::getLock() const
+{
+    return lock;
+}
+
+void FileSystemItem::setLock(bool value)
+{
+    lock = value;
 }
 
 QVariant FileSystemItem::getData(int column)

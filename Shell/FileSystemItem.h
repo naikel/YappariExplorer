@@ -112,11 +112,14 @@ public:
     MediaType getMediaType() const;
     void setMediaType(const MediaType &value);
 
-    quint16 getErrorCode() const;
-    void setErrorCode(const quint16 &value);
+    int getErrorCode() const;
+    void setErrorCode(const int &value);
 
     QString getErrorMessage() const;
     void setErrorMessage(const QString &value);
+
+    bool getLock() const;
+    void setLock(bool value);
 
 private:
 
@@ -139,6 +142,7 @@ private:
     bool hasSubFolders          {false};
     bool allChildrenFetched     {false};
     bool fakeIcon               {false};
+    bool lock                   {false};
 
     FileSystemItem *parent      {};
 

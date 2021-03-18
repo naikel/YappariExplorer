@@ -100,9 +100,10 @@ FileSystemModel::FileSystemModel(QObject *parent) : QAbstractItemModel(parent)
     folderIcon = iconProvider.icon(QFileIconProvider::Folder);
     fileIcon = iconProvider.icon(QFileIconProvider::File);
 
-    connect(fileInfoRetriever, &FileInfoRetriever::parentUpdated, this, &FileSystemModel::parentUpdated);
+    connect(fileInfoRetriever, &FileInfoRetriever::parentInfoUpdated, this, &FileSystemModel::parentInfoUpdated);
+    connect(fileInfoRetriever, &FileInfoRetriever::parentChildrenUpdated, this, &FileSystemModel::parentChildrenUpdated);
     connect(fileInfoRetriever, &FileInfoRetriever::itemUpdated, this, &FileSystemModel::itemUpdated);
-    connect(fileInfoRetriever, &FileInfoRetriever::extendedInfoUpdated, this, &FileSystemModel::extendedInfoUpdated);
+    connect(fileInfoRetriever, &FileInfoRetriever::iconUpdated, this, &FileSystemModel::iconUpdated);
 
     // Start new directory watcher to monitor directory changes
     watcher = new PlatformDirectoryWatcher(this);
@@ -123,6 +124,7 @@ FileSystemModel::FileSystemModel(QObject *parent) : QAbstractItemModel(parent)
     connect(directoryWatcher, &DirectoryWatcher::folderUpdated, this, &FileSystemModel::refreshFolder);
 #endif
 
+    fileInfoRetriever->start();
 }
 
 /*!
@@ -133,11 +135,7 @@ FileSystemModel::FileSystemModel(QObject *parent) : QAbstractItemModel(parent)
  */
 FileSystemModel::~FileSystemModel()
 {
-    // Abort all the pending threads
-    pool.clear();
-    qDebug() << "FileSystemModel::~FileSystemModel: Waiting for all threads to finish";
-    pool.waitForDone();
-    qDebug() << "FileSystemModel::~FileSystemModel: All threads finished";
+    fileInfoRetriever->quit();
 
     // Stop the previous directory watcher if valid
     if (watcher != nullptr) {
@@ -185,8 +183,10 @@ FileSystemModel::~FileSystemModel()
 QModelIndex FileSystemModel::index(int row, int column, const QModelIndex &parent) const
 {
     // qDebug() << "index " << row << " " << column;
-    if (row < 0 || column < 0 || row >= rowCount(parent) || column >= columnCount(parent))
+    if (row < 0 || column < 0 || row >= rowCount(parent) || column >= columnCount(parent)) {
+        qDebug() << "index " << row << " " << column << reinterpret_cast<FileSystemItem *>(parent.internalPointer())->getPath();
         return QModelIndex();
+    }
 
     // If parent is not valid it means TreeView is asking for the root
     if (!parent.isValid() && !root->getDisplayName().isEmpty())
@@ -235,7 +235,14 @@ int FileSystemModel::rowCount(const QModelIndex &parent) const
         return 0;
 
     if (parent.isValid() && parent.internalPointer() != nullptr) {
-        return getFileSystemItem(parent)->childrenCount();
+
+        FileSystemItem *item = getFileSystemItem(parent);
+
+        // If the item is currently being fetched return 0 until it's done
+        if (item->getLock())
+            return 0;
+
+        return item->childrenCount();
     }
 
     // For now root has only one row: "My PC".  We may add more later
@@ -322,9 +329,8 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
                 if (index.column() == Columns::Name) {
                     // Fetch the real icon the second time it is requested
                     if (fileSystemItem->hasFakeIcon()) {
-
-                        QtConcurrent::run(const_cast<QThreadPool *>(&pool), const_cast<FileSystemModel *>(this), &FileSystemModel::getIcon, index);
                         fileSystemItem->setFakeIcon(false);
+                        fileInfoRetriever->getIcon(fileSystemItem);
                     }
 
                     QIcon icon = fileSystemItem->getIcon();
@@ -449,9 +455,10 @@ bool FileSystemModel::hasChildren(const QModelIndex &parent) const
 bool FileSystemModel::canFetchMore(const QModelIndex &parent) const
 {
     if (parent.isValid() && parent.internalPointer() != nullptr) {
-       FileSystemItem *fileSystemItem = getFileSystemItem(parent);
-        //if (fileSystemItem->getHasSubFolders() && !fileSystemItem->areAllChildrenFetched())
-       if (!fileSystemItem->areAllChildrenFetched())
+        FileSystemItem *fileSystemItem = getFileSystemItem(parent);
+
+        // We have to be sure the item is not currently fetching more (getLock() has to return false)
+        if (!fileSystemItem->getLock() && !fileSystemItem->areAllChildrenFetched())
             return true;
     }
 
@@ -478,21 +485,15 @@ void FileSystemModel::fetchMore(const QModelIndex &parent)
         FileSystemItem *fileSystemItem = getFileSystemItem(parent);
 
         // We don't care if fetchingMore was already true since FileInfoRetriever will cancel the current fetch
-        if (!fileSystemItem->areAllChildrenFetched()) {
+        if (!fileSystemItem->getLock() && !fileSystemItem->areAllChildrenFetched()) {
 
-            fetchingMore.store(true);
+            fileSystemItem->setLock(true);
+
             QVector<int> roles;
             roles.append(FileSystemModel::AllChildrenFetchedRole);
             emit dataChanged(parent, parent, roles);
 
-            tempParent = parent;
-
-            FileSystemItem *clone = fileSystemItem->clone();
-            fileInfoRetriever->getChildren(clone);
-
-            // This is a trick to avoid more fetches to the same parent
-            // If the fetch fails it'll be reestablished to the previous value of false in parentUpdated()
-            fileSystemItem->setAllChildrenFetched(true);
+            fileInfoRetriever->getChildren(fileSystemItem);
         }
     }
 }
@@ -531,10 +532,15 @@ void FileSystemModel::refreshFolder(QString path)
 
 void FileSystemModel::refreshIndex(QModelIndex index) {
 
-    // Do not refresh an index being fetched at this time (tempParent would be valid and fetchingMore would be true)
-    if (index.isValid() && (!fetchingMore.load() || tempParent != index)) {
-        qDebug() << "FileSystemModel::refreshIndex";
-        removeAllRows(index);
+    if (index.isValid()) {
+
+        FileSystemItem *item = getFileSystemItem(index);
+
+        // Do not refresh an index being fetched at this time
+        if (!item->getLock()) {
+            qDebug() << "FileSystemModel::refreshIndex";
+            removeAllRows(index);
+        }
     }
 }
 
@@ -573,12 +579,6 @@ void FileSystemModel::freeChildren(const QModelIndex &parent)
     qDebug() << "FileSystemModel::freeChildren";
 
     // TODO: There should use a better "cache" than this
-
-    // Try again later if there are still some getIcon() calls pending
-    if (pool.activeThreadCount() > 0) {
-        QTimer::singleShot(5000, this, [this, parent]() { this->freeChildren(parent); });
-        return;
-    }
 
     if (parent.isValid()) {
 
@@ -780,9 +780,12 @@ void FileSystemModel::setDefaultRoot()
 
 QModelIndex FileSystemModel::index(FileSystemItem *item) const
 {
+    // Eventually this should support other submodels
+    if (item == root)
+        return createIndex(0, 0, item);
+
     FileSystemItem *parent = item->getParent();
 
-    // ListView items don't have a parent
     if (parent == nullptr)
         return QModelIndex();
 
@@ -946,34 +949,18 @@ QModelIndex FileSystemModel::relativeIndex(QString path, QModelIndex parent)
     return QModelIndex();
 }
 
-bool FileSystemModel::setRoot(const QString path)
+void FileSystemModel::setRoot(const QString path)
 {
     qDebug() << "FileSystemModel::setRoot" << path;
-    settingRoot.store(true);
 
     beginResetModel();
-
-    // Abort all the pending threads
-    pool.clear();
-    qDebug() << "FileSystemModel::setRoot" << "Waiting for all threads to finish";
-    pool.waitForDone();
-    qDebug() << "FileSystemModel::setRoot" << "All threads finished";
 
     FileSystemItem *deleteLater = root;
     root = new FileSystemItem(path);
     root->setParent(nullptr);
 
-    bool result = fileInfoRetriever->getInfo(root);
+    fileInfoRetriever->getInfo(root);
     qDebug() << "FileSystemModel::setRoot root is ready" << path;
-
-    // Tell the views to invalidate everything before we delete the old data
-    endResetModel();
-
-    // Process all dataChanged events that could still modify the old root structure
-    QApplication::processEvents();
-
-    // Now let's tell the views brand new data is coming
-    beginResetModel();
 
     // Now we can delete the old root structure safely
     if (deleteLater != nullptr) {
@@ -988,8 +975,6 @@ bool FileSystemModel::setRoot(const QString path)
         // Finally delete the old root
         delete deleteLater;
     }
-
-    return result;
 }
 
 
@@ -1004,7 +989,7 @@ bool FileSystemModel::removeAllRows(const QModelIndex &parent)
     if (item != nullptr) {
         int count = rowCount(parent);
 
-        qDebug() << "FileSystemModel::removeAllRows removing" << count << "rows";
+        qDebug() << "FileSystemModel::removeAllRows removing" << count << "rows" << item->getLock();
         if (count > 0) {
 
             beginRemoveRows(parent, 0, count - 1);
@@ -1101,43 +1086,12 @@ QModelIndex FileSystemModel::parent(QString path) const
     return createIndex(grandParentItem->childRow(parentItem), 0, parentItem);
 }
 
-void FileSystemModel::parentUpdated(FileSystemItem *parent)
+void FileSystemModel::parentInfoUpdated(FileSystemItem *parent)
 {
+    qDebug() << "FileSystemModel::parentInfoUpdated endResetModel";
+    endResetModel();
 
-    QModelIndex parentIndex;
-
-    qDebug() << "FileSystemModel::parentUpdated" << parent->childrenCount() << "children. Error code:" << parent->getErrorCode();
-
-    if (fetchingMore.load()) {
-
-        FileSystemItem *realParent = reinterpret_cast<FileSystemItem *>(tempParent.internalPointer());
-        realParent->setAllChildrenFetched(parent->areAllChildrenFetched());
-
-        if (parent->childrenCount() > 0) {
-            beginInsertRows(tempParent, 0, parent->childrenCount()-1);
-            for (int i = 0; i < parent->childrenCount(); i++)
-                realParent->addChild(parent->getChildAt(i));
-
-            endInsertRows();
-        }
-
-        qDebug() << "FileSystemModel::parentUpdated endInsertRows" << parent->childrenCount();
-
-        realParent->setHasSubFolders(parent->getHasSubFolders());
-        realParent->setMediaType(parent->getMediaType());
-        realParent->setErrorCode(parent->getErrorCode());
-        realParent->setErrorMessage(parent->getErrorMessage());
-
-        parent->clear();
-        delete parent;
-
-        parent = realParent;
-
-        parentIndex = tempParent;
-
-        tempParent = QModelIndex();
-        fetchingMore.store(false);
-
+    if (!parent->getErrorCode()) {
 #ifdef Q_OS_WIN
         if (parent->getMediaType() == FileSystemItem::Fixed)
             directoryWatcher->addPath(parent->getPath());
@@ -1148,13 +1102,42 @@ void FileSystemModel::parentUpdated(FileSystemItem *parent)
 #endif
     }
 
-    if (settingRoot.load()) {
-        qDebug() << "FileSystemModel::parentUpdated endResetModel";
-        endResetModel();
-        settingRoot.store(false);
+    QVector<int> roles;
+    if (!parent->getErrorCode()) {
+        roles.append(Qt::DisplayRole);
+        roles.append(Qt::DecorationRole);
+    } else {
+        roles.append(FileSystemModel::ErrorCodeRole);
+        roles.append(FileSystemModel::ErrorMessageRole);
+    }
 
-        parentIndex = QModelIndex();
+    QModelIndex parentIndex = index(parent);
+    emit dataChanged(parentIndex, parentIndex, roles);
+}
 
+void FileSystemModel::parentChildrenUpdated(FileSystemItem *parent)
+{
+    QModelIndex parentIndex = index(parent);
+
+    qDebug() << "FileSystemModel::parentUpdated" << parent->childrenCount() << "children. Error code:" << parent->getErrorCode();
+
+    // This only happens if the user cancelled the fetch by selecting another index
+    if (parent->getErrorCode() < 0) {
+        parent->removeChildren();
+        parent->setLock(false);
+        return;
+    }
+
+    int count = parent->childrenCount();
+
+    if (count > 0) {
+        beginInsertRows(parentIndex, 0, count - 1);
+        parent->setLock(false);
+        endInsertRows();
+    } else
+        parent->setLock(false);
+
+    if (!parent->getErrorCode()) {
 #ifdef Q_OS_WIN
         if (parent->getMediaType() == FileSystemItem::Fixed)
             directoryWatcher->addPath(parent->getPath());
@@ -1163,7 +1146,6 @@ void FileSystemModel::parentUpdated(FileSystemItem *parent)
 #else
         watcher->addPath(parent->getPath());
 #endif
-
     }
 
     QVector<int> roles;
@@ -1180,16 +1162,14 @@ void FileSystemModel::parentUpdated(FileSystemItem *parent)
 
 void FileSystemModel::itemUpdated(FileSystemItem *item)
 {
-    // Send the dataChanged signal only if this item has been already updated by the icon
-    // Otherwise it's not necessary since the getIcon will send a dataChanged signal for it
-    if (item != nullptr && !item->getIcon().isNull() && !item->hasFakeIcon()) {
+    if (item != nullptr) {
 
         FileSystemItem *parent = item->getParent();
 
         if (parent != nullptr) {
             int row = parent->childRow(item);
             if (row >= 0) {
-                QModelIndex fromIndex = createIndex(row, Columns::Size, item);
+                QModelIndex fromIndex = createIndex(row, 0, item);
                 QModelIndex lastIndex = createIndex(row, Columns::MaxColumns - 1, item);
                 QVector<int> roles;
                 roles.append(Qt::DisplayRole);
@@ -1200,34 +1180,21 @@ void FileSystemModel::itemUpdated(FileSystemItem *item)
     }
 }
 
-void FileSystemModel::extendedInfoUpdated(FileSystemItem *parent)
+void FileSystemModel::iconUpdated(FileSystemItem *item)
 {
-    Q_UNUSED(parent)
+    if (item != nullptr) {
 
-    // If the model is currently sorted by one of the extended info columns, it obviously needs resorting
-    //if (currentSortColumn >= Columns::Type)
-    //    sort(currentSortColumn, currentSortOrder);
-}
+        FileSystemItem *parent = item->getParent();
 
-void FileSystemModel::getIcon(const QModelIndex &index)
-{
-    // Index here is a clone.
-    // Why? Because this method can be executed after the index is no longer valid
-
-    if (index.isValid() && index.internalPointer() != nullptr) {
-
-        FileSystemItem *fileSystemItem = getFileSystemItem(index);
-
-        QIcon icon = fileInfoRetriever->getIcon(fileSystemItem);
-        if (!icon.isNull()) {
-
-            fileSystemItem->setIcon(icon);
-
-            // This signal has very bad performance
-            // The view will queue these and bundle them as efficient as possible
-            QVector<int> roles;
-            roles.append(Qt::DecorationRole);
-            emit dataChanged(index, index, roles);
+        if (parent != nullptr) {
+            int row = parent->childRow(item);
+            if (row >= 0) {
+                QModelIndex fromIndex = createIndex(row, 0, item);
+                QModelIndex lastIndex = createIndex(row, 0, item);
+                QVector<int> roles;
+                roles.append(Qt::DecorationRole);
+                emit dataChanged(fromIndex, lastIndex, roles);
+            }
         }
     }
 }

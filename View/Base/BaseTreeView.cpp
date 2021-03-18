@@ -55,13 +55,9 @@ void BaseTreeView::setModel(QAbstractItemModel *model)
 {
     qDebug() << "BaseTreeView::setModel";
 
-    QTreeView::setModel(model);
+    Once::connect(model, &QAbstractItemModel::modelReset, this, &BaseTreeView::initialize);
 
-    QModelIndex root = model->index(0, 0, QModelIndex());
-    if (model->canFetchMore(root))
-        Once::connect(model, &QAbstractItemModel::modelReset, this, &BaseTreeView::initialize);
-    else
-        initialize();
+    QTreeView::setModel(model);
 }
 
 /*!
@@ -507,25 +503,27 @@ void BaseTreeView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bo
             shouldEdit(topLeft);
             return;
         }
-
-        if (roles.contains(Qt::DecorationRole)) {
-
-            QModelIndex parent = topLeft.parent();
-
-            // We need exlusive access to the signalsQueue object
-            mutex.lock();
-            if (signalsQueue.contains(parent)) {
-                QMap<int, QModelIndex> *queue = signalsQueue.value(parent);
-                queue->insert(topLeft.row(), topLeft);
-            } else {
-                QMap<int, QModelIndex> *queue = new QMap<int, QModelIndex>();
-                queue->insert(topLeft.row(), topLeft);
-                signalsQueue.insert(parent, queue);
-            }
-            mutex.unlock();
-            return;
-        }
     }
+
+
+    if (roles.contains(Qt::DecorationRole)) {
+
+        QModelIndex parent = topLeft.parent();
+
+        // We need exlusive access to the signalsQueue object
+        mutex.lock();
+        if (signalsQueue.contains(parent)) {
+            QMap<int, QModelIndex> *queue = signalsQueue.value(parent);
+            queue->insert(topLeft.row(), topLeft);
+        } else {
+            QMap<int, QModelIndex> *queue = new QMap<int, QModelIndex>();
+            queue->insert(topLeft.row(), topLeft);
+            signalsQueue.insert(parent, queue);
+        }
+        mutex.unlock();
+        return;
+    }
+
     QTreeView::dataChanged(topLeft, bottomRight, roles);
 }
 
@@ -678,7 +676,8 @@ void BaseTreeView::contextMenuRequested(const QPoint &pos)
         }
 
         viewAspect = ContextMenu::Selection;
-        for (const QModelIndex &selectedIndex : selectedIndexes()) {
+        QModelIndexList list = selectedIndexes();
+        for (const QModelIndex &selectedIndex : list) {
             if (selectedIndex.column() == 0) {
                 sourceIndexList.append(proxyModel->mapToSource(selectedIndex));
                 qDebug() << "BaseTreeView::contextMenuRequested for item" << selectedIndex.data(FileSystemModel::PathRole).toString();

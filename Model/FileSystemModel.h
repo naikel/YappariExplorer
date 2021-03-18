@@ -119,7 +119,7 @@ public:
     Qt::DropActions supportedDragActionsForIndexes(QModelIndexList indexes);
     Qt::DropAction defaultDropActionForIndex(QModelIndex index, const QMimeData *data, Qt::DropActions possibleActions);
     QModelIndex relativeIndex(QString path, QModelIndex parent);
-    bool setRoot(const QString path);
+    void setRoot(const QString path);
     FileSystemItem *getRoot() const;
     bool removeAllRows(const QModelIndex &parent);
     QChar separator() const;
@@ -141,38 +141,31 @@ public slots:
 
 private:
 
+    FileInfoRetriever *fileInfoRetriever    {};
     DirectoryWatcher *watcher               {};
     DirectoryWatcher *directoryWatcher      {};
     bool watch                              {};
     FileSystemItem *parentBeingWatched      {};
     QString extensionBeingWatched           {};
 
-    QAtomicInt fetchingMore;
-    QAtomicInt settingRoot;
-
-    FileSystemItem *root                    {nullptr};
-    int currentSortColumn                   {0};
+    FileSystemItem *root                    {};
+    int currentSortColumn                   {};
     Qt::SortOrder currentSortOrder          {Qt::AscendingOrder};
-    FileInfoRetriever *fileInfoRetriever    {nullptr};
-    ShellActions *shellActions              {nullptr};
+    ShellActions *shellActions              {};
     QVector<QString> sizeUnits              {"byte", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
 
     // Default icons
     QIcon driveIcon, fileIcon, folderIcon;
 
-    QThreadPool pool;
-
-    QModelIndex tempParent;
-
-    void getIcon(const QModelIndex &index);
     QString humanReadableSize(quint64 size) const;
 
 private slots:
 
     // These slots are called by the FileInfoRetriever object
-    void parentUpdated(FileSystemItem *parent);
+    void parentInfoUpdated(FileSystemItem *parent);
+    void parentChildrenUpdated(FileSystemItem *parent);
     void itemUpdated(FileSystemItem *item);
-    void extendedInfoUpdated(FileSystemItem *parent);
+    void iconUpdated(FileSystemItem *item);
 
     // These slots are called by the DirectoryWatcher object
     void renamePath(QString oldFileName, QString newFileName);
