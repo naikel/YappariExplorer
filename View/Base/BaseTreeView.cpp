@@ -30,7 +30,11 @@ BaseTreeView::BaseTreeView(QWidget *parent) : QTreeView(parent)
     setEditTriggers(QAbstractItemView::SelectedClicked | QAbstractItemView::EditKeyPressed);
     setContextMenuPolicy(Qt::CustomContextMenu);
     setUniformRowHeights(true);
+    setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     connect(this, &QTreeView::customContextMenuRequested, this, &BaseTreeView::contextMenuRequested);
+
+    connect(this, &QTreeView::expanded, [=](const QModelIndex &index) { this->updateRefCounter(index, true); } );
+    connect(this, &QTreeView::collapsed, [=](const QModelIndex &index) { this->updateRefCounter(index, false); } );
 
     // This is the timer to process queued dataChanged signals (of icons updates only) and send them as a few signals as possible
     QTimer *timer = new QTimer(this);
@@ -38,42 +42,13 @@ BaseTreeView::BaseTreeView(QWidget *parent) : QTreeView(parent)
     timer->start(10);
 }
 
-/*!
- * \brief Sets the model for the view.
- * \param model Model for the view.
- *
- * Sets the model for the view to present.  The model is a FileSystemModel.
- *
- * After the model has finished fetching the initial items the function BaseTreeView::initialize will be called
- * to finish initialization of the view.
- *
- * This function also configures the mouse cursor to show a busy icon when the model is fetching new items.
- *
- * \sa FileSystemModel::initialize
- */
-void BaseTreeView::setModel(QAbstractItemModel *model)
+BaseTreeView::~BaseTreeView()
 {
-    qDebug() << "BaseTreeView::setModel";
-
-    Once::connect(model, &QAbstractItemModel::modelReset, this, &BaseTreeView::initialize);
-
-    QTreeView::setModel(model);
-}
-
-/*!
- * \brief Initializes the view.
- *
- * Initializes the view. This function is called after the model has fetched the initial items.
- *
- * This function does nothing in this class.  Subclasses should reimplement this function and put here the
- * custom configuration of their view.
- */
-void BaseTreeView::initialize()
-{
-    qDebug() << "BaseTreeView::initialize";
-
-    QModelIndex root = model()->index(0 , 0, QModelIndex());
-    defaultRowHeight = (root.isValid()) ? rowHeight(root) : 0;
+    QModelIndex index = rootIndex();
+    if (index.isValid()) {
+        model()->setData(index, QVariant(), FileSystemModel::DecreaseRefCounterRole);
+        qDebug() << "REF COUNTERS" << index.data(FileSystemModel::PathRole) << index.data(FileSystemModel::RefCounterRole).toInt();
+    }
 }
 
 /*!
@@ -124,7 +99,6 @@ void BaseTreeView::keyPressEvent(QKeyEvent *event)
             break;
 
         case Qt::Key_F5:
-            //getFileSystemModel()->refresh(getFileSystemModel()->getRoot()->getPath());
             model()->setData(rootIndex(), false, FileSystemModel::AllChildrenFetchedRole);
             break;
 
@@ -330,6 +304,19 @@ void BaseTreeView::shouldEdit(QModelIndex index)
     QAbstractItemView::edit(index);
 }
 
+void BaseTreeView::updateRefCounter(QModelIndex index, bool increase)
+{
+    QModelIndex i = index;
+    while (i.isValid()) {
+
+        model()->setData(i, QVariant(), increase ? FileSystemModel::IncreaseRefCounterRole : FileSystemModel::DecreaseRefCounterRole);
+
+        qDebug() << "REF COUNTERS" << i.data(FileSystemModel::PathRole) << i.data(FileSystemModel::RefCounterRole).toInt();
+
+        i = i.parent();
+    }
+}
+
 /*!
  * \brief Handles a Select/Enter/Return event.
  *
@@ -408,11 +395,6 @@ QString BaseTreeView::getPath() const
 void BaseTreeView::setPath(const QString &value)
 {
     path = value;
-}
-
-int BaseTreeView::getDefaultRowHeight() const
-{
-    return defaultRowHeight;
 }
 
 bool BaseTreeView::isEditingIndex(const QModelIndex &index) const
@@ -616,12 +598,8 @@ QPoint BaseTreeView::mapToViewport(QPoint pos)
 {
     QPoint viewportPos;
 
-    // Y
-    if (verticalScrollMode() == QAbstractItemView::ScrollPerPixel) {
-        viewportPos.setY(pos.y() + verticalScrollBar()->value());
-    } else {
-        viewportPos.setY(pos.y() + (verticalScrollBar()->value() * defaultRowHeight));
-    }
+    // Vertical bar is forced to scroll per pixel
+    viewportPos.setY(pos.y() + verticalScrollBar()->value());
 
     // Horizontal bar is always scroll per pixel
     viewportPos.setX(pos.x() + horizontalScrollBar()->value());
@@ -634,12 +612,8 @@ QPoint BaseTreeView::mapFromViewport(QPoint pos)
 {
     QPoint treeViewPos;
 
-    // Y
-    if (verticalScrollMode() == QAbstractItemView::ScrollPerPixel) {
-        treeViewPos.setY(pos.y() - verticalScrollBar()->value());
-    } else {
-        treeViewPos.setY(pos.y() - (verticalScrollBar()->value() * defaultRowHeight));
-    }
+    // Vertical bar is forced to scroll per pixel
+    treeViewPos.setY(pos.y() - verticalScrollBar()->value());
 
     // Horizontal bar is always scroll per pixel
     treeViewPos.setX(pos.x() - horizontalScrollBar()->value());
@@ -693,6 +667,19 @@ void BaseTreeView::contextMenuRequested(const QPoint &pos)
     QPoint destination = pos;
     destination.setY(destination.y() + header()->height());
     emit contextMenuRequestedForItems(mapToGlobal(destination), sourceIndexList, viewAspect, this);
+}
+
+void BaseTreeView::setRootIndex(const QModelIndex &index)
+{
+    QModelIndex oldIndex = rootIndex();
+    if (oldIndex.isValid()) {
+        model()->setData(oldIndex, QVariant(), FileSystemModel::DecreaseRefCounterRole);
+        qDebug() << "REF COUNTERS" << oldIndex.data(FileSystemModel::PathRole) << oldIndex.data(FileSystemModel::RefCounterRole).toInt();
+    }
+
+    model()->setData(index, QVariant(), FileSystemModel::IncreaseRefCounterRole);
+    qDebug() << "REF COUNTERS" << index.data(FileSystemModel::PathRole) << index.data(FileSystemModel::RefCounterRole).toInt();
+    QTreeView::setRootIndex(index);
 }
 
 /*!

@@ -54,22 +54,22 @@ void PathBar::setHistory(FileSystemHistory *history)
 {
     this->history = history;
 
-    QModelIndexList historyList = history->getIndexList();
+    QList<HistoryEntry *> historyList = history->getPathList();
     int cursor = history->getCursor();
 
     QMenu *backMenu = new QMenu(backButton);
     for (int i = cursor - 1; i >= 0; --i) {
 
-        QModelIndex entry = historyList[i];
-        QAction *action = backMenu->addAction(entry.data(Qt::DecorationRole).value<QIcon>(), getDisplayName(entry));
+        HistoryEntry *entry = historyList[i];
+        QAction *action = backMenu->addAction(entry->icon, entry->displayName);
         action->setData(QVariant(i));
     }
 
     QMenu *nextMenu = new QMenu(nextButton);
     for (int i = cursor + 1; i < historyList.size(); i++) {
 
-        QModelIndex entry = historyList[i];
-        QAction *action = nextMenu->addAction(entry.data(Qt::DecorationRole).value<QIcon>(), getDisplayName(entry));
+        HistoryEntry *entry = historyList[i];
+        QAction *action = nextMenu->addAction(entry->icon, entry->displayName);
         action->setData(QVariant(i));
     }
 
@@ -101,7 +101,7 @@ void PathBar::menuSelected(QAction *action)
 
         QVariant actionData = action->data();
         if (actionData.isValid())
-            emit rootIndexChangeRequested(history->getItemAtPos(actionData.toInt()));
+            emit pathChangeRequested(history->getItemAtPos(actionData.toInt()));
     }
 }
 
@@ -153,9 +153,9 @@ void PathBar::buttonClicked()
     PathBarButton *button = reinterpret_cast<PathBarButton *>(sender());
 
     if (button == nextButton && history->canGoForward())
-        emit rootIndexChangeRequested(history->getNextItem());
+        emit pathChangeRequested(history->getNextItem());
     else if (button == backButton && history->canGoBack()) {
-        emit rootIndexChangeRequested(history->getLastItem());
+        emit pathChangeRequested(history->getLastItem());
     } else if (button == upButton && history->canGoUp())
-        emit rootIndexChangeRequested(history->getParentItem());
+        emit pathChangeRequested(history->getParentItem());
 }

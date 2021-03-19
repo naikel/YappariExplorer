@@ -83,13 +83,17 @@ void CustomExplorer::initialize()
     connect(tabWidget, &CustomTabWidget::currentChanged, this, &CustomExplorer::tabChanged);
 
     // Path Bar
-    connect(pathBar, &PathBar::rootIndexChangeRequested, [=](const QModelIndex &sourceIndex) { tabWidget->setViewRootIndex(sourceIndex); });
+    connect(pathBar, &PathBar::rootIndexChangeRequested, tabWidget, &CustomTabWidget::setViewRootIndex);
+    connect(pathBar, &PathBar::pathChangeRequested, this, &CustomExplorer::expandAndSelectAbsolute);
 
     // Errors
     connect(treeModel, &QAbstractItemModel::dataChanged, [=](const QModelIndex &topLeft, const QModelIndex &, const QVector<int> &roles) {
         if (roles.contains(FileSystemModel::ErrorCodeRole))
             showError(topLeft);
     });
+
+    // History
+    connect(tabWidget, &CustomTabWidget::selectPathInTree, this, &CustomExplorer::expandAndSelectAbsolute);
 
     // Select current path in TreeView
     BaseTreeView *view = reinterpret_cast<BaseTreeView *>(tabWidget->currentWidget());
@@ -143,10 +147,9 @@ void CustomExplorer::expandAndSelectAbsolute(QString path)
 
     // If path is root then just finish setting up the current tab and selecting root in the tree
     if (path == parentIndex.data(FileSystemModel::PathRole).toString()) {
-        tabWidget->setUpTab(tabWidget->currentIndex(), parentIndex);
-        QModelIndex parentTree = treeModel->mapFromSource(parentIndex);
 
-        tabChanged(tabWidget->currentIndex());
+        tabWidget->setViewRootIndex(parentIndex);
+        QModelIndex parentTree = treeModel->mapFromSource(parentIndex);
 
         // Always expand root
         treeView->expand(parentTree);
@@ -224,8 +227,7 @@ void CustomExplorer::expandAndSelectAbsolute(QString path)
             }
         }
     }
-    tabWidget->setUpTab(tabWidget->currentIndex(), childIndex);
-    tabChanged(tabWidget->currentIndex());
+    tabWidget->setViewRootIndex(childIndex);
 }
 
 /*!
@@ -293,11 +295,12 @@ void CustomExplorer::showError(const QModelIndex &index)
     if (treeView->selectedItem() == index) {
         // Go back
         DetailedView *detailedView = static_cast<DetailedView *>(tabWidget->currentWidget());
-        QModelIndex lastIndex = detailedView->getHistory()->getLastItem();
+        QString lastPath = detailedView->getHistory()->getLastItem();
 
-        if (lastIndex.isValid()) {
-            treeView->setCurrentIndex(lastIndex);
-            tabWidget->setViewRootIndex(lastIndex);
+        if (!lastPath.isEmpty()) {
+            //treeView->setCurrentIndex(lastIndex);
+            //tabWidget->setViewRootIndex(lastIndex);
+            expandAndSelectAbsolute(lastPath);
         }
     }
 }
@@ -387,6 +390,7 @@ void CustomExplorer::setupGui(int nExplorer)
 
 void CustomExplorer::viewIndexChanged(const QModelIndex &sourceIndex)
 {
+    qDebug() << "CustomExplorer::viewIndexChanged";
     const QModelIndex &treeIndex = treeModel->mapFromSource(sourceIndex);
     treeView->setCurrentIndex(treeIndex);
 

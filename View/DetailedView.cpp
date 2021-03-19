@@ -30,13 +30,19 @@ DetailedView::DetailedView(QWidget *parent) : BaseTreeView(parent)
 
     this->header()->setMinimumSectionSize(100);
     this->header()->setStretchLastSection(false);
-
-    history = new FileSystemHistory(this);
 }
 
 void DetailedView::setModel(QAbstractItemModel *model)
 {
+    qDebug() << "DetailedView::setModel";
+
     BaseTreeView::setModel(model);
+
+    if (history)
+        delete history;
+
+    history = new FileSystemHistory(model, this);
+
     this->header()->resizeSection(FileSystemModel::Columns::Name, 600);
     this->header()->resizeSection(FileSystemModel::Columns::Extension, 100);
     this->header()->resizeSection(FileSystemModel::Columns::LastChangeTime, 230);
@@ -50,10 +56,14 @@ FileSystemHistory *DetailedView::getHistory()
 
 void DetailedView::setRootIndex(const QModelIndex &index)
 {
+    qDebug() << "DetailedView::setRootIndex";
+
     BaseTreeView::setRootIndex(index);
 
-    QSortFilterProxyModel *proxyModel = reinterpret_cast<QSortFilterProxyModel *>(model());
-    history->insert(proxyModel->mapToSource(index));
+    if (index.isValid())
+        history->insert(index.data(Qt::DisplayRole).toString(),
+                        index.data(Qt::DecorationRole).value<QIcon>(),
+                        index.data(FileSystemModel::PathRole).toString());
 }
 
 void DetailedView::selectEvent()
@@ -196,20 +206,18 @@ void DetailedView::mouseReleaseEvent(QMouseEvent *event)
 void DetailedView::backEvent()
 {
     if (history->canGoBack()) {
-        QModelIndex index = history->getLastItem();
-        QSortFilterProxyModel *proxyModel = reinterpret_cast<QSortFilterProxyModel *>(model());
-        setRootIndex(proxyModel->mapFromSource(index));
-        emit rootIndexChanged(index);
+        QString path = history->getLastItem();
+        if (!path.isEmpty())
+            emit selectPathInTree(path);
     }
 }
 
 void DetailedView::forwardEvent()
 {
     if (history->canGoForward()) {
-        QModelIndex index = history->getNextItem();
-        QSortFilterProxyModel *proxyModel = reinterpret_cast<QSortFilterProxyModel *>(model());
-        setRootIndex(proxyModel->mapFromSource(index));
-        emit rootIndexChanged(index);
+        QString path = history->getNextItem();
+        if (!path.isEmpty())
+            emit selectPathInTree(path);
     }
 }
 
@@ -239,16 +247,21 @@ void DetailedView::setSelection(const QRect &rect, QItemSelectionModel::Selectio
 void DetailedView::setSelectionFromViewportRect(const QRect &rect, QItemSelection &currentSelection, QItemSelectionModel::SelectionFlags command)
 {
     // The following lines are from the QTreeView implementation
-    if (!selectionModel() || rect.isNull())
-           return;
+
+    // There must be at least one child in this view otherwise return
+    if (!selectionModel() || rect.isNull() || model()->rowCount(rootIndex()) <= 0)
+        return;
 
     QPoint tl(isRightToLeft() ? qMax(rect.left(), rect.right())
               : qMin(rect.left(), rect.right()), qMin(rect.top(), rect.bottom()));
     QPoint br(isRightToLeft() ? qMin(rect.left(), rect.right()) :
               qMax(rect.left(), rect.right()), qMax(rect.top(), rect.bottom()));
 
-    int topRow = tl.y() / getDefaultRowHeight();
-    int bottomRow =  br.y() / getDefaultRowHeight();
+    // This is why there must be at least one child
+    int rh = rowHeight(model()->index(0, 0, rootIndex()));
+
+    int topRow = tl.y() / rh;
+    int bottomRow =  br.y() / rh;
 
     if (topRow < 0)
         topRow = 0;

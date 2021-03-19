@@ -33,6 +33,7 @@ signals:
     void viewIndexChanged(const QModelIndex &index);
     void folderFocusIndex(const QModelIndex &index);
     void defaultActionRequestedForIndex(const QModelIndex &index);
+    void selectPathInTree(const QString &path);
 
 protected:
     void mouseDoubleClickEvent(QMouseEvent *event) override;

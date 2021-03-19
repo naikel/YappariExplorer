@@ -21,12 +21,7 @@ public slots:
 
 signals:
 
-    // TODO: DELETE
-    void rootChanged(QString path);
-
-    // New ones
-    void rootIndexChanged(const QModelIndex &index);
-
+    void selectPathInTree(const QString &path);
 
 protected:
     void selectEvent() override;

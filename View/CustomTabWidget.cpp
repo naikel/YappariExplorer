@@ -117,12 +117,15 @@ void CustomTabWidget::setUpTab(int tab, const QModelIndex &sourceIndex)
 
     DetailedView *detailedView = static_cast<DetailedView *>(widget(tab));
 
+    if (detailedView->rootIndex().isValid())
+        return;
+
     SortModel *sortModel = new SortModel(detailedView);
     sortModel->setSourceModel(model);
     sortModel->setObjectName("SortModel");
 
     connect(detailedView, &DetailedView::doubleClicked, this, &CustomTabWidget::viewIndexSelected);
-    connect(detailedView, &DetailedView::rootIndexChanged, [=](const QModelIndex &index) { setTabName(currentIndex()); emit this->viewIndexChanged(index); emit folderFocusIndex(index); });
+    connect(detailedView, &DetailedView::selectPathInTree, [=](QString path) { emit this->selectPathInTree(path); });
     connect(detailedView, &DetailedView::viewFocusIndex, [=](const QModelIndex &index) { emit this->folderFocusIndex(index); });
 
     // Context menu
@@ -142,6 +145,8 @@ void CustomTabWidget::setUpTab(int tab, const QModelIndex &sourceIndex)
         header->resizeSection(section, columnsWidth[section]);
         header->moveSection(section, visualIndexes[section]);
     }
+
+    emit viewIndexChanged(sourceIndex);
 
     setTabName(tab);
 }
@@ -192,6 +197,12 @@ bool CustomTabWidget::setViewRootIndex(const QModelIndex &sourceIndex)
 {
     if (sourceIndex.isValid()) {
         DetailedView *detailedView = static_cast<DetailedView *>(currentWidget());
+
+        if (!detailedView->rootIndex().isValid()) {
+            setUpTab(currentIndex(), sourceIndex);
+            return true;
+        }
+
         if (detailedView->rootIndex() != sourceIndex) {
             qDebug() << "CustomTabWidget::setViewRootIndex";
 

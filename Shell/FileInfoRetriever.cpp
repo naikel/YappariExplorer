@@ -102,10 +102,10 @@ void FileInfoRetriever::run()
                 threadMutex.unlock();
 #endif
 
-                running.store(false);
                 currentJob.item = nullptr;
-
             }
+
+            running.store(false);
         }
 
         mutex.unlock();

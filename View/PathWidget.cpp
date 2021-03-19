@@ -33,6 +33,8 @@ void PathWidget::setModel(FileSystemModel *model)
 
 void PathWidget::selectIndex(QModelIndex index)
 {
+    qDebug() << "PathWidget::selectIndex";
+
     // Delete previous buttons if any
     for (PathWidgetButton *button : qAsConst(buttons))
         delete button;

@@ -20,6 +20,7 @@ public slots:
 
 signals:
     void rootIndexChangeRequested(const QModelIndex &index);
+    void pathChangeRequested(const QString &path);
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;

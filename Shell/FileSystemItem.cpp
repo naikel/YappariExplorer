@@ -308,12 +308,12 @@ void FileSystemItem::clear()
     setAllChildrenFetched(false);
 }
 
-int FileSystemItem::getErrorCode() const
+qint32 FileSystemItem::getErrorCode() const
 {
     return errorCode;
 }
 
-void FileSystemItem::setErrorCode(const int &value)
+void FileSystemItem::setErrorCode(const qint32 &value)
 {
     errorCode = value;
 }

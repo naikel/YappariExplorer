@@ -6,29 +6,38 @@
 
 #include "Model/FileSystemModel.h"
 
+struct _HistoryEntry {
+    QString displayName;
+    QString path;
+    QIcon icon;
+};
+
+typedef struct _HistoryEntry HistoryEntry;
+
 class FileSystemHistory : QObject
 {
 public:
-    FileSystemHistory(QObject *parent = nullptr);
+    FileSystemHistory(QAbstractItemModel *model, QObject *parent = nullptr);
     ~FileSystemHistory();
 
-    bool isCursorAtTheEnd() const;
-    void insert(const QModelIndex &index);
+    bool isCursorAtTheEnd();
+    void insert(QString displayName, QIcon icon, QString path);
 
-    bool canGoForward() const;
-    bool canGoBack() const;
-    bool canGoUp() const;
+    bool canGoForward();
+    bool canGoBack();
+    bool canGoUp();
 
-    QModelIndex getLastItem();
-    QModelIndex getNextItem();
-    QModelIndex getParentItem();
-    QModelIndex getItemAtPos(int pos);
+    QString getLastItem();
+    QString getNextItem();
+    QString getParentItem();
+    QString getItemAtPos(int pos);
 
     int getCursor() const;
-    QModelIndexList &getIndexList();
+    QList<HistoryEntry *> &getPathList();
 
 private:
-    QModelIndexList indexList;
+    FileSystemModel *model;
+    QList<HistoryEntry *> pathList;
     int cursor { -1 };
 
 };

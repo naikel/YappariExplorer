@@ -125,6 +125,11 @@ FileSystemModel::FileSystemModel(QObject *parent) : QAbstractItemModel(parent)
 #endif
 
     fileInfoRetriever->start();
+
+    // Garbage collector
+    QTimer *timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, &FileSystemModel::garbageCollector);
+    timer->start(300'000);
 }
 
 /*!
@@ -398,6 +403,9 @@ QVariant FileSystemModel::data(const QModelIndex &index, int role) const
             case FileSystemModel::ErrorMessageRole:
                 return fileSystemItem->getErrorMessage();
 
+            case FileSystemModel::RefCounterRole:
+                return fileSystemItem->getRefCounter();
+
         }
     }
     return QVariant();
@@ -574,30 +582,6 @@ void FileSystemModel::refreshPath(QString fileName)
     }
 }
 
-void FileSystemModel::freeChildren(const QModelIndex &parent)
-{
-    qDebug() << "FileSystemModel::freeChildren";
-
-    // TODO: There should use a better "cache" than this
-
-    if (parent.isValid()) {
-
-        FileSystemItem *item = getFileSystemItem(parent);
-        watcher->removePath(item->getPath());
-
-#ifdef Q_OS_WIN
-        directoryWatcher->removePath(item->getPath());
-#endif
-
-        // This will notify the view the rows are no longer valid
-        removeAllRows(parent);
-
-        // Set back the hasSubFolders flag so they can be retrieved again later
-        item->setHasSubFolders(true);
-    }
-}
-
-
 /*!
  * \brief Returns the item flags for the given index.
  * \param index the QModelIndex index.
@@ -740,22 +724,19 @@ QStringList FileSystemModel::mimeTypes() const
 
 bool FileSystemModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
-    // TODO: Not everything is a file
-
     if (index.isValid() && index.column() == 0 && index.internalPointer() != nullptr) {
+
+        FileSystemItem *item = getFileSystemItem(index);
 
         switch(role) {
 
             case Qt::EditRole: {
-
-                FileSystemItem *fileSystemItem = static_cast<FileSystemItem *>(index.internalPointer());
-
                 QString newName = value.toString();
-                if (fileSystemItem->getDisplayName() == newName)
+                if (item->getDisplayName() == newName)
                     return false;
 
-                qDebug() << "FileSystemModel::setData rename" << fileSystemItem->getPath() << "to" << newName;
-                QUrl url = QUrl::fromLocalFile(fileSystemItem->getPath());
+                qDebug() << "FileSystemModel::setData rename" << item->getPath() << "to" << newName;
+                QUrl url = QUrl::fromLocalFile(item->getPath());
 
                 shellActions->renameItem(url, newName);
                 return true;
@@ -767,6 +748,23 @@ bool FileSystemModel::setData(const QModelIndex &index, const QVariant &value, i
                     refreshIndex(index);
                     return true;
                 }
+                break;
+
+            case FileSystemModel::IncreaseRefCounterRole:
+                item->incRefCounter();
+                garbageMutex.lock();
+                garbage.removeOne(item);
+                garbageMutex.unlock();
+                break;
+
+            case FileSystemModel::DecreaseRefCounterRole:
+                item->decRefCounter();
+                if (item->getRefCounter() == 0) {
+                    garbageMutex.lock();
+                    garbage.append(item);
+                    garbageMutex.unlock();
+                }
+                break;
         }
     }
 
@@ -1331,5 +1329,29 @@ void FileSystemModel::removePath(QString fileName)
         delete fileSystemItem;
         endRemoveRows();
     }
+}
+
+void FileSystemModel::garbageCollector()
+{
+    qDebug() << "FileSystemModel::garbageCollector started";
+
+    garbageMutex.lock();
+    for (FileSystemItem *item : garbage) {
+
+        if (item->getRefCounter() == 0) {
+            watcher->removePath(item->getPath());
+
+#ifdef Q_OS_WIN
+            directoryWatcher->removePath(item->getPath());
+#endif
+
+            removeAllRows(index(item));
+
+        }
+    }
+
+    garbage.clear();
+    garbageMutex.unlock();
+    qDebug() << "FileSystemModel::garbageCollector finished";
 }
 

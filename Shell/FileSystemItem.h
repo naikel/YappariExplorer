@@ -112,14 +112,18 @@ public:
     MediaType getMediaType() const;
     void setMediaType(const MediaType &value);
 
-    int getErrorCode() const;
-    void setErrorCode(const int &value);
+    qint32 getErrorCode() const;
+    void setErrorCode(const qint32 &value);
 
     QString getErrorMessage() const;
     void setErrorMessage(const QString &value);
 
     bool getLock() const;
     void setLock(bool value);
+
+    inline void incRefCounter()     { refCounter++; }
+    inline void decRefCounter()     { refCounter--; }
+    inline int  getRefCounter()     { return refCounter; }
 
 private:
 
@@ -134,17 +138,18 @@ private:
     QDateTime   lastChangeTime      {};
     quint16     capabilities        {};
     MediaType   mediaType           {};
-    quint32     errorCode           {};
+    qint32      errorCode           {};
     QString     errorMessage        {};
+    quint32     refCounter          {};
 
-    bool folder                 {false};
-    bool hidden                 {false};
-    bool hasSubFolders          {false};
-    bool allChildrenFetched     {false};
-    bool fakeIcon               {false};
-    bool lock                   {false};
+    bool folder                     {};
+    bool hidden                     {};
+    bool hasSubFolders              {};
+    bool allChildrenFetched         {};
+    bool fakeIcon                   {};
+    bool lock                       {};
 
-    FileSystemItem *parent      {};
+    FileSystemItem *parent          {};
 
     // Children
     QHash<QString, FileSystemItem *> children;

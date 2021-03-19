@@ -56,8 +56,8 @@ class BaseTreeView : public QTreeView
 
 public:
     BaseTreeView(QWidget *parent = nullptr);
+    ~BaseTreeView();
 
-    void setModel(QAbstractItemModel *model) override;
     bool isDragging() const;
 
     void dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles = QVector<int>()) override;
@@ -67,8 +67,6 @@ public:
 
     QPoint mapToViewport(QPoint pos);
     QPoint mapFromViewport(QPoint pos);
-
-    int getDefaultRowHeight() const;
 
     bool isEditingIndex(const QModelIndex &index) const;
     void edit(FileSystemItem *item);
@@ -97,6 +95,7 @@ signals:
 
 public slots:
     void contextMenuRequested(const QPoint &pos);
+    void setRootIndex(const QModelIndex &index) override;
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -114,7 +113,6 @@ protected:
 
 private:
 
-    int defaultRowHeight;
     QMutex mutex;
     QString path;
 
@@ -133,12 +131,12 @@ private:
     QModelIndex editIndex   {};
 
 private slots:
-    virtual void initialize();
     void setNormalCursor();
     void setBusyCursor();
     void processQueuedSignals();
     void editorClosed();
     void shouldEdit(QModelIndex sourceIndex);
+    void updateRefCounter(QModelIndex index, bool increase);
 };
 
 #endif // BASETREEVIEW_H

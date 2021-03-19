@@ -85,7 +85,10 @@ public:
         CapabilitiesRole,
         ShouldEditRole,
         ErrorCodeRole,
-        ErrorMessageRole
+        ErrorMessageRole,
+        IncreaseRefCounterRole,
+        DecreaseRefCounterRole,
+        RefCounterRole
     };
 
     FileSystemModel(QObject *parent = nullptr);
@@ -135,7 +138,6 @@ public:
     }
 
 public slots:
-    void freeChildren(const QModelIndex &parent);
     void refreshFolder(QString path);
     void refreshIndex(QModelIndex index);
 
@@ -147,15 +149,18 @@ private:
     bool watch                              {};
     FileSystemItem *parentBeingWatched      {};
     QString extensionBeingWatched           {};
+    QList<FileSystemItem *> garbage         {};
 
     FileSystemItem *root                    {};
     int currentSortColumn                   {};
     Qt::SortOrder currentSortOrder          {Qt::AscendingOrder};
     ShellActions *shellActions              {};
-    QVector<QString> sizeUnits              {"byte", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
+    QList<QString> sizeUnits                {"byte", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
 
     // Default icons
     QIcon driveIcon, fileIcon, folderIcon;
+
+    QMutex garbageMutex;
 
     QString humanReadableSize(quint64 size) const;
 
@@ -172,6 +177,9 @@ private slots:
     void refreshPath(QString fileName);
     void addPath(QString fileName);
     void removePath(QString fileName);
+
+    // Other slots
+    void garbageCollector();
 };
 
 #endif // FILESYSTEMMODEL_H
