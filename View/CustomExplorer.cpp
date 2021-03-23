@@ -217,7 +217,8 @@ void CustomExplorer::expandAndSelectAbsolute(QString path)
                 if (!childIndex.isValid()) {
                     qDebug() <<  "CustomExplorer::expandAndSelectAbsolute couldn't find the path" << absolutePath;
 
-                    // TODO: Show some error to the user
+                    QMessageBox::critical(this, tr("Error"), tr("Path or file does not exist") + "\n\n" + absolutePath);
+                    tabWidget->setViewRootIndex(parentIndex);
 
                     return;
                 }

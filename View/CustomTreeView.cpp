@@ -24,7 +24,7 @@ class ProxyStyle : public QProxyStyle {
 
     void drawPrimitive(QStyle::PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget = nullptr) const override {
 
-        QStyleOption *opt = const_cast<QStyleOption *>(reinterpret_cast<const QStyleOption *>(option));
+        QStyleOption *opt = const_cast<QStyleOption *>(option);
 
         if (element == QStyle::PE_IndicatorBranch) {
 

@@ -299,17 +299,6 @@ void WinFileInfoRetriever::getChildInfo(IShellFolder *psf, LPITEMIDLIST pidlChil
 
     // File Type
     if (!child->isFolder()) {
-        /*
-        SFGAOF noAttributes {};
-        SHFILEINFO info;
-        UINT flags = SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME;
-        ::SHGetFileInfo(child->getPath().toStdWString().c_str(), noAttributes, &info, sizeof(SHFILEINFO), flags);
-
-        QString type = QString::fromStdWString(info.szTypeName);
-        if (attrib & FILE_ATTRIBUTE_REPARSE_POINT)
-            type += " (SymLink)";
-        child->setType(type);
-        */
 
         IShellFolder2 *psf2;
         if (SUCCEEDED(psf->QueryInterface(IID_IShellFolder2, reinterpret_cast<void**>(&psf2)))) {
@@ -323,7 +312,7 @@ void WinFileInfoRetriever::getChildInfo(IShellFolder *psf, LPITEMIDLIST pidlChil
             psf2->Release();
 
         }
-    } else if (child->isFolder()) {
+    } else {
         if (attrib & FILE_ATTRIBUTE_REPARSE_POINT) {
             switch (fileAttributeData.dwReserved0) {
                 case IO_REPARSE_TAG_MOUNT_POINT:
@@ -340,6 +329,7 @@ void WinFileInfoRetriever::getChildInfo(IShellFolder *psf, LPITEMIDLIST pidlChil
     setCapabilities(child, attributes);
 }
 
+// TODO: We should delete this and FileSystemModel should just use refreshItem() with an additional background icon request, maybe
 void WinFileInfoRetriever::setDisplayNameOf(FileSystemItem *fileSystemItem)
 {
     SFGAOF attributes {};

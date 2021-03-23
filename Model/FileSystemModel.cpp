@@ -189,7 +189,7 @@ QModelIndex FileSystemModel::index(int row, int column, const QModelIndex &paren
 {
     // qDebug() << "index " << row << " " << column;
     if (row < 0 || column < 0 || row >= rowCount(parent) || column >= columnCount(parent)) {
-        qDebug() << "index " << row << " " << column << reinterpret_cast<FileSystemItem *>(parent.internalPointer())->getPath();
+        qDebug() << "index " << row << "(" << rowCount(parent) << ")" << column <<  "(" << columnCount(parent) << ")" << reinterpret_cast<FileSystemItem *>(parent.internalPointer())->getPath();
         return QModelIndex();
     }
 
@@ -271,10 +271,8 @@ int FileSystemModel::rowCount(const QModelIndex &parent) const
 int FileSystemModel::columnCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent)
-    //if (fileInfoRetriever->getScope() == FileInfoRetriever::List)
-        return Columns::MaxColumns;
+    return Columns::MaxColumns;
 
-    //return 1;
 }
 
 /*!
@@ -1023,9 +1021,8 @@ QModelIndex FileSystemModel::parent(QString path) const
 #ifdef Q_OS_WIN
     // If this is a drive
     if (path.length() == 3 && path[0].isLetter() && path[1] == ':' && path[2] == '\\') {
-        FileSystemItem *child = parentItem->getChild(path);
-        if (child != nullptr)
-           return createIndex(parentItem->childRow(child), 0, parentItem);
+        qDebug() << "FileSystemModel::parent" << parentPath << "is a drive and parent is root";
+        return createIndex(0, 0, root);
     }
 #endif
     if (path.right(1) == separator())
@@ -1034,7 +1031,7 @@ QModelIndex FileSystemModel::parent(QString path) const
     int index = parentPath.lastIndexOf(separator());
     if (index < 0) {
         qDebug() << "FileSystemModel::parent" << parentPath << "seems to be root";
-        return QModelIndex();
+        return createIndex(0, 0, root);
     }
 
     parentPath = parentPath.left(index);
@@ -1117,10 +1114,10 @@ void FileSystemModel::parentChildrenUpdated(FileSystemItem *parent)
 {
     QModelIndex parentIndex = index(parent);
 
-    qDebug() << "FileSystemModel::parentUpdated" << parent->childrenCount() << "children. Error code:" << parent->getErrorCode();
+    qDebug() << "FileSystemModel::parentInfoUpdated" << parent->childrenCount() << "children. Error code:" << parent->getErrorCode();
 
     // This only happens if the user cancelled the fetch by selecting another index
-    if (parent->getErrorCode() < 0) {
+    if (parent->getErrorCode() == -1) {
         parent->removeChildren();
         parent->setLock(false);
         return;
@@ -1136,7 +1133,7 @@ void FileSystemModel::parentChildrenUpdated(FileSystemItem *parent)
         parent->setLock(false);
 
     if (!parent->getErrorCode()) {
-#ifdef Q_OS_WIN
+#ifndef Q_OS_WIN
         if (parent->getMediaType() == FileSystemItem::Fixed)
             directoryWatcher->addPath(parent->getPath());
         else
@@ -1171,7 +1168,7 @@ void FileSystemModel::itemUpdated(FileSystemItem *item)
                 QModelIndex lastIndex = createIndex(row, Columns::MaxColumns - 1, item);
                 QVector<int> roles;
                 roles.append(Qt::DisplayRole);
-                roles.append(Qt::DecorationRole);
+                //roles.append(Qt::DecorationRole);
                 emit dataChanged(fromIndex, lastIndex, roles);
             }
         }
@@ -1240,6 +1237,7 @@ void FileSystemModel::renamePath(QString oldFileName, QString newFileName)
 
         parentItem->updateChildPath(fileSystemItem, newFileName);
 
+        // TODO: Change this to refreshItem() + icon request, no need to send signals
         // Sets the display name, type and icon if it's needed to be retrieved again
         fileInfoRetriever->setDisplayNameOf(fileSystemItem);
 
@@ -1277,6 +1275,8 @@ void FileSystemModel::addPath(QString fileName)
     }
 
     fileSystemItem = new FileSystemItem(fileName);
+
+    // TODO: Delete this, refreshItem() already sets the displayName
     fileInfoRetriever->setDisplayNameOf(fileSystemItem);
 
     bool result = fileInfoRetriever->refreshItem(fileSystemItem);
@@ -1284,7 +1284,10 @@ void FileSystemModel::addPath(QString fileName)
     // Skip items that failed (do not exist anymore)
     if (!result) {
         qDebug() << "FileSystemModel::addPath" << "skipping file" << fileName;
+
+        // This is safe since refreshItem won't emit a signal if result was false
         delete fileSystemItem;
+
         return;
     }
 
@@ -1314,7 +1317,8 @@ void FileSystemModel::removePath(QString fileName)
 
     FileSystemItem *parentItem;
 
-    QPersistentModelIndex parentIndex= parent(fileName);
+    // QPersistentModelIndex parentIndex = parent(fileName);
+    QModelIndex parentIndex = parent(fileName);
 
     if (!parentIndex.isValid())
         return;
@@ -1324,10 +1328,33 @@ void FileSystemModel::removePath(QString fileName)
     FileSystemItem *fileSystemItem = parentItem->getChild(fileName);
     if (fileSystemItem) {
         int row = parentItem->childRow(fileSystemItem);
+
+
+        qDebug() << "parentIndex" << parentIndex << parentIndex.data(FileSystemModel::PathRole);
+        qDebug() << "parentItem" << parentItem->getPath();
+
         beginRemoveRows(parentIndex, row, row);
+
         parentItem->removeChild(fileName);
-        delete fileSystemItem;
+
         endRemoveRows();
+
+        if (fileSystemItem->isFolder()) {
+
+            garbageMutex.lock();
+            garbage.removeAll(fileSystemItem);
+            garbageMutex.unlock();
+
+            // TODO: Remove all subfolders from the watchers as well not only this one
+            watcher->removePath(fileSystemItem->getPath());
+#ifdef Q_OS_WIN
+            directoryWatcher->removePath(fileSystemItem->getPath());
+#endif
+        }
+
+        delete fileSystemItem;
+
+        qDebug() << "FileSystemModel::removePath" << fileName << "removed sucessfully. row =" << row;
     }
 }
 
@@ -1344,7 +1371,6 @@ void FileSystemModel::garbageCollector()
 #ifdef Q_OS_WIN
             directoryWatcher->removePath(item->getPath());
 #endif
-
             removeAllRows(index(item));
 
         }

@@ -73,19 +73,22 @@ void PathBar::setHistory(FileSystemHistory *history)
         action->setData(QVariant(i));
     }
 
-    backButton->setIcon(history->canGoBack() ? QIcon(":/icons/back.svg") : QIcon(":/icons/back_inactive.svg"));
-    backButton->setStyleSheet(history->canGoBack() ? BUTTONSTYLESHEET : QString());
-    backButton->setActive(history->canGoBack());
+    bool canGoBack = history->canGoBack();
+    backButton->setIcon(canGoBack ? QIcon(":/icons/back.svg") : QIcon(":/icons/back_inactive.svg"));
+    backButton->setStyleSheet(canGoBack ? BUTTONSTYLESHEET : QString());
+    backButton->setActive(canGoBack);
     backButton->setMenu(backMenu);
 
-    nextButton->setIcon(history->canGoForward() ? QIcon(":/icons/next.svg") : QIcon(":/icons/next_inactive.svg"));
-    nextButton->setStyleSheet(history->canGoForward() ? BUTTONSTYLESHEET : QString());
-    nextButton->setActive(history->canGoForward());
+    bool canGoForward = history->canGoForward();
+    nextButton->setIcon(canGoForward ? QIcon(":/icons/next.svg") : QIcon(":/icons/next_inactive.svg"));
+    nextButton->setStyleSheet(canGoForward ? BUTTONSTYLESHEET : QString());
+    nextButton->setActive(canGoForward);
     nextButton->setMenu(nextMenu);
 
-    upButton->setIcon(history->canGoUp() ? QIcon(":/icons/up.svg") : QIcon(":/icons/up_inactive.svg"));
-    upButton->setStyleSheet(history->canGoUp() ? BUTTONSTYLESHEET : QString());
-    upButton->setActive(history->canGoUp());
+    bool canGoUp = history->canGoUp();
+    upButton->setIcon(canGoUp ? QIcon(":/icons/up.svg") : QIcon(":/icons/up_inactive.svg"));
+    upButton->setStyleSheet(canGoUp ? BUTTONSTYLESHEET : QString());
+    upButton->setActive(canGoUp);
 }
 
 void PathBar::mousePressEvent(QMouseEvent *event)

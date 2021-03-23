@@ -113,7 +113,7 @@ void DetailedView::mousePressEvent(QMouseEvent *event)
                 command = QItemSelectionModel::Select;
                 clearSelection();
             }
-            currentSelection = selectionModel()->selection();
+            currentSelection = selectionModel() != nullptr ? selectionModel()->selection() : QItemSelection();
 
             // Position includes the header we have to skip it
             QPoint originPos = event->pos();
