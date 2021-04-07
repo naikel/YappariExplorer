@@ -144,9 +144,12 @@ void FileInfoRetriever::getChildren(FileSystemItem *parent)
     }
 }
 
-void FileInfoRetriever::getIcon(FileSystemItem *parent)
+void FileInfoRetriever::getIcon(FileSystemItem *parent, bool background)
 {
-    addJob(parent, Icon);
+    if (background)
+        addJob(parent, Icon);
+    else
+        getIconBackground(parent, background);
 }
 
 void FileInfoRetriever::quit()

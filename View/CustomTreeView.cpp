@@ -229,6 +229,16 @@ void CustomTreeView::mouseMoveEvent(QMouseEvent *event)
         BaseTreeView::mouseMoveEvent(event);
 }
 
+void CustomTreeView::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    // Double click at a decoration must be treated as a single click
+
+    if (!indexAt(event->pos()).isValid() && indexAt(event->pos() + QPoint(indentation(), 0)).isValid())
+        mousePressEvent(event);
+    else
+        BaseTreeView::mouseDoubleClickEvent(event);
+}
+
 /*!
  * \brief Handles a viewport event
  * \param event the viewport event

@@ -22,10 +22,9 @@ public:
     // These functions are executed in a separate thread
     void getInfo(FileSystemItem *parent);
     void getChildren(FileSystemItem *parent);
-    void getIcon(FileSystemItem *parent);
+    void getIcon(FileSystemItem *parent, bool background = true);
 
     // These functions are not executed in a separated thread
-    virtual void setDisplayNameOf(FileSystemItem *fileSystemItem) = 0;
     virtual bool refreshItem(FileSystemItem *fileSystemItem) = 0;
     virtual bool willRecycle(FileSystemItem *fileSystemItem) = 0;
 
@@ -49,7 +48,7 @@ protected:
 
     virtual void getChildrenBackground(FileSystemItem *parent) = 0;
     virtual bool getParentBackground(FileSystemItem *parent) = 0;
-    virtual void getIconBackground(FileSystemItem *parent) = 0;
+    virtual void getIconBackground(FileSystemItem *parent, bool background = true) = 0;
 
 private:
 

@@ -145,7 +145,6 @@ private:
 
     FileInfoRetriever *fileInfoRetriever    {};
     DirectoryWatcher *watcher               {};
-    DirectoryWatcher *directoryWatcher      {};
     bool watch                              {};
     FileSystemItem *parentBeingWatched      {};
     QString extensionBeingWatched           {};
@@ -161,6 +160,7 @@ private:
     QIcon driveIcon, fileIcon, folderIcon;
 
     QMutex garbageMutex;
+    QMutex addMutex;
 
     QString humanReadableSize(quint64 size) const;
 

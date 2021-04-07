@@ -20,10 +20,9 @@
 #define GUID_SIZE                     38
 #define BITBUCKET_VOLUME_KEY          "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\BitBucket\\Volume\\"
 
-// PSGUID_STORAGE is defined in ntquery.h
+// PSGUID_STORAGE and PID_STG_STORAGETYPE are defined in ntquery.h
 // See https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-wsp/2dbe759c-c955-4770-a545-e46d7f6332ed
-// This is not actually documented there, but it should be.  PropId 4 is the Type of the file
-#define PROPERTYKEY_TYPE_COLUMN       { PSGUID_STORAGE, 4 }
+#define PROPERTYKEY_TYPE_COLUMN       { PSGUID_STORAGE, PID_STG_STORAGETYPE }
 
 // Qt exports a non-documented function to convert a native Windows HICON to a QPixmap
 // This function is found in Qt5Gui.dll
@@ -329,25 +328,6 @@ void WinFileInfoRetriever::getChildInfo(IShellFolder *psf, LPITEMIDLIST pidlChil
     setCapabilities(child, attributes);
 }
 
-// TODO: We should delete this and FileSystemModel should just use refreshItem() with an additional background icon request, maybe
-void WinFileInfoRetriever::setDisplayNameOf(FileSystemItem *fileSystemItem)
-{
-    SFGAOF attributes {};
-    UINT flags = SHGFI_USEFILEATTRIBUTES | SHGFI_TYPENAME | SHGFI_DISPLAYNAME;
-    SHFILEINFOW info;
-    if (SUCCEEDED(::SHGetFileInfoW(fileSystemItem->getPath().toStdWString().c_str(), attributes, &info, sizeof(SHFILEINFO), flags))) {
-        fileSystemItem->setDisplayName(QString::fromStdWString(info.szDisplayName));
-
-        QString type = QString::fromStdWString(info.szTypeName);
-        if (type != fileSystemItem->getType()) {
-            // We need to get a new icon since the file changed types
-            fileSystemItem->setIcon(getIconFromPath(fileSystemItem->getPath(), fileSystemItem->isHidden(), true));
-        }
-
-        fileSystemItem->setType(fileSystemItem->isFolder() ? QApplication::translate("QFileDialog", "File Folder", "Match Windows Explorer") : QString::fromStdWString(info.szTypeName));
-    }
-}
-
 bool WinFileInfoRetriever::refreshItem(FileSystemItem *fileSystemItem)
 {
     if (fileSystemItem == nullptr)
@@ -462,10 +442,10 @@ bool WinFileInfoRetriever::willRecycle(FileSystemItem *fileSystemItem)
     return false;
 }
 
-void WinFileInfoRetriever::getIconBackground(FileSystemItem *item)
+void WinFileInfoRetriever::getIconBackground(FileSystemItem *item, bool background)
 {
     ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-    // qDebug() << "WinFileInfoRetriever::getIcon " << item->getPath();
+    qDebug() << "WinFileInfoRetriever::getIcon " << item->getPath();
     LPITEMIDLIST pidl;
     HRESULT hr;
     if (SUCCEEDED(hr = ::SHParseDisplayName(item->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr))) {
@@ -479,7 +459,8 @@ void WinFileInfoRetriever::getIconBackground(FileSystemItem *item)
 
     ::CoUninitialize();
 
-    emit iconUpdated(item);
+    if (background)
+        emit iconUpdated(item);
 }
 
 QIcon WinFileInfoRetriever::getIconFromPath(QString path, bool isHidden, bool ignoreDefault) const

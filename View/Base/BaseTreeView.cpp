@@ -167,7 +167,8 @@ void BaseTreeView::dragEnterEvent(QDragEnterEvent *event)
     // This will set the QAbstractItemView state to DraggingState and allows autoexpand of trees
     QTreeView::dragEnterEvent(event);
 
-    // ToDo: Support for FileGroupDescriptorW in Windows
+    // TODO: Support for FileGroupDescriptorW in Windows
+    // See: https://docs.microsoft.com/en-us/windows/win32/shell/clipboard
     // qDebug() << event->mimeData()->formats();
     if (event->mimeData()->hasFormat("text/uri-list")) {
         event->acceptProposedAction();
@@ -506,7 +507,9 @@ void BaseTreeView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bo
         return;
     }
 
-    QTreeView::dataChanged(topLeft, bottomRight, roles);
+    // If the editor is open these signals break the selection
+    if (!isPersistentEditorOpen(topLeft))
+        QTreeView::dataChanged(topLeft, bottomRight, roles);
 }
 
 

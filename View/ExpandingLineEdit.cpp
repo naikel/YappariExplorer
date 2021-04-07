@@ -42,6 +42,7 @@ void ExpandingLineEdit::fixInitialSelection()
             extWidth++;
 
         setSelection(0, index.data(Qt::DisplayRole).toString().size() - extWidth);
+        qDebug() << "Selection" << index.data(Qt::DisplayRole).toString().size() - extWidth;
     }
 
 }

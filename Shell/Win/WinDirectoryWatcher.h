@@ -4,11 +4,10 @@
 #include <qt_windows.h>
 #include <fileapi.h>
 
-#include <QMutex>
-#include <QHash>
 #include <QMap>
 
-#include "Shell/directorywatcher.h"
+#include "Shell/DirectoryWatcher.h"
+#include "Shell/Win/WinDirChangeNotifier.h"
 
 class WinDirectoryWatcher : public DirectoryWatcher
 {
@@ -20,26 +19,12 @@ public:
 
     void addPath(QString path) override;
     void removePath(QString path) override;
-    void directoryChanged(LPOVERLAPPED lpOverLapped);
-
+    bool handleNativeEvent(const QByteArray &eventType, void *message, long *result) override;
 
 private:
-
-    typedef struct _DirectoryWatch {
-        QString path;
-        HANDLE handle                           {};
-        OVERLAPPED overlapped                   {};
-        FILE_NOTIFY_INFORMATION info[10240]     {};
-        DWORD dwBytesReturned                   {};
-    } DirectoryWatch;
-
-    QMutex mutex;
-    QHash<QString, DirectoryWatch *> watchedPaths;
-
-    bool readDirectory(DirectoryWatch *watch);
-
-    static int id;
-    int thisId;
+    QMap<QString, int> watchedPaths;
+    quint32 id;
+    WinDirChangeNotifier *dirChangeNotifier;
 };
 
 #endif // WINDIRECTORYWATCHER_H

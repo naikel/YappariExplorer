@@ -20,14 +20,13 @@ public:
     WinFileInfoRetriever(QObject *parent = nullptr);
 
     QString getRootPath() const override;
-    void setDisplayNameOf(FileSystemItem *fileSystemItem) override;
     bool refreshItem(FileSystemItem *fileSystemItem) override;
     bool willRecycle(FileSystemItem *fileSystemItem) override;
 
 protected:
     void getChildrenBackground(FileSystemItem *parent) override;
     bool getParentBackground(FileSystemItem *parent) override;
-    void getIconBackground(FileSystemItem *item) override;
+    void getIconBackground(FileSystemItem *item, bool background = true) override;
 
 private:
     void getChildInfo(IShellFolder *psf, LPITEMIDLIST pidlChild, FileSystemItem *child);

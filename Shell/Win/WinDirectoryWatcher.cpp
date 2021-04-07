@@ -1,194 +1,200 @@
 #include <QDebug>
 
-#include <wchar.h>
-#include <ioapiset.h>
+#include <shlobj.h>
 
 #include "WinDirectoryWatcher.h"
 
-int WinDirectoryWatcher::id {};
-QList<LPOVERLAPPED> validOverlapped {};
+#include "Window/AppWindow.h"
+
+#define COMPUTER_FOLDER_GUID          "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"
 
 WinDirectoryWatcher::WinDirectoryWatcher(QObject *parent) : DirectoryWatcher(parent)
 {
-    thisId = id++;
-    qDebug() << "WinDirectoryWatcher::WinDirectoryWatcher registered with id" << id;
+    id = AppWindow::instance()->registerWatcher(this);
+
+    // Use ReadDirectoryChanges to get faster renames
+    dirChangeNotifier = new WinDirChangeNotifier(this);
+    connect(dirChangeNotifier, &WinDirChangeNotifier::fileRename, [=](QString oldPath, QString newPath) { this->emit fileRename(oldPath, newPath); });
 }
 
 WinDirectoryWatcher::~WinDirectoryWatcher()
 {
-    qDebug() << "WinDirectoryWatcher::~WinDirectoryWatcher About to destroy";
+    qDebug() << "WinDirectoryWatcher::~WinDirectoryWatcher About to destroy" << id;
 
     QStringList paths = watchedPaths.keys();
     for (QString path : paths)
         removePath(path);
 
-    qDebug() << "WinDirectoryWatcher::~WinDirectoryWatcher Destroyed";
+    delete dirChangeNotifier;
+
+    qDebug() << "WinDirectoryWatcher::~WinDirectoryWatcher Destroyed" << id;
 }
 
 void WinDirectoryWatcher::addPath(QString path)
 {
-    qDebug() << "WinDirectoryWatcher::run addPath " << thisId << path;
+    if (!watchedPaths.contains(path)) {
 
-    if (!path.isNull() && path.length() >= 3 && path.at(0).isLetter() && path.at(1) == ':' && path.at(2) == '\\' && !watchedPaths.contains(path)) {
+        // Watch the whole My PC Filesystem
+        LPITEMIDLIST pidl;
+        QString str = COMPUTER_FOLDER_GUID;
+        HRESULT hr = ::SHParseDisplayName(str.toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
 
-        DirectoryWatch *watch = new DirectoryWatch;
+        if (SUCCEEDED(hr)) {
 
-        watch->path = path;
+            HWND hwnd = reinterpret_cast<HWND>(AppWindow::instance()->getWindowId());
 
-        // When using a completion routine the hEvent member of the OVERLAPPED structure is not
-        // used by the system, so we can use it ourselves.
-        watch->overlapped.hEvent = reinterpret_cast<HANDLE>(this);
+            SHChangeNotifyEntry const entries[] = { { pidl, true } };
 
-        // Create file
+            int nSources = SHCNRF_ShellLevel | SHCNRF_InterruptLevel | SHCNRF_NewDelivery | SHCNRF_RecursiveInterrupt;
 
-        std::wstring wstrPath = path.toStdWString();
-        watch->handle = CreateFileW(wstrPath.c_str(), GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ | FILE_SHARE_DELETE,
-                                    nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, nullptr);
+            ULONG regId;
+            if (SUCCEEDED(regId = SHChangeNotifyRegister(hwnd, nSources, SHCNE_ALLEVENTS, id, ARRAYSIZE(entries), entries))) {
 
-        if (watch->handle == INVALID_HANDLE_VALUE) {
-            qDebug() << "WinDirectoryWatcher::run couldn't watch the path " << thisId << path;
-            delete watch;
-            return;
+                watchedPaths.insert(str, regId);
+
+                qDebug() << "WinDirectoryWatcher::addPath watching path " << id << str << watchedPaths;
+            }
+
+            ::CoTaskMemFree(pidl);
         }
 
-        // Read Directory contents
-        if (readDirectory(watch) == false) {
-            qDebug() << "WinDirectoryWatcher::run couldn't watch the path " << thisId << path;
-            delete watch;
-            return;
-        }
+        // Virtual
+        watchedPaths.insert(path, -1);
 
-        mutex.lock();
-        watchedPaths.insert(path, watch);
-        validOverlapped.append(&watch->overlapped);
-        mutex.unlock();
-        qDebug() << "WinDirectoryWatcher::run watching path " << thisId << path;
+        dirChangeNotifier->addPath(path);
     }
+
 }
 
 void WinDirectoryWatcher::removePath(QString path)
 {
-    qDebug() << "WinDirectoryWatcher::removePath" << path;
+    qDebug() << "WinDirectoryWatcher::removePath" << id << path;
     if (watchedPaths.contains(path)) {
-        DirectoryWatch *watch = watchedPaths.value(path);
-        CancelIoEx(watch->handle, &(watch->overlapped));
-        CloseHandle(watch->handle);
-
-        mutex.lock();
+        int regId = watchedPaths.value(path);
+        if (regId >= 0)
+            SHChangeNotifyDeregister(regId);
         watchedPaths.remove(path);
-        validOverlapped.removeAll(&watch->overlapped);
-        delete watch;
-        mutex.unlock();
 
-        qDebug() << "WinDirectoryWatcher::removePath removed successfully" << thisId << path;
+        dirChangeNotifier->removePath(path);
 
+        qDebug() << "WinDirectoryWatcher::removePath removed successfully" << id << path << watchedPaths;
     }
 }
 
-void WinDirectoryWatcher::directoryChanged(LPOVERLAPPED lpOverLapped)
+bool WinDirectoryWatcher::handleNativeEvent(const QByteArray &eventType, void *message, long *result)
 {
-    qDebug() << "WinDirectoryWatcher::directoryChanged starting" << thisId ;
+    Q_UNUSED(eventType)
+    bool r {};
+    MSG *msg = static_cast< MSG * >(message);
+    long lEvent;
+    PIDLIST_ABSOLUTE *rgpidl;
+    HANDLE hNotifyLock = SHChangeNotification_Lock((HANDLE)msg->wParam, (DWORD)msg->lParam, &rgpidl, &lEvent);
+    if (hNotifyLock) {
+        if (!(lEvent & (SHCNE_UPDATEIMAGE | SHCNE_ASSOCCHANGED | SHCNE_EXTENDED_EVENT | SHCNE_DRIVEADDGUI | SHCNE_SERVERDISCONNECT))) {
 
-    // Find the object
-    mutex.lock();
-    qDebug() << "WinDirectoryWatcher::directoryChanged locked sucessfully" << thisId ;
-    for (DirectoryWatch *watch : watchedPaths.values()) {
-        if (&(watch->overlapped) == lpOverLapped && watch->info->Action > 0) {
+            WCHAR path1[MAX_PATH], path2[MAX_PATH];
 
-            FILE_NOTIFY_INFORMATION *n = watch->info;
-            QList<QString> strList;
-            while (n) {
+            QString strPath1, strPath2;
 
-                QString fileName = QString::fromWCharArray(n->FileName, (n->FileNameLength / sizeof(WCHAR)));
-                strList.append(watch->path + (watch->path.right(1) != "\\" ? "\\" : "") + fileName);
-
-                QString action;
-                switch (n->Action) {
-                    case FILE_ACTION_MODIFIED:
-                        action = "FILE_ACTION_MODIFIED";
-                        break;
-                    case FILE_ACTION_ADDED:
-                        action = "FILE_ACTION_ADDED";
-                        break;
-                    case FILE_ACTION_REMOVED:
-                        action = "FILE_ACTION_REMOVED";
-                        break;
-                    case FILE_ACTION_RENAMED_OLD_NAME:
-                        action = "FILE_ACTION_RENAMED_OLD_NAME";
-                        break;
-                    case FILE_ACTION_RENAMED_NEW_NAME:
-                        action = "FILE_ACTION_RENAMED_NEW_NAME";
-                        break;
-                    default:
-                        action = "UNKNOWN_ACTION";
-                        break;
-                }
-
-                qDebug() << "WinDirectoryWatcher::directoryChanged change detected from" << fileName << "action" << action << n->Action;
-
-                if (n->NextEntryOffset)
-                    n = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(reinterpret_cast<BYTE*>(n) + n->NextEntryOffset);
-                else
-                    n = nullptr;
-            };
-
-            qDebug() << "WinDirectoryWatcher::directoryChanged processing" << strList.count() << "events";
-
-            for (int i = 0; i < strList.count(); i++) {
-
-                if (watch->info->Action == FILE_ACTION_RENAMED_OLD_NAME && ((i + 1) < strList.count())) {
-
-                    // If this is a rename action we should have two filenames in the string list, old and new.
-                    qDebug() << "RENAME" << strList[i] << strList[i+1];
-                    emit fileRename(strList[i], strList[i + 1]);
-                    i += 1;
-                    continue;
-                }
-
-                switch (watch->info->Action) {
-                    case FILE_ACTION_MODIFIED:
-                        emit fileModified(strList[i]);
-                        break;
-                    case FILE_ACTION_ADDED:
-                        emit fileAdded(strList[i]);
-                        break;
-                    case FILE_ACTION_REMOVED:
-                        emit fileRemoved(strList[i]);
-                        break;
-                    default:
-                        break;
-                }
+            if (rgpidl[0]) {
+                SHGetPathFromIDListW(rgpidl[0], path1);
+                strPath1 = QString::fromWCharArray(path1);
             }
 
-            // Read contents again
-            readDirectory(watch);
+            if (rgpidl[1]) {
+                SHGetPathFromIDListW(rgpidl[1], path2);
+                strPath2 = QString::fromWCharArray(path2);
+            }
 
-            break;
+            if (!strPath1.isEmpty()) {
+
+                QString strEvent;
+                switch (lEvent) {
+                    case SHCNE_CREATE:
+                        strEvent = "SHCNE_CREATE";
+                        break;
+                    case SHCNE_MKDIR:
+                        strEvent = "SHCNE_MKDIR";
+                        break;
+                    case SHCNE_DRIVEADD:
+                        strEvent = "SHCNE_DRIVEADD";
+                        break;
+                    case SHCNE_RENAMEFOLDER:
+                        strEvent = "SHCNE_RENAMEFOLDER";
+                        break;
+                    case SHCNE_RENAMEITEM:
+                        strEvent = "SHCNE_RENAMEITEM";
+                        break;
+                    case SHCNE_DELETE:
+                        strEvent = "SHCNE_DELETE";
+                        break;
+                    case SHCNE_RMDIR:
+                        strEvent = "SHCNE_RMDIR";
+                        break;
+                    case SHCNE_DRIVEREMOVED:
+                        strEvent = "SHCNE_DRIVEREMOVED";
+                        break;
+                    case SHCNE_UPDATEITEM:
+                        strEvent = "SHCNE_UPDATEITEM";
+                        break;
+                    case SHCNE_UPDATEDIR:
+                        strEvent = "SHCNE_UPDATEDIR";
+                        break;
+                    default:
+                        strEvent = "UNKNOWN";
+
+                }
+
+                QString drive;
+                if (strPath1.length() >= 3 && strPath1[1] == ':' && strPath1[2] == '\\')
+                    drive = strPath1.left(3);
+
+                if (!drive.isEmpty() && watchedPaths.contains(drive) && lEvent & (SHCNE_UPDATEITEM | SHCNE_UPDATEDIR | SHCNE_DELETE | SHCNE_RMDIR))
+                    emit volumeFreeSpaceChanged(drive);
+
+                int index = strPath1.lastIndexOf('\\');
+                QString parentPath = strPath1.left(index);
+
+                if (parentPath.length() == 2 && parentPath[1] == ':')
+                    parentPath += '\\';
+
+                if (watchedPaths.contains(parentPath)) {
+
+                    qDebug() << "WinDirectoryWatcher::handleNativeEvent notification received " << id << strEvent << strPath1 << strPath2 << watchedPaths;
+
+                    switch (lEvent) {
+                        case SHCNE_CREATE:
+                        case SHCNE_MKDIR:
+                        case SHCNE_DRIVEADD:
+                            emit fileAdded(strPath1);
+                            break;
+                        case SHCNE_RENAMEFOLDER:
+                        case SHCNE_RENAMEITEM:
+                            emit fileRename(strPath1, strPath2);
+                            break;
+                        case SHCNE_DELETE:
+                        case SHCNE_RMDIR:
+                        case SHCNE_DRIVEREMOVED:
+                            emit fileRemoved(strPath1);
+                            break;
+                        case SHCNE_UPDATEITEM:
+                            emit fileModified(strPath1);
+                            break;
+                        case SHCNE_UPDATEDIR:
+                            emit folderUpdated(strPath1);
+                            break;
+                    }
+
+                    r = true;
+                    *result = 0;
+                }
+            } else {
+                r = false;
+            }
         }
+        SHChangeNotification_Unlock(hNotifyLock);
     }
 
-    qDebug() << "WinDirectoryWatcher::directoryChanged attempting to unlock" << thisId;
-    mutex.unlock();
-    qDebug() << "WinDirectoryWatcher::directoryChanged unlocked sucessfully" << thisId;
-}
-
-void completionRoutine(DWORD dwErrorCode, DWORD dwBytesTransferred, LPOVERLAPPED lpOverLapped)
-{
-    Q_UNUSED(dwBytesTransferred)
-
-    if (SUCCEEDED(dwErrorCode) && validOverlapped.contains(lpOverLapped)) {
-        WinDirectoryWatcher *watcher = reinterpret_cast<WinDirectoryWatcher *>(lpOverLapped->hEvent);
-        watcher->directoryChanged(lpOverLapped);
-    }
-}
-
-bool WinDirectoryWatcher::readDirectory(DirectoryWatch *watch)
-{
-
-    return ReadDirectoryChangesW(watch->handle, static_cast<LPVOID>(&(watch->info)), sizeof(watch->info),
-                                 false,
-                                 FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
-                                 FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE,
-                                 &(watch->dwBytesReturned), &(watch->overlapped), &completionRoutine);
+    return r;
 }
 

@@ -110,15 +110,15 @@ win32 {
     DEFINES += _WIN32_IE=0x700 _WIN32_WINNT=0x0A00
     SOURCES += \
     Shell/Win/WinContextMenu.cpp \
+    Shell/Win/WinDirChangeNotifier.cpp \
     Shell/Win/WinDirectoryWatcher.cpp \
-    Shell/Win/WinDirectoryWatcherV2.cpp \
     Shell/Win/WinFileInfoRetriever.cpp \
     Shell/Win/WinShellActions.cpp \
         Window/Win/WinFramelessWindow.cpp
     HEADERS += \
     Shell/Win/WinContextMenu.h \
+    Shell/Win/WinDirChangeNotifier.h \
     Shell/Win/WinDirectoryWatcher.h \
-    Shell/Win/WinDirectoryWatcherV2.h \
     Shell/Win/WinFileInfoRetriever.h \
     Shell/Win/WinShellActions.h \
         Window/Win/WinFramelessWindow.h
