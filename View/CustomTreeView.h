@@ -12,6 +12,9 @@ public:
 
     QModelIndex selectedItem();
 
+public slots:
+    void shouldEdit(QModelIndex sourceIndex) override;
+
 protected:
 
     void mousePressEvent(QMouseEvent *event) override;

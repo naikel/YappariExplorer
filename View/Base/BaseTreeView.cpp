@@ -467,6 +467,10 @@ void BaseTreeView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bo
 {
     if (topLeft == bottomRight && topLeft.isValid()) {
 
+        // If the editor is open these signals break the selection
+        if (isPersistentEditorOpen(topLeft))
+            return;
+
         if (roles.contains(FileSystemModel::ErrorCodeRole)) {
             setNormalCursor();
             return;
@@ -507,9 +511,7 @@ void BaseTreeView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bo
         return;
     }
 
-    // If the editor is open these signals break the selection
-    if (!isPersistentEditorOpen(topLeft))
-        QTreeView::dataChanged(topLeft, bottomRight, roles);
+    QTreeView::dataChanged(topLeft, bottomRight, roles);
 }
 
 

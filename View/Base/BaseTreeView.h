@@ -96,6 +96,7 @@ signals:
 public slots:
     void contextMenuRequested(const QPoint &pos);
     void setRootIndex(const QModelIndex &index) override;
+    virtual void shouldEdit(QModelIndex sourceIndex);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -135,7 +136,6 @@ private slots:
     void setBusyCursor();
     void processQueuedSignals();
     void editorClosed();
-    void shouldEdit(QModelIndex sourceIndex);
     void updateRefCounter(QModelIndex index, bool increase);
 };
 

@@ -79,6 +79,13 @@ QModelIndex CustomTreeView::selectedItem()
     return QModelIndex();
 }
 
+void CustomTreeView::shouldEdit(QModelIndex sourceIndex)
+{
+    Q_UNUSED(sourceIndex)
+
+    // A CustomTreeView should never edit on demand
+}
+
 void CustomTreeView::keyPressEvent(QKeyEvent *event)
 {
     switch (event->key()) {

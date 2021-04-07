@@ -12,6 +12,30 @@ WinDirectoryWatcher::WinDirectoryWatcher(QObject *parent) : DirectoryWatcher(par
 {
     id = AppWindow::instance()->registerWatcher(this);
 
+    // Watch the whole My PC Filesystem
+    LPITEMIDLIST pidl;
+    QString str = COMPUTER_FOLDER_GUID;
+    HRESULT hr = ::SHParseDisplayName(str.toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
+
+    if (SUCCEEDED(hr)) {
+
+        HWND hwnd = reinterpret_cast<HWND>(AppWindow::instance()->getWindowId());
+
+        SHChangeNotifyEntry const entries[] = { { pidl, true } };
+
+        int nSources = SHCNRF_ShellLevel | SHCNRF_InterruptLevel | SHCNRF_NewDelivery | SHCNRF_RecursiveInterrupt;
+
+        ULONG regId;
+        if (SUCCEEDED(regId = SHChangeNotifyRegister(hwnd, nSources, SHCNE_ALLEVENTS, id, ARRAYSIZE(entries), entries))) {
+
+            watchedPaths.insert(str, regId);
+
+            qDebug() << "WinDirectoryWatcher::addPath watching path " << id << str << watchedPaths;
+        }
+
+        ::CoTaskMemFree(pidl);
+    }
+
     // Use ReadDirectoryChanges to get faster renames
     dirChangeNotifier = new WinDirChangeNotifier(this);
     connect(dirChangeNotifier, &WinDirChangeNotifier::fileRename, [=](QString oldPath, QString newPath) { this->emit fileRename(oldPath, newPath); });
@@ -33,30 +57,6 @@ WinDirectoryWatcher::~WinDirectoryWatcher()
 void WinDirectoryWatcher::addPath(QString path)
 {
     if (!watchedPaths.contains(path)) {
-
-        // Watch the whole My PC Filesystem
-        LPITEMIDLIST pidl;
-        QString str = COMPUTER_FOLDER_GUID;
-        HRESULT hr = ::SHParseDisplayName(str.toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
-
-        if (SUCCEEDED(hr)) {
-
-            HWND hwnd = reinterpret_cast<HWND>(AppWindow::instance()->getWindowId());
-
-            SHChangeNotifyEntry const entries[] = { { pidl, true } };
-
-            int nSources = SHCNRF_ShellLevel | SHCNRF_InterruptLevel | SHCNRF_NewDelivery | SHCNRF_RecursiveInterrupt;
-
-            ULONG regId;
-            if (SUCCEEDED(regId = SHChangeNotifyRegister(hwnd, nSources, SHCNE_ALLEVENTS, id, ARRAYSIZE(entries), entries))) {
-
-                watchedPaths.insert(str, regId);
-
-                qDebug() << "WinDirectoryWatcher::addPath watching path " << id << str << watchedPaths;
-            }
-
-            ::CoTaskMemFree(pidl);
-        }
 
         // Virtual
         watchedPaths.insert(path, -1);
