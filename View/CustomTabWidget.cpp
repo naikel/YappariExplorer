@@ -113,7 +113,13 @@ void CustomTabWidget::copyCurrentTab()
 
 void CustomTabWidget::setUpTab(int tab, const QModelIndex &sourceIndex)
 {
-    qDebug() << "CustomTabWidget::setUpCurrentTab" << sourceIndex;
+    qDebug() << "CustomTabWidget::setUpTab" << tab << "of" << count() << sourceIndex;
+
+    if (tab == count() - 1) {
+        qDebug() << "CustomtTabWidget::setUpTab trying to setup the add new tab tab.  This should have not happened!!!!";
+        return;
+    }
+
 
     DetailedView *detailedView = static_cast<DetailedView *>(widget(tab));
 

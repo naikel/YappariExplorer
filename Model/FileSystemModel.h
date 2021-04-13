@@ -151,8 +151,6 @@ private:
     QList<FileSystemItem *> garbage         {};
 
     FileSystemItem *root                    {};
-    int currentSortColumn                   {};
-    Qt::SortOrder currentSortOrder          {Qt::AscendingOrder};
     ShellActions *shellActions              {};
     QList<QString> sizeUnits                {"byte", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
 

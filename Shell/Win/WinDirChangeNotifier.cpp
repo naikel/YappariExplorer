@@ -87,8 +87,6 @@ void WinDirChangeNotifier::removePath(QString path)
 
 void WinDirChangeNotifier::directoryChanged(LPOVERLAPPED lpOverLapped)
 {
-    qDebug() << "WinDirChangeNotifier::directoryChanged starting" << thisId ;
-
     // Find the object
     mutex.lock();
     qDebug() << "WinDirChangeNotifier::directoryChanged locked sucessfully" << thisId ;
@@ -126,9 +124,10 @@ void WinDirChangeNotifier::directoryChanged(LPOVERLAPPED lpOverLapped)
 
                 qDebug() << "WinDirChangeNotifier::directoryChanged change detected from" << fileName << "action" << action << n->Action;
 
-                if (n->NextEntryOffset)
-                    n = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(reinterpret_cast<BYTE*>(n) + n->NextEntryOffset);
-                else
+                if (n->NextEntryOffset) {
+                    FILE_NOTIFY_INFORMATION *fni = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(reinterpret_cast<BYTE*>(n) + n->NextEntryOffset);
+                    n = (fni != n) ? fni : nullptr;
+                } else
                     n = nullptr;
             };
 
@@ -166,9 +165,7 @@ void WinDirChangeNotifier::directoryChanged(LPOVERLAPPED lpOverLapped)
         }
     }
 
-    qDebug() << "WinDirChangeNotifier::directoryChanged attempting to unlock" << thisId;
     mutex.unlock();
-    qDebug() << "WinDirChangeNotifier::directoryChanged unlocked sucessfully" << thisId;
 }
 
 void completionRoutine(DWORD dwErrorCode, DWORD dwBytesTransferred, LPOVERLAPPED lpOverLapped)

@@ -106,7 +106,7 @@ win32 {
     LIBS += -L$$PWD/ThirdParty/Win/icu4c-68/bin -licuin68 -licuuc68
 
     #QT += gui-private
-    # DEFINES += WIN32_FRAMELESS
+    DEFINES += WIN32_FRAMELESS
     DEFINES += _WIN32_IE=0x700 _WIN32_WINNT=0x0A00
     SOURCES += \
     Shell/Win/WinContextMenu.cpp \

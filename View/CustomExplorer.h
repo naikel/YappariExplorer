@@ -81,6 +81,7 @@ private:
 
 private slots:
     void viewIndexChanged(const QModelIndex &sourceIndex);
+    void fetchFinished(QObject *context, const QModelIndex &parentIndex, const QString path, const QModelIndex &topLeft, const QVector<int> &roles);
 };
 
 #endif // CUSTOMEXPLORER_H

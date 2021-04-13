@@ -765,18 +765,29 @@ QModelIndex FileSystemModel::index(FileSystemItem *item) const
 
 QModelIndex FileSystemModel::index(QString path) const
 {
+    qDebug() << "FileSystemModel::index" << path;
+
+    if (path == fileInfoRetriever->getRootPath()) {
+        qDebug() << "FileSystemModel::index" << path << "is root";
+        return createIndex(0, 0, root);
+    }
+
     QModelIndex parentIndex = parent(path);
+
     FileSystemItem *parentItem = getFileSystemItem(parentIndex);
+
     if (parentItem != nullptr) {
         FileSystemItem *itemIndex = parentItem->getChild(path);
         if (itemIndex != nullptr) {
             int row = parentItem->childRow(itemIndex);
 
+            qDebug() << "FileSystemModel::index" << path << "parent" << parentItem->getPath() << "row" << row;
             return index(row, 0, parentIndex);
         }
 
     }
 
+    qDebug() << "FileSystemModel::index" << path << "not found";
     return QModelIndex();
 }
 
@@ -988,10 +999,18 @@ QModelIndex FileSystemModel::parent(QString path) const
 
 #ifdef Q_OS_WIN
     // If this is a drive
+    WinFileInfoRetriever *r = reinterpret_cast<WinFileInfoRetriever *>(fileInfoRetriever);
     if (path.length() == 3 && path[0].isLetter() && path[1] == ':' && path[2] == '\\') {
-        qDebug() << "FileSystemModel::parent" << path << "is a drive and parent is root";
-        return createIndex(0, 0, root);
+        qDebug() << "FileSystemModel::parent" << path << "is a drive and parent is This PC";
+
+        return index(r->getMyPCPath());
     }
+
+    if (path == r->getMyPCPath()) {
+        qDebug() << "FileSystemModel::parent" << path << "is This PC and root is Desktop";
+        return index(r->getDesktopPath());
+    }
+
 #endif
 
     // Remove the last entry

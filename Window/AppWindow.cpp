@@ -44,7 +44,7 @@
 
 #ifdef Q_OS_WIN
 
-#include "Shell/Win/wincontextmenu.h"
+#include "Shell/Win/WinContextMenu.h"
 #define PlatformContextMenu(PARENT)     WinContextMenu(PARENT)
 
 #else
@@ -256,8 +256,9 @@ void AppWindow::resizeEvent(QResizeEvent *event)
 {
     MAINWINDOW::resizeEvent(event);
 
-    if (!isMaximized() && !event->size().isEmpty())
+    if (!isMaximized() && !event->size().isEmpty()) {
         prevSize = event->size();
+    }
 }
 
 /*!
@@ -312,7 +313,9 @@ void AppWindow::setupGui()
         splitter->setOrientation(verticalMode ? Qt::Vertical : Qt::Horizontal);
         splitter->setStyleSheet("QSplitter::handle { background: #9fcdb3;  } QSplitter::handle:vertical { height: 1px; }");
         w = splitter;
+#ifndef WIN32_FRAMELESS
         verticalLayout->addWidget(w);
+#endif
     } else
         w = contentWidget();
 

@@ -35,7 +35,7 @@
 #include <QMutex>
 #include <QAbstractItemView>
 #include "Shell/ContextMenu.h"
-#include "Shell/directorywatcher.h"
+#include "Shell/DirectoryWatcher.h"
 #include "Settings/Settings.h"
 
 #ifdef WIN32_FRAMELESS

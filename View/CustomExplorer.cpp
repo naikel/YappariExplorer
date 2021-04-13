@@ -145,6 +145,21 @@ void CustomExplorer::expandAndSelectAbsolute(QString path)
     QModelIndex parentIndex = fileSystemModel->index(0, 0, QModelIndex());
     QModelIndex childIndex {};
 
+    // Root has to be fetched before anything
+    if (!parentIndex.data(FileSystemModel::AllChildrenFetchedRole).toBool()) {
+
+        qDebug() << "CustomExplorer::expandAndSelectAbsolute will be called again after fetch";
+
+        QObject *context = new QObject(this);
+        connect(fileSystemModel, &FileSystemModel::dataChanged, context, [context, this, parentIndex, path](const QModelIndex &topLeft, const QModelIndex &, const QVector<int> &roles) {
+            this->fetchFinished(context, parentIndex, path, topLeft, roles);
+        });
+
+        // This will trigger the background fetching
+        treeView->expand(treeModel->mapFromSource(parentIndex));
+        return;
+    }
+
     // If path is root then just finish setting up the current tab and selecting root in the tree
     if (path == parentIndex.data(FileSystemModel::PathRole).toString()) {
 
@@ -165,6 +180,10 @@ void CustomExplorer::expandAndSelectAbsolute(QString path)
         if (path.size() > absolutePath.size() && path.left(absolutePath.size()) == absolutePath)
             path = path.mid(path.indexOf(fileSystemModel->separator()) + 1);
     }
+
+    if (path.length() == 3 && path[0].isLetter() && path[1] == ':' && path[2] == '\\') {
+        parentIndex = fileSystemModel->parent(path.left(3));
+    }
 #endif
 
     QStringList pathList = path.split(fileSystemModel->separator());
@@ -179,17 +198,7 @@ void CustomExplorer::expandAndSelectAbsolute(QString path)
 
                 QObject *context = new QObject(this);
                 connect(fileSystemModel, &FileSystemModel::dataChanged, context, [context, this, parentIndex, path](const QModelIndex &topLeft, const QModelIndex &, const QVector<int> &roles) {
-
-                    if (topLeft == parentIndex && (roles.contains(FileSystemModel::AllChildrenFetchedRole) || roles.contains(FileSystemModel::ErrorCodeRole))) {
-
-                        bool fetchFinished = topLeft.data(FileSystemModel::AllChildrenFetchedRole).toBool();
-
-                        if (roles.contains(FileSystemModel::ErrorCodeRole) || fetchFinished)
-                            delete context;
-
-                        if (fetchFinished)
-                            this->expandAndSelectAbsolute(path);
-                    }
+                    this->fetchFinished(context, parentIndex, path, topLeft, roles);
                 });
 
                 // This will trigger the background fetching
@@ -231,6 +240,20 @@ void CustomExplorer::expandAndSelectAbsolute(QString path)
     tabWidget->setViewRootIndex(childIndex);
 }
 
+void CustomExplorer::fetchFinished(QObject *context, const QModelIndex &parentIndex, const QString path, const QModelIndex &topLeft, const QVector<int> &roles) {
+
+    if (topLeft == parentIndex && (roles.contains(FileSystemModel::AllChildrenFetchedRole) || roles.contains(FileSystemModel::ErrorCodeRole))) {
+
+        bool fetchFinished = topLeft.data(FileSystemModel::AllChildrenFetchedRole).toBool();
+
+        if (roles.contains(FileSystemModel::ErrorCodeRole) || fetchFinished)
+            delete context;
+
+        if (fetchFinished)
+            this->expandAndSelectAbsolute(path);
+    }
+}
+
 /*!
  * \brief Collapse the tree and optionally selects the collapsed item.
  * \param index item that is going to be collapsed.
@@ -241,8 +264,6 @@ void CustomExplorer::expandAndSelectAbsolute(QString path)
 void CustomExplorer::collapseAndSelect(QModelIndex index)
 {
     qDebug() << "CustomExplorer::collapseAndSelect";
-
-    // TODO: freeChildren called from here (instead of the view) AFTER? selecting the collapsed index is better
 
     // Only change the selection if we're hiding an item
     if (index.isValid()) {

@@ -23,6 +23,9 @@ public:
     bool refreshItem(FileSystemItem *fileSystemItem) override;
     bool willRecycle(FileSystemItem *fileSystemItem) override;
 
+    QString getDesktopPath() const;
+    QString getMyPCPath() const;
+
 protected:
     void getChildrenBackground(FileSystemItem *parent) override;
     bool getParentBackground(FileSystemItem *parent) override;

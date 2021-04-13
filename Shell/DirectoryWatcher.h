@@ -19,7 +19,6 @@ signals:
     void fileAdded(QString fileName);
     void fileRemoved(QString fileName);
     void folderUpdated(QString path);
-    void volumeFreeSpaceChanged(QString path);
 };
 
 #endif // DIRECTORYWATCHER_H

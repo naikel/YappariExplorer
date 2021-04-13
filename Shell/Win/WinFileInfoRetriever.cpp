@@ -10,8 +10,11 @@
 #include <ntquery.h>
 #include <comdef.h>
 
+
+#define DESKTOP_FOLDER_GUID           "::{B4BFCC3A-DB2C-424C-B029-7FE99A87C641}"
 #define COMPUTER_FOLDER_GUID          "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}"
 #define CONTROL_PANEL_GUID            "::{26EE0668-A00A-44D7-9371-BEB064C98683}"
+#define CONTROL_PANEL_GUID_2          "::{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}"
 
 // Known icon indexes from the Windows System List
 #define DEFAULT_FILE_ICON_INDEX       0
@@ -34,36 +37,39 @@ WinFileInfoRetriever::WinFileInfoRetriever(QObject *parent) : FileInfoRetriever(
 
 QString WinFileInfoRetriever::getRootPath() const
 {
-    return COMPUTER_FOLDER_GUID;
+    // return getDesktopPath();
+    return getMyPCPath();
 }
 
 bool WinFileInfoRetriever::getParentBackground(FileSystemItem *parent)
 {
     LPITEMIDLIST pidl;
     HRESULT hr;
-    qDebug() << "WinFileInfoRetriever::getParentInfo " << " Parent path " << parent->getPath();
+    qDebug() << "WinFileInfoRetriever::getParentBackground Parent path" << parent->getPath();
 
     ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
-    hr = ::SHParseDisplayName(parent->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
+    hr =  (parent->getPath() == getDesktopPath()) ?
+              ::SHGetKnownFolderIDList(FOLDERID_Desktop, KF_FLAG_DEFAULT, nullptr, &pidl) :
+              ::SHParseDisplayName(parent->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
 
     // Get the PIDL for the parent
     if (SUCCEEDED(hr)) {
 
-        qDebug() << "WinFileInfoRetriever::getParentInfo " << " Getting name of root in getParentInfo()";
+        qDebug() << "WinFileInfoRetriever::getParentBackground Getting name of root in getParentInfo()";
         PWSTR pwstrName;
         hr = ::SHGetNameFromIDList(pidl, SIGDN_NORMALDISPLAY, &pwstrName);
         QString rootName = QString::fromWCharArray(pwstrName);
-        qDebug() << "WinFileInfoRetriever::getParentInfo " << " Root name is " << rootName;
+        qDebug() << "WinFileInfoRetriever::getParentBackground Root name is" << rootName;
 
         QTime start;
         start.start();
         parent->setDisplayName(rootName);
-        qDebug() << "WinFileInfoRetriever::getParentInfo " << " setDisplayName" << start.elapsed();
+        qDebug() << "WinFileInfoRetriever::getParentBackground setDisplayName" << start.elapsed();
         QIcon icon = getIconFromPIDL(pidl, false, true);
-        qDebug() << "WinFileInfoRetriever::getParentInfo " << " getIconFromPIDL" << start.elapsed();
+        qDebug() << "WinFileInfoRetriever::getParentBackground getIconFromPIDL" << start.elapsed();
         parent->setIcon(icon);
-        qDebug() << "WinFileInfoRetriever::getParentInfo " << " setIcon" << start.elapsed();
+        qDebug() << "WinFileInfoRetriever::getParentBackground setIcon" << start.elapsed();
 
         // The Windows root (My Computer) shouldn't have any capability
         if (parent->getPath() != getRootPath()) {
@@ -83,7 +89,7 @@ bool WinFileInfoRetriever::getParentBackground(FileSystemItem *parent)
         ::ILFree(pidl);
         ::CoUninitialize();
 
-        qDebug() << "WinFileInfoRetriever::getParentInfo " << " CoTaskFreeMem" << start.elapsed();
+        qDebug() << "WinFileInfoRetriever::getParentBackground CoTaskFreeMem" << start.elapsed();
 
         // Little test here
         parent->setHasSubFolders(true);
@@ -97,7 +103,7 @@ bool WinFileInfoRetriever::getParentBackground(FileSystemItem *parent)
         LPCTSTR errMsg = err.ErrorMessage();
         QString errMessage = QString::fromWCharArray(errMsg);
 
-        qDebug() << "WinFileInfoRetriever::getParentInfo " << "Couldn't access" << parent->getPath() << "HRESULT" << hr << "(" << errMessage << ")";
+        qDebug() << "WinFileInfoRetriever::getParentBackground Couldn't access" << parent->getPath() << "HRESULT" << hr << "(" << errMessage << ")";
 
         parent->setErrorCode(hr);
         parent->setErrorMessage(errMessage);
@@ -120,10 +126,12 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
     LPITEMIDLIST pidl;
     HRESULT hr;
 
-    qDebug() << "WinFileInfoRetriever::getChildrenBackground " << "Parent path " << parent->getPath();
+    qDebug() << "WinFileInfoRetriever::getChildrenBackground Parent path " << parent->getPath();
     parent->setErrorCode(0);
 
-    hr = ::SHParseDisplayName(parent->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
+    hr =  (parent->getPath() == getDesktopPath()) ?
+              ::SHGetKnownFolderIDList(FOLDERID_Desktop, KF_FLAG_DEFAULT, nullptr, &pidl) :
+              ::SHParseDisplayName(parent->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
 
     // Get the PIDL for the parent
     if (SUCCEEDED(hr)) {
@@ -156,13 +164,13 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
             }
 
             parent->setMediaType(mediaType);
-            qDebug() << "WinFileInfoRetriever::getChildrenBackground " << "mediaType" << drive << mediaType;
+            qDebug() << "WinFileInfoRetriever::getChildrenBackground mediaType" << drive << mediaType;
         }
 
         // Get the IShellFolder interface for it
         if (SUCCEEDED(::SHBindToObject(nullptr, pidl, nullptr, IID_IShellFolder, reinterpret_cast<void**>(&psf)))) {
 
-            qDebug() << "WinFileInfoRetriever::getChildrenBackground " << "Bound to object";
+            qDebug() << "WinFileInfoRetriever::getChildrenBackground Bound to object";
 
             // Get the enumeration interface
             IEnumIDList *ppenumIDList {};
@@ -174,17 +182,17 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
 
             if (SUCCEEDED(hr = psf->EnumObjects(reinterpret_cast<HWND>(AppWindow::instance()->getWindowId()), flags, reinterpret_cast<IEnumIDList**>(&ppenumIDList)))) {
 
-                qDebug() << "WinFileInfoRetriever::getChildrenBackground " << "Children enumerated";
+                qDebug() << "WinFileInfoRetriever::getChildrenBackground Children enumerated";
 
                 LPITEMIDLIST pidlChild {};
 
                 while (running.load() && ppenumIDList->Next(1, &pidlChild, nullptr) == S_OK) {
 
-                    // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << QTime::currentTime() << "Before getting attributes";
+                    // qDebug() << "WinFileInfoRetriever::getChildrenBackground" << QTime::currentTime() << "Before getting attributes";
                     SFGAOF attributes { SFGAO_STREAM };
 
                     psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChild), &attributes);
-                    // qDebug() << "WinFileInfoRetriever::getChildrenBackground " << QTime::currentTime() << "Got attributes";
+                    // qDebug() << "WinFileInfoRetriever::getChildrenBackground" << QTime::currentTime() << "Got attributes";
 
                     // Compressed files will have SFGAO_FOLDER and SFGAO_STREAM attributes
                     // We want to skip those for the Tree scope
@@ -196,7 +204,7 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                         psf->GetDisplayNameOf(pidlChild, SHGDN_FORPARSING, &strRet);
                         QString displayName = QString::fromWCharArray(strRet.pOleStr);
 
-                        if (displayName == CONTROL_PANEL_GUID)
+                        if (displayName == CONTROL_PANEL_GUID || displayName == CONTROL_PANEL_GUID_2)
                             continue;
 
                         FileSystemItem *child = new FileSystemItem(displayName);
@@ -221,7 +229,7 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                 parent->setErrorCode(hr);
                 parent->setErrorMessage(QString::fromWCharArray(errMsg));
 
-                qDebug() << "WinFileInfoRetriever::getChildrenBackground " << "got error while trying to enumerate children: "
+                qDebug() << "WinFileInfoRetriever::getChildrenBackground got error while trying to enumerate children: "
                          << QString::number(parent->getErrorCode(), 16) << parent->getErrorMessage();
             }
             psf->Release();
@@ -232,13 +240,13 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
         // TODO: Everything from here should be in parent class, and this function should call the parent version here
 
         if (!running.load()) {
-            qDebug() << "WinFileInfoRetriever::getChildrenBackground " << "Parent path " << parent->getPath() << " aborted!";
+            qDebug() << "WinFileInfoRetriever::getChildrenBackground Parent path " << parent->getPath() << "aborted!";
             parent->setErrorCode(-1);
         } else {
-            qDebug() << "WinFileInfoRetriever::getChildrenBackground " << "has subfolders?" << subFolders;
+            qDebug() << "WinFileInfoRetriever::getChildrenBackground has subfolders?" << subFolders;
             parent->setHasSubFolders(subFolders);
 
-            qDebug() << "WinFileInfoRetriever::getChildrenBackground " << "Parent path" << parent->getPath() << "finished successfully";
+            qDebug() << "WinFileInfoRetriever::getChildrenBackground Parent path" << parent->getPath() << "finished successfully";
         }
 
         if (!parent->getErrorCode())
@@ -442,10 +450,20 @@ bool WinFileInfoRetriever::willRecycle(FileSystemItem *fileSystemItem)
     return false;
 }
 
+QString WinFileInfoRetriever::getDesktopPath() const
+{
+    return DESKTOP_FOLDER_GUID;
+}
+
+QString WinFileInfoRetriever::getMyPCPath() const
+{
+    return COMPUTER_FOLDER_GUID;
+}
+
 void WinFileInfoRetriever::getIconBackground(FileSystemItem *item, bool background)
 {
     ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-    qDebug() << "WinFileInfoRetriever::getIcon " << item->getPath();
+    // qDebug() << "WinFileInfoRetriever::getIcon " << item->getPath();
     LPITEMIDLIST pidl;
     HRESULT hr;
     if (SUCCEEDED(hr = ::SHParseDisplayName(item->getPath().toStdWString().c_str(), nullptr, &pidl, 0, nullptr))) {

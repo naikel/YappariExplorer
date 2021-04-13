@@ -12,33 +12,10 @@ WinDirectoryWatcher::WinDirectoryWatcher(QObject *parent) : DirectoryWatcher(par
 {
     id = AppWindow::instance()->registerWatcher(this);
 
-    // Watch the whole My PC Filesystem
-    LPITEMIDLIST pidl;
-    QString str = COMPUTER_FOLDER_GUID;
-    HRESULT hr = ::SHParseDisplayName(str.toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
-
-    if (SUCCEEDED(hr)) {
-
-        HWND hwnd = reinterpret_cast<HWND>(AppWindow::instance()->getWindowId());
-
-        SHChangeNotifyEntry const entries[] = { { pidl, true } };
-
-        int nSources = SHCNRF_ShellLevel | SHCNRF_InterruptLevel | SHCNRF_NewDelivery | SHCNRF_RecursiveInterrupt;
-
-        ULONG regId;
-        if (SUCCEEDED(regId = SHChangeNotifyRegister(hwnd, nSources, SHCNE_ALLEVENTS, id, ARRAYSIZE(entries), entries))) {
-
-            watchedPaths.insert(str, regId);
-
-            qDebug() << "WinDirectoryWatcher::addPath watching path " << id << str << watchedPaths;
-        }
-
-        ::CoTaskMemFree(pidl);
-    }
-
-    // Use ReadDirectoryChanges to get faster renames
+    // Use ReadDirectoryChanges to get faster renames and updates but they don't work in every file system
     dirChangeNotifier = new WinDirChangeNotifier(this);
     connect(dirChangeNotifier, &WinDirChangeNotifier::fileRename, [=](QString oldPath, QString newPath) { this->emit fileRename(oldPath, newPath); });
+    connect(dirChangeNotifier, &WinDirChangeNotifier::fileModified, [=](QString path ) { this->emit fileModified(path); });
 }
 
 WinDirectoryWatcher::~WinDirectoryWatcher()
@@ -58,8 +35,27 @@ void WinDirectoryWatcher::addPath(QString path)
 {
     if (!watchedPaths.contains(path)) {
 
-        // Virtual
-        watchedPaths.insert(path, -1);
+        LPITEMIDLIST pidl;
+        HRESULT hr = ::SHParseDisplayName(path.toStdWString().c_str(), nullptr, &pidl, 0, nullptr);
+
+        if (SUCCEEDED(hr)) {
+
+            HWND hwnd = reinterpret_cast<HWND>(AppWindow::instance()->getWindowId());
+
+            SHChangeNotifyEntry const entries[] = { { pidl, false } };
+
+            int nSources = SHCNRF_ShellLevel | SHCNRF_InterruptLevel | SHCNRF_NewDelivery;
+
+            ULONG regId;
+            if (SUCCEEDED(regId = SHChangeNotifyRegister(hwnd, nSources, SHCNE_ALLEVENTS, id, ARRAYSIZE(entries), entries))) {
+
+                watchedPaths.insert(path, regId);
+
+                qDebug() << "WinDirectoryWatcher::addPath watching path " << id << path << watchedPaths;
+            }
+
+            ::CoTaskMemFree(pidl);
+        }
 
         dirChangeNotifier->addPath(path);
     }
@@ -145,18 +141,12 @@ bool WinDirectoryWatcher::handleNativeEvent(const QByteArray &eventType, void *m
 
                 }
 
-                QString drive;
-                if (strPath1.length() >= 3 && strPath1[1] == ':' && strPath1[2] == '\\')
-                    drive = strPath1.left(3);
-
-                if (!drive.isEmpty() && watchedPaths.contains(drive) && lEvent & (SHCNE_UPDATEITEM | SHCNE_UPDATEDIR | SHCNE_DELETE | SHCNE_RMDIR))
-                    emit volumeFreeSpaceChanged(drive);
-
                 int index = strPath1.lastIndexOf('\\');
                 QString parentPath = strPath1.left(index);
 
                 if (parentPath.length() == 2 && parentPath[1] == ':')
                     parentPath += '\\';
+
 
                 if (watchedPaths.contains(parentPath)) {
 
