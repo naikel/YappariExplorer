@@ -35,6 +35,7 @@
 
 #include "View/CustomTreeView.h"
 #include "View/CustomTabWidget.h"
+#include "View/StatusBar.h"
 #include "View/PathBar.h"
 
 #include "Model/TreeModel.h"

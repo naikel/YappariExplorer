@@ -120,8 +120,8 @@ private:
     // Loaded Settings
     QList<int> columnsWidth;
     QList<int> visualIndexes;
-    int sortingColumn;
-    Qt::SortOrder sortOrder;
+    int sortingColumn {};
+    Qt::SortOrder sortOrder { Qt::DescendingOrder };
 
     // Signals queue for delayed processing
     // It's basically a list of parents that have children that must be updated.

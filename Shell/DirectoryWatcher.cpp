@@ -1,6 +1,6 @@
 #include <QDebug>
 
-#include "directorywatcher.h"
+#include "DirectoryWatcher.h"
 
 DirectoryWatcher::DirectoryWatcher(QObject *parent) : QObject(parent)
 {

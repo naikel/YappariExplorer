@@ -91,7 +91,7 @@ public:
         RefCounterRole
     };
 
-    FileSystemModel(QObject *parent = nullptr);
+    FileSystemModel(QObject *parent = nullptr, bool hasWatcher = true);
     ~FileSystemModel() override;
 
     // Model reimplemented functions
@@ -138,7 +138,7 @@ public:
     }
 
 public slots:
-    void refreshFolder(QString path);
+    void refreshFolder(FileSystemItem *);
     void refreshIndex(QModelIndex index);
 
 private:
@@ -171,13 +171,14 @@ private slots:
     void iconUpdated(FileSystemItem *item);
 
     // These slots are called by the DirectoryWatcher object
-    void renamePath(QString oldFileName, QString newFileName);
-    void refreshPath(QString fileName);
-    void addPath(QString fileName);
-    void removePath(QString fileName);
+    void renamePath(FileSystemItem *item, QString newFileName);
+    void refreshPath(FileSystemItem *item);
+    void addPath(FileSystemItem *parentItem, QString fileName);
+    void removePath(FileSystemItem *item);
 
     // Other slots
     void garbageCollector();
+    void fixChildrenPath(FileSystemItem *item);
 };
 
 #endif // FILESYSTEMMODEL_H

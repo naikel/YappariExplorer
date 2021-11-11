@@ -149,6 +149,23 @@ bool FileSystemItem::isInADrive() const
     return (!path.isNull() && path.length() >= 3 && path.at(0).isLetter() && path.at(1) == ':' && path.at(2) == '\\');
 }
 
+bool FileSystemItem::isEqualTo(FileSystemItem *item) const
+{
+    if (path != item->getPath())
+        return false;
+
+    if (displayName != item->getDisplayName() || size != item->getSize() || capabilities != item->getCapabilities())
+        return false;
+
+    if (creationTime != item->getCreationTime() || lastAccessTime != item->getLastAccessTime() || lastChangeTime != item->lastChangeTime)
+        return false;
+
+    if (folder != item->isFolder() || hasSubFolders != item->getHasSubFolders() || hidden != item->isHidden())
+        return false;
+
+    return true;
+}
+
 QString FileSystemItem::getPath() const
 {
     return path;
@@ -260,25 +277,30 @@ FileSystemItem *FileSystemItem::clone()
 {
     FileSystemItem *item = new FileSystemItem(path);
 
-    item->setDisplayName(displayName);
-    item->setIcon(icon);
-    item->setSize(size);
-    item->setType(type);
-    item->setCreationTime(creationTime);
-    item->setLastAccessTime(lastAccessTime);
-    item->setLastChangeTime(lastChangeTime);
-    item->setCapabilities(capabilities);
-    item->setMediaType(mediaType);
-
-    item->setFolder(folder);
-    item->setHidden(hidden);
-    item->setHasSubFolders(hasSubFolders);
-    item->setAllChildrenFetched(allChildrenFetched);
-    item->setFakeIcon(fakeIcon);
+    cloneTo(item);
 
     item->setParent(parent);
 
     return item;
+}
+
+void FileSystemItem::cloneTo(FileSystemItem *destination)
+{
+    destination->setDisplayName(displayName);
+    destination->setIcon(icon);
+    destination->setSize(size);
+    destination->setType(type);
+    destination->setCreationTime(creationTime);
+    destination->setLastAccessTime(lastAccessTime);
+    destination->setLastChangeTime(lastChangeTime);
+    destination->setCapabilities(capabilities);
+    destination->setMediaType(mediaType);
+
+    destination->setFolder(folder);
+    destination->setHidden(hidden);
+    destination->setHasSubFolders(hasSubFolders);
+    destination->setAllChildrenFetched(allChildrenFetched);
+    destination->setFakeIcon(fakeIcon);
 }
 
 quint16 FileSystemItem::getCapabilities() const

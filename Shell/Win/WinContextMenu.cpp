@@ -296,12 +296,15 @@ void WinContextMenu::invokeCommand(HWND hwnd, UINT iCmd, IContextMenu *imenu, QP
     // Tell the view's model to watch for new objects so the view can ask the user to rename them
     if (strVerb.size() > 1 && (strVerb == CMDSTR_NEWFOLDERA || strVerb.left(1) == ".")) {
         model->startWatch(parent, strVerb);
+        // TODO: view->startWatch(parent, strVerb); ??
     }
 
     qDebug() << "WinContextMenu::invokeCommand command selected " << command << strVerb << "working directory" << wstrWrkDir;
 
     HRESULT hr = imenu->InvokeCommand(reinterpret_cast<LPCMINVOKECOMMANDINFO>(&info));
     qDebug() << "WinContextMenu::invokeCommand result code " << QString("%1").arg(hr, 0, 16) << "HWND" << hwnd;
+
+    // TODO: stopWatch if error?
 }
 
 bool WinContextMenu::handleNativeEvent(const QByteArray &eventType, void *message, long *result)

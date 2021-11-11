@@ -33,14 +33,21 @@ void PathWidget::setModel(FileSystemModel *model)
 
 void PathWidget::selectIndex(QModelIndex index)
 {
+    if (index == currentIndex)
+        return;
+
+    currentIndex = index;
+
     qDebug() << "PathWidget::selectIndex";
 
-    // Delete previous buttons if any
-    for (PathWidgetButton *button : qAsConst(buttons))
-        delete button;
-
-    buttons.clear();
-    delete layout();
+    QLayoutItem *child;
+    if (layout() != nullptr) {
+        while ((child = layout()->takeAt(0)) != nullptr) {
+            delete child->widget();
+            delete child;
+        }
+        delete layout();
+    }
 
     QHBoxLayout *layout = new QHBoxLayout;
     setLayout(layout);
@@ -59,7 +66,6 @@ void PathWidget::selectIndex(QModelIndex index)
             connect(button->getPathButton(), &CustomButton::clicked, this, [this, index]() { this->clickedOnIndex(index); });
             if (button->getMenuButton() != nullptr)
                 connect(button->getMenuButton(), &CustomButton::menuIndexSelected, this, &PathWidget::clickedOnIndex);
-            buttons.append(button);
             layout->insertWidget(0, button);
             index = index.parent();
         }
@@ -171,6 +177,7 @@ void CustomButton::mousePressEvent(QMouseEvent *e)
             populateMenu();
             if (menu()->isEmpty()) {
                 hide();
+                e->accept();
                 return;
             }
         } else {
@@ -178,8 +185,14 @@ void CustomButton::mousePressEvent(QMouseEvent *e)
             setDown(true);
             fetchingMore = true;
             connect(model, &QAbstractItemModel::dataChanged, this, &CustomButton::checkIfFetchFinished);
+            e->accept();
             return;
         }
+    }
+
+    if (e->button() == Qt::RightButton) {
+        e->accept();
+        return;
     }
 
     fetchingMore = false;

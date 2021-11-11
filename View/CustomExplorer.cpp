@@ -30,7 +30,6 @@
 #include <QSortFilterProxyModel>
 #include <QHeaderView>
 #include <QMessageBox>
-#include <QSplitter>
 #include <QLayout>
 #include <QDebug>
 
@@ -64,7 +63,7 @@ void CustomExplorer::initialize()
     tabWidget->initialize(model);
 
     // Handling of single selections
-    connect(treeView, &CustomTreeView::clicked, this, &CustomExplorer::setViewRootIndex);
+    //connect(treeView, &CustomTreeView::clicked, this, &CustomExplorer::setViewRootIndex);
     connect(treeView, &CustomTreeView::collapsed, this, &CustomExplorer::collapseAndSelect);
 
     // Selections from Views
@@ -76,7 +75,12 @@ void CustomExplorer::initialize()
     connect(treeView, &CustomTreeView::contextMenuRequestedForItems, mainWindow, &AppWindow::showContextMenu);
 
     // Focus change (application title update)
-    connect(treeView->selectionModel(), &QItemSelectionModel::currentChanged, [=](const QModelIndex &current, const QModelIndex &) { mainWindow->updateTitle(current); });
+    connect(treeView->selectionModel(), &QItemSelectionModel::currentChanged, [=](const QModelIndex &current, const QModelIndex &) {
+
+        setViewRootIndex(current);
+        mainWindow->updateTitle(current);
+
+    });
     connect(tabWidget, &CustomTabWidget::folderFocusIndex, mainWindow, &AppWindow::updateTitle);
 
     // Tab handling
@@ -399,6 +403,9 @@ void CustomExplorer::setupGui(int nExplorer)
     tabWidget->setMinimumSize(QSize(0, 0));
 
     expLayout->addWidget(tabWidget);
+
+    StatusBar *statusBar = new StatusBar(expWidget);
+    expLayout->addWidget(statusBar);
 
     splitter->addWidget(expWidget);
 

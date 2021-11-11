@@ -69,6 +69,7 @@ public:
 
     bool isDrive() const;
     bool isInADrive() const;
+    bool isEqualTo(FileSystemItem *item) const;
 
     QVariant getData(int column);
 
@@ -105,6 +106,7 @@ public:
     void setLastChangeTime(const QDateTime &value);
 
     FileSystemItem *clone();
+    void cloneTo(FileSystemItem *destination);
 
     quint16 getCapabilities() const;
     void setCapabilities(const quint16 &value);

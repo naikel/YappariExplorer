@@ -194,31 +194,27 @@ void WinFileInfoRetriever::getChildrenBackground(FileSystemItem *parent)
                     psf->GetAttributesOf(1, const_cast<LPCITEMIDLIST *>(&pidlChild), &attributes);
                     // qDebug() << "WinFileInfoRetriever::getChildrenBackground" << QTime::currentTime() << "Got attributes";
 
-                    // Compressed files will have SFGAO_FOLDER and SFGAO_STREAM attributes
-                    // We want to skip those for the Tree scope
-                    //if (getScope() == FileInfoRetriever::List || !(attributes & SFGAO_STREAM)) {
+                    STRRET strRet;
 
-                        STRRET strRet;
+                    // Get the absolute path and create a FileSystemItem with it
+                    psf->GetDisplayNameOf(pidlChild, SHGDN_FORPARSING, &strRet);
+                    QString displayName = QString::fromWCharArray(strRet.pOleStr);
 
-                        // Get the absolute path and create a FileSystemItem with it
-                        psf->GetDisplayNameOf(pidlChild, SHGDN_FORPARSING, &strRet);
-                        QString displayName = QString::fromWCharArray(strRet.pOleStr);
+                    if (displayName == CONTROL_PANEL_GUID || displayName == CONTROL_PANEL_GUID_2)
+                        continue;
 
-                        if (displayName == CONTROL_PANEL_GUID || displayName == CONTROL_PANEL_GUID_2)
-                            continue;
+                    FileSystemItem *child = new FileSystemItem(displayName);
 
-                        FileSystemItem *child = new FileSystemItem(displayName);
+                    getChildInfo(psf, pidlChild, child);
 
-                        getChildInfo(psf, pidlChild, child);
+                    if (child != nullptr) {
 
-                        if (child != nullptr) {
+                        if (child->isFolder() && !subFolders)
+                            subFolders = true;
 
-                            if (child->isFolder() && !subFolders)
-                                subFolders = true;
+                        parent->addChild(child);
+                    }
 
-                            parent->addChild(child);
-                        }
-                    //}
                     ::ILFree(pidlChild);
                 }
                 ppenumIDList->Release();

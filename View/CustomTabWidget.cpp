@@ -62,10 +62,19 @@ void CustomTabWidget::initialize(QAbstractItemModel *model)
         }
 
         int currentTab = Settings::settings->readPaneSetting(pane, SETTINGS_PANES_CURRENTTAB).toInt();
-        setCurrentIndex(currentTab);
+
+        if (currentTab < 0 || currentTab >= count() - 1)
+            currentTab = 0;
+
+        if (count() < 2) {
+            addNewTab(QString(), QString(), QIcon());
+            setUpTab(count() - 2, root);
+        } else
+            setCurrentIndex(currentTab);
+
     } else {
         addNewTab(QString(), QString(), QIcon());
-        setUpTab(count() - 1, root);
+        setUpTab(count() - 2, root);
     }
 }
 
@@ -209,10 +218,10 @@ bool CustomTabWidget::setViewRootIndex(const QModelIndex &sourceIndex)
             return true;
         }
 
-        if (detailedView->rootIndex() != sourceIndex) {
-            qDebug() << "CustomTabWidget::setViewRootIndex";
+        QModelIndex proxyIndex = reinterpret_cast<SortModel*>(detailedView->model())->mapFromSource(sourceIndex);
 
-            QModelIndex proxyIndex = reinterpret_cast<SortModel*>(detailedView->model())->mapFromSource(sourceIndex);
+        if (detailedView->rootIndex() != proxyIndex) {
+            qDebug() << "CustomTabWidget::setViewRootIndex";
 
             // Clear selection
             detailedView->clearSelection();

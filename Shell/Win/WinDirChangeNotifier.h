@@ -5,8 +5,7 @@
 #include <fileapi.h>
 
 #include <QMutex>
-#include <QHash>
-#include <QMap>
+#include <QMultiMap>
 
 #include "Shell/DirectoryWatcher.h"
 
@@ -18,15 +17,17 @@ public:
     WinDirChangeNotifier(QObject *parent = nullptr);
     ~WinDirChangeNotifier();
 
-    void addPath(QString path) override;
-    void removePath(QString path) override;
+    void addItem(FileSystemItem *item) override;
+    void removeItem(FileSystemItem *item) override;
+    bool isWatching(FileSystemItem *item) override;
+    void refresh() override;
     void directoryChanged(LPOVERLAPPED lpOverLapped);
 
 
 private:
 
     typedef struct _DirectoryWatch {
-        QString path;
+        FileSystemItem *item;
         HANDLE handle                           {};
         OVERLAPPED overlapped                   {};
         FILE_NOTIFY_INFORMATION info[10240]     {};
@@ -34,12 +35,14 @@ private:
     } DirectoryWatch;
 
     QMutex mutex;
-    QHash<QString, DirectoryWatch *> watchedPaths;
-
-    bool readDirectory(DirectoryWatch *watch);
+    QMultiMap<QString, DirectoryWatch *> watchedPaths;
 
     static int id;
     int thisId;
+
+    bool readDirectory(DirectoryWatch *watch);
+    void removeWatch(DirectoryWatch *watch);
+
 };
 
 #endif // WINDIRCHANGENOTIFIER_H

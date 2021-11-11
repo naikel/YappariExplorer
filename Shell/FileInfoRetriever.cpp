@@ -18,6 +18,8 @@ FileInfoRetriever::~FileInfoRetriever()
 {
     qDebug() << "FileInfoRetriever::~FileInfoRetriever About to destroy";
 
+    quit();
+
     if (running.load()) {
 
         // Abort all the pending threads
@@ -110,6 +112,7 @@ void FileInfoRetriever::run()
 
         mutex.unlock();
     }
+    qDebug() << "FileInfoRetriever::run finished";
 }
 
 /*!
@@ -156,5 +159,6 @@ void FileInfoRetriever::quit()
 {
     threadRunning.store(false);
     jobAvailable.wakeAll();
+    this->wait();
 }
 

@@ -59,6 +59,7 @@ SOURCES += \
     View/PathBar.cpp \
     View/PathBarButton.cpp \
     View/PathWidget.cpp \
+    View/StatusBar.cpp \
     View/Util/FileSystemHistory.cpp \
     Window/AppWindow.cpp \
     Window/TitleBar.cpp \
@@ -87,6 +88,7 @@ HEADERS += \
     View/PathBar.h \
     View/PathBarButton.h \
     View/PathWidget.h \
+    View/StatusBar.h \
     View/Util/FileSystemHistory.h \
     Window/AppWindow.h \
     Window/TitleBar.h \

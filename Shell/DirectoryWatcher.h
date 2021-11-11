@@ -3,22 +3,26 @@
 
 #include <QObject>
 
+#include "Shell/FileSystemItem.h"
+
 class DirectoryWatcher : public QObject
 {
     Q_OBJECT
 public:
     DirectoryWatcher(QObject *parent = nullptr);
 
-    virtual void addPath(QString path) = 0;
-    virtual void removePath(QString path) = 0;
+    virtual void addItem(FileSystemItem *item) = 0;
+    virtual void removeItem(FileSystemItem *item) = 0;
+    virtual bool isWatching(FileSystemItem *item) = 0;
+    virtual void refresh() = 0;
     virtual bool handleNativeEvent(const QByteArray &eventType, void *message, long *result);
 
 signals:
-    void fileRename(QString oldFileName, QString newFileName);
-    void fileModified(QString fileName);
-    void fileAdded(QString fileName);
-    void fileRemoved(QString fileName);
-    void folderUpdated(QString path);
+    void fileRename(FileSystemItem *item, QString newFileName);
+    void fileModified(FileSystemItem *item);
+    void fileAdded(FileSystemItem *parent, QString fileName);
+    void fileRemoved(FileSystemItem *item);
+    void folderUpdated(FileSystemItem *item);
 };
 
 #endif // DIRECTORYWATCHER_H

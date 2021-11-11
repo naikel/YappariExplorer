@@ -18,22 +18,27 @@ WinDirChangeNotifier::~WinDirChangeNotifier()
 {
     qDebug() << "WinDirChangeNotifier::~WinDirChangeNotifier About to destroy";
 
-    QStringList paths = watchedPaths.keys();
-    for (QString path : paths)
-        removePath(path);
+    QList<DirectoryWatch *> watchers = watchedPaths.values();
+    for (DirectoryWatch *value : watchers)
+        removeWatch(value);
 
     qDebug() << "WinDirChangeNotifier::~WinDirChangeNotifier Destroyed";
 }
 
-void WinDirChangeNotifier::addPath(QString path)
+void WinDirChangeNotifier::addItem(FileSystemItem *item)
 {
+    if (item == nullptr)
+        return;
+
+    QString path = item->getPath();
+
     qDebug() << "WinDirChangeNotifier::run addPath " << thisId << path;
 
     if (!path.isNull() && path.length() >= 3 && path.at(0).isLetter() && path.at(1) == ':' && path.at(2) == '\\' && !watchedPaths.contains(path)) {
 
         DirectoryWatch *watch = new DirectoryWatch;
 
-        watch->path = path;
+        watch->item = item;
 
         // When using a completion routine the hEvent member of the OVERLAPPED structure is not
         // used by the system, so we can use it ourselves.
@@ -42,17 +47,10 @@ void WinDirChangeNotifier::addPath(QString path)
         // Create file
 
         std::wstring wstrPath = path.toStdWString();
-        watch->handle = CreateFileW(wstrPath.c_str(), GENERIC_READ, FILE_SHARE_WRITE | FILE_SHARE_READ | FILE_SHARE_DELETE,
+        watch->handle = CreateFileW(wstrPath.c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_WRITE | FILE_SHARE_READ | FILE_SHARE_DELETE,
                                     nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, nullptr);
 
-        if (watch->handle == INVALID_HANDLE_VALUE) {
-            qDebug() << "WinDirChangeNotifier::run couldn't watch the path " << thisId << path;
-            delete watch;
-            return;
-        }
-
-        // Read Directory contents
-        if (readDirectory(watch) == false) {
+        if (watch->handle == INVALID_HANDLE_VALUE || readDirectory(watch) == false) {
             qDebug() << "WinDirChangeNotifier::run couldn't watch the path " << thisId << path;
             delete watch;
             return;
@@ -66,23 +64,55 @@ void WinDirChangeNotifier::addPath(QString path)
     }
 }
 
-void WinDirChangeNotifier::removePath(QString path)
+void WinDirChangeNotifier::removeItem(FileSystemItem *item)
 {
-    qDebug() << "WinDirChangeNotifier::removePath" << path;
-    if (watchedPaths.contains(path)) {
-        DirectoryWatch *watch = watchedPaths.value(path);
-        CancelIoEx(watch->handle, &(watch->overlapped));
-        CloseHandle(watch->handle);
+    if (item == nullptr)
+        return;
 
-        mutex.lock();
-        watchedPaths.remove(path);
-        validOverlapped.removeAll(&watch->overlapped);
-        delete watch;
-        mutex.unlock();
+    QString path = item->getPath();
 
-        qDebug() << "WinDirChangeNotifier::removePath removed successfully" << thisId << path;
+    qDebug() << "WinDirChangeNotifier::removeItem" << path << item;
+    QList<DirectoryWatch *> watchers = watchedPaths.values();
+    for (DirectoryWatch *watch : watchers) {
+        if (watch->item == item) {
 
+            removeWatch(watch);
+            qDebug() << "WinDirChangeNotifier::removeItem removed successfully" << thisId << path;
+
+            break;
+        }
     }
+}
+
+
+void WinDirChangeNotifier::removeWatch(WinDirChangeNotifier::DirectoryWatch *watch)
+{
+    CancelIoEx(watch->handle, &(watch->overlapped));
+    CloseHandle(watch->handle);
+
+    mutex.lock();
+    QString pathKey = watchedPaths.key(watch);
+    if (!pathKey.isEmpty())
+        watchedPaths.remove(pathKey, watch);
+    validOverlapped.removeAll(&watch->overlapped);
+    delete watch;
+    mutex.unlock();
+}
+
+
+bool WinDirChangeNotifier::isWatching(FileSystemItem *item)
+{
+    QList<DirectoryWatch *> watchers = watchedPaths.values();
+    for (DirectoryWatch *watcher : watchers)
+        if (watcher->item == item)
+            return true;
+
+    return false;
+}
+
+void WinDirChangeNotifier::refresh()
+{
+    // What should I do here?
 }
 
 void WinDirChangeNotifier::directoryChanged(LPOVERLAPPED lpOverLapped)
@@ -90,7 +120,10 @@ void WinDirChangeNotifier::directoryChanged(LPOVERLAPPED lpOverLapped)
     // Find the object
     mutex.lock();
     qDebug() << "WinDirChangeNotifier::directoryChanged locked sucessfully" << thisId ;
-    for (DirectoryWatch *watch : watchedPaths.values()) {
+    QList<DirectoryWatch *> watchers = watchedPaths.values();
+    mutex.unlock();
+
+    for (DirectoryWatch *watch : watchers) {
         if (&(watch->overlapped) == lpOverLapped && watch->info->Action > 0) {
 
             FILE_NOTIFY_INFORMATION *n = watch->info;
@@ -98,7 +131,8 @@ void WinDirChangeNotifier::directoryChanged(LPOVERLAPPED lpOverLapped)
             while (n) {
 
                 QString fileName = QString::fromWCharArray(n->FileName, (n->FileNameLength / sizeof(WCHAR)));
-                strList.append(watch->path + (watch->path.right(1) != "\\" ? "\\" : "") + fileName);
+                QString path = watch->item->getPath();
+                strList.append(path + (path.right(1) != "\\" ? "\\" : "") + fileName);
 
                 QString action;
                 switch (n->Action) {
@@ -135,23 +169,30 @@ void WinDirChangeNotifier::directoryChanged(LPOVERLAPPED lpOverLapped)
 
             for (int i = 0; i < strList.count(); i++) {
 
-                if (watch->info->Action == FILE_ACTION_RENAMED_OLD_NAME && ((i + 1) < strList.count())) {
+                // Get the child of the parent for this path
+                FileSystemItem *item = watch->item->getChild(strList[i]);
+
+                if (item != nullptr && watch->info->Action == FILE_ACTION_RENAMED_OLD_NAME && ((i + 1) < strList.count())) {
 
                     // If this is a rename action we should have two filenames in the string list, old and new.
-                    emit fileRename(strList[i], strList[i + 1]);
+                    emit fileRename(item, strList[i + 1]);
+
                     i += 1;
                     continue;
                 }
 
                 switch (watch->info->Action) {
                     case FILE_ACTION_MODIFIED:
-                        emit fileModified(strList[i]);
+                        if (item != nullptr)
+                            emit fileModified(item);
                         break;
                     case FILE_ACTION_ADDED:
-                        emit fileAdded(strList[i]);
+                        if (item == nullptr)
+                            emit fileAdded(watch->item,  strList[i]);
                         break;
                     case FILE_ACTION_REMOVED:
-                        emit fileRemoved(strList[i]);
+                        if (item != nullptr)
+                            emit fileRemoved(item);
                         break;
                     default:
                         break;
@@ -164,8 +205,6 @@ void WinDirChangeNotifier::directoryChanged(LPOVERLAPPED lpOverLapped)
             break;
         }
     }
-
-    mutex.unlock();
 }
 
 void completionRoutine(DWORD dwErrorCode, DWORD dwBytesTransferred, LPOVERLAPPED lpOverLapped)

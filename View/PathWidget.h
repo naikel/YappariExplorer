@@ -72,7 +72,7 @@ signals:
 
 private:
     FileSystemModel *model              {};
-    QList<PathWidgetButton *> buttons   {};
+    QModelIndex currentIndex;
 
 private slots:
     void clickedOnIndex(const QModelIndex &index);
