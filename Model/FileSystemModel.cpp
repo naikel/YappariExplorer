@@ -515,7 +515,7 @@ bool FileSystemModel::willRecycle(const QModelIndex &index)
  * and a complete refresh of the parent index wants to be avoided (this will lose current selections and will scroll
  * the view to the top).
  *
- * The way this implementation works is by creating a temporary FileSystemModel that will retrieve the folder again
+ * The way this implementation works is by creating a temporary FileInfoRetriever that will retrieve the folder again
  * in the background. When it's ready a comparison is performed to add/remove/replace items.
  *
  * \sa FileInfoRetriever::getChildren
@@ -525,13 +525,10 @@ void FileSystemModel::refreshFolder(FileSystemItem *item)
 {
     qDebug() << "FileSystemModel::refreshFolder";
 
-    FileSystemModel *tempModel = new FileSystemModel(nullptr, false);
-    connect(tempModel, &FileSystemModel::dataChanged, [=](const QModelIndex &current, const QModelIndex &, QVector<int> roles) {
-
-        if (roles.contains(FileSystemModel::AllChildrenFetchedRole) && current.data(FileSystemModel::AllChildrenFetchedRole).toBool()) {
+    FileInfoRetriever *tempRetriever = new PlatformInfoRetriever();
+    connect(tempRetriever, &FileInfoRetriever::parentChildrenUpdated, [=](FileSystemItem *newParent) {
 
             // Compare folders
-            FileSystemItem *newParent = tempModel->getRoot();
             QList<FileSystemItem *> newItemList = newParent->getChildren();
             QList<FileSystemItem *> itemList = item->getChildren();
 
@@ -578,13 +575,12 @@ void FileSystemModel::refreshFolder(FileSystemItem *item)
                 endInsertRows();
             }
             addMutex.unlock();
-
-            tempModel->deleteLater();
-        } else if (roles.contains(Qt::DisplayRole)) // parent has been fetched successfully, let's fetch its children now
-            tempModel->fetchMore(tempModel->index(0, 0));
+            delete newParent;
+            tempRetriever->deleteLater();
     });
 
-    tempModel->setRoot(item->getPath());
+    tempRetriever->start();
+    tempRetriever->getChildren(new FileSystemItem(item->getPath()));
 }
 
 void FileSystemModel::refreshIndex(QModelIndex index)
@@ -1040,9 +1036,9 @@ bool FileSystemModel::removeAllRows(const QModelIndex &parent)
         } else {
 
             // The parent didn't have any children before
-            layoutAboutToBeChanged();
+            emit layoutAboutToBeChanged();
             item->setAllChildrenFetched(false);
-            layoutChanged();
+            emit layoutChanged();
         }
         return true;
     }
